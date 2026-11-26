@@ -17,12 +17,36 @@ export function received(records: IncomeRecord[], r: { from: string; to: string 
   return records.filter((x) => x.status === 'received' && inRange(x.date, r))
 }
 
+/**
+ * The three kinds of money in (audit B-01), used the same way on every screen, report and export:
+ *  - **service revenue**: received payments for work, everything but reimbursements;
+ *  - **cost recovery**: reimbursements, money back for a cost paid on a client's behalf. Shown on
+ *    its own line, never as revenue, margin or earnings; the cost it repays stays a cost;
+ *  - **cash received**: both, less tax the payer withheld (that never reached you).
+ * Taxability is its own question: a reimbursement is not assumed non-taxable for being one.
+ */
+export const isCostRecovery = (r: Pick<IncomeRecord, 'category'>): boolean => r.category === 'reimbursement'
+/** Service revenue only: what the work earned. */
+export const earned = <T extends Pick<IncomeRecord, 'category'>>(rs: T[]): T[] => rs.filter((r) => !isCostRecovery(r))
+/** Cost recovery only. */
+export const recovered = <T extends Pick<IncomeRecord, 'category'>>(rs: T[]): T[] => rs.filter(isCostRecovery)
+/** What actually arrived from one received payment: its amount in lei less tax withheld at source. */
+export const cashOf = (r: Pick<IncomeRecord, 'amountRon' | 'taxWithheld'>): number => r.amountRon - (r.taxWithheld || 0)
+
 export const sum = (rs: IncomeRecord[], pick: (r: IncomeRecord) => number = (r) => r.amountRon) =>
   round2(rs.reduce((s, r) => s + (pick(r) || 0), 0))
 
 export interface PeriodSummary {
+  /** Service revenue: received payments for work, cost recovery excluded. */
   total: number
+  /** Payments counted in `total`. */
   count: number
+  /** Reimbursements received in the period: shown apart, never counted as revenue. */
+  costRecovery: number
+  /** All money received before tax withheld: `total + costRecovery`. */
+  receivedGross: number
+  /** What actually arrived: `receivedGross` less tax withheld at source. */
+  cashIn: number
   taxable: number
   nonTaxable: number
   review: number
@@ -36,14 +60,25 @@ export interface PeriodSummary {
   net: number
 }
 
-export function summarise(rs: IncomeRecord[]): PeriodSummary {
-  const total = sum(rs)
+/**
+ * A period's figures from its received service payments and, separately, its cost recovery.
+ * The tax split (taxable, non-taxable, review) and the tax amounts cover both: taxability is
+ * decided per payment, whatever its kind.
+ */
+export function summarise(service: IncomeRecord[], recovery: IncomeRecord[] = []): PeriodSummary {
+  const total = sum(service)
+  const costRecovery = sum(recovery)
+  const rs = [...service, ...recovery]
   const by = (f: (r: IncomeRecord) => boolean) => sum(rs.filter(f))
   const reserve = sum(rs, (r) => r.taxReserve ?? 0)
   const taxWithheld = sum(rs, (r) => r.taxWithheld)
   return {
     total,
-    count: rs.length,
+    // Refund adjustments change the money, not the number of payments.
+    count: service.filter((r) => !r.refundOf).length,
+    costRecovery,
+    receivedGross: round2(total + costRecovery),
+    cashIn: round2(total + costRecovery - taxWithheld),
     taxable: by((r) => r.taxability === 'taxable'),
     nonTaxable: by((r) => r.taxability === 'non_taxable'),
     review: by((r) => r.taxability === 'review'),
@@ -113,13 +148,14 @@ export function breakdown(data: Pick<InflowData, 'clients' | 'sources' | 'venues
   return [...groups.entries()]
     .map(([id, list]) => {
       const t = sum(list)
+      const n = list.filter((r) => !r.refundOf).length
       return {
         id,
         name: nameOf(data, dim, id),
         total: t,
-        count: list.length,
+        count: n,
         share: total > 0 ? t / total : 0,
-        average: list.length ? round2(t / list.length) : 0,
+        average: n ? round2(t / n) : 0,
         previous: prevTotals.get(id) ?? 0,
       }
     })
@@ -129,8 +165,9 @@ export function breakdown(data: Pick<InflowData, 'clients' | 'sources' | 'venues
 export const NO_ENTITY = NONE
 
 /** Sum per chart bucket. */
+/** Service revenue per bucket, for the trend chart. */
 export function series(records: IncomeRecord[], bs: Bucket[]): number[] {
-  return bs.map((b) => sum(records.filter((r) => r.status === 'received' && r.date >= b.from && r.date <= b.to)))
+  return bs.map((b) => sum(records.filter((r) => r.status === 'received' && !isCostRecovery(r) && r.date >= b.from && r.date <= b.to)))
 }
 
 export interface Concentration {

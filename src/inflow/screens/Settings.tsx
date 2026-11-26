@@ -54,6 +54,9 @@ export const FEATURES: { key: FeatureKey; label: string; hint: string; on: strin
   { key: 'printable', label: 'Printable reports', hint: 'Build a report and save it as PDF or HTML.',
     on: ['Month at a glance, Year in review', 'A client statement; a pack for your accountant', 'Saved as PDF or HTML'],
     off: 'The Print tab goes. CSV exports stay.' },
+  { key: 'refunds', label: 'Refunds', hint: 'Money paid back to a client, against the payment it came from.',
+    on: ['“Refund…” on a received payment, in part or in full', 'Counted when the money goes back: income, cash and tax', 'The payment itself never changes'],
+    off: 'The Refund action goes. Refunds already recorded still count and stay listed: money paid back is never hidden from the totals.' },
 ]
 
 
@@ -310,7 +313,14 @@ export function Settings() {
               <SettingsToggle label="Pay CAS below the threshold" hint={h('Opt in to pension contributions on 12 minimum wages.')} checked={tax.casOptIn} onChange={(e) => setTax({ casOptIn: e.target.checked })} />
             </>
           )}
-          <SettingsToggle label="VAT-registered" hint={h('Off: the small-business exemption (under 395,000 lei a year).')} checked={tax.vatRegistered} onChange={(e) => setTax({ vatRegistered: e.target.checked })} />
+          <SettingsToggle label="VAT-registered" hint="Off: the small-business exemption (under 395,000 lei a year). InFlow is for that case: it keeps no VAT accounts." checked={tax.vatRegistered} onChange={(e) => setTax({ vatRegistered: e.target.checked })} />
+          {tax.vatRegistered && (
+            <p className={styles.banner} role="note">
+              VAT-registered use isn't supported. Payments are recorded as received, VAT included, so income, the tax estimate and the
+              suggested reserves would all include the VAT, and nothing tracks the VAT you owe. Keep VAT with your accountant or invoicing
+              tool; the VAT labels here are labels only.
+            </p>
+          )}
           <NumberInput label="Expected taxable income this year (lei, optional)" value={tax.expectedAnnualIncome}
             placeholder="projected from the year so far" onCommit={(n) => setTax({ expectedAnnualIncome: n ?? 0 })}
             hint={h("Thresholds make the rate depend on the whole year. Leave empty to project it from what you've earned so far.")} />
@@ -405,14 +415,14 @@ export function Settings() {
         message={pendingBackup ? `Replaces what's on this device with ${pendingBackup.data.records.length} payments from ${pendingBackup.exportedAt.slice(0, 10)}, and switches to device mode.` : ''}
         onCancel={() => { setConfirm(null); setPendingBackup(null) }} onConfirm={() => { setConfirm(null); if (pendingBackup) void restore(pendingBackup); setPendingBackup(null) }} />
       <ConfirmModal isOpen={confirm === 'copy'} title="Copy device payments to Notion?" confirmText="Copy"
-        message="Creates your own payments, and the clients, sources and venues they use, in Notion. Run it once; a second run makes duplicates."
+        message="Creates your own payments, refunds and costs, and the clients, sources and venues they use, in Notion, one at a time. If it stops (offline, Notion busy), run it again: what is already there is skipped, never copied twice."
         onCancel={() => setConfirm(null)}
         onConfirm={() => {
           setConfirm(null)
           setCopying('Copying…')
           void copyDeviceToNotion((d, t) => setCopying(`Copying ${d}/${t}…`))
-            .then((n) => toast({ message: `Copied ${n} payments to Notion`, tone: 'success' }))
-            .catch((e) => toast({ message: `Copy stopped: ${(e as Error).message}`, tone: 'danger' }))
+            .then(({ copied, skipped }) => toast({ message: copied ? `Copied ${copied} ${copied === 1 ? 'item' : 'items'} to Notion${skipped ? ` (${skipped} already there)` : ''}` : 'Everything was already in Notion', tone: 'success' }))
+            .catch((e) => toast({ message: `Copy stopped: ${(e as Error).message}. Run it again to carry on from there.`, tone: 'danger', duration: 12000 }))
             .finally(() => setCopying(null))
         }} />
       {editing && (

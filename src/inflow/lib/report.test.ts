@@ -53,3 +53,20 @@ describe('renderReport', () => {
     expect(html).toMatch(/\d+ more<\/td>/)
   })
 })
+
+describe('the accountant’s report lists every cost (audit F-03)', () => {
+  it('has a cost list with deductible marked, paid ones totalled, due ones greyed', () => {
+    const year = { from: '2026-01-01', to: '2026-12-31' }
+    const opt = presetOptions('accountant', year, today, true, true)
+    expect(opt.sections).toContain('costs')
+    const html = renderReport(demo, { ...defaultReportOptions(year, true), ...opt }, { ...ctx, trackCosts: true })
+    expect(html).toContain('<h2>Costs</h2>')
+    const paid = demo.costs.filter((c) => c.status === 'paid' && c.date >= year.from && c.date <= year.to)
+    expect(html).toContain(lei(paid.reduce((t, c) => t + c.amountRon, 0)))
+    expect(html).toContain('Deductible')
+  })
+  it('is left out with costs off', () => {
+    const year = { from: '2026-01-01', to: '2026-12-31' }
+    expect(presetOptions('accountant', year, today, true, false).sections).not.toContain('costs')
+  })
+})

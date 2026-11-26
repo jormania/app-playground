@@ -1,12 +1,12 @@
 /**
- * The welcome tour: seven short steps, shown the first time InFlow opens.
+ * The welcome tour: eight short steps, shown the first time InFlow opens.
  * At most three short points each; the five main features carry their switch.
  * The checkbox on every step decides whether it comes back next time; it
  * starts ticked on first run, and Settings can always bring the tour back.
  * Steps that introduce an optional feature carry its switch.
  */
 import { useState } from 'react'
-import { CalendarClock, Check, Database, DoorOpen, Flame, Receipt, Scale, Waves } from 'lucide-react'
+import { CalendarClock, Check, Database, DoorOpen, Flame, Receipt, Scale, Undo2, Waves } from 'lucide-react'
 import type { FeatureKey } from '../domain/types'
 import { Button, Modal, SegmentedControl } from '../../ds'
 import { useInflow } from '../app/state'
@@ -52,9 +52,15 @@ const STEPS: Step[] = [
     feature: { key: 'costs', label: 'Costs and profit' },
   },
   {
+    icon: Undo2,
+    title: 'When money goes back',
+    points: ['Refund part or all of a payment', 'Counted in the month it went back', 'Rare for most: off until you need it'],
+    feature: { key: 'refunds', label: 'Refunds' },
+  },
+  {
     icon: Receipt,
     title: 'Tax, if you want it',
-    points: ['What to set aside, under Romanian rules', 'Withholding and VAT included', 'A suggestion; you decide'],
+    points: ['What to set aside, under Romanian rules', 'Tax withheld by payers included', 'Not for VAT-registered businesses', 'A suggestion; you decide'],
     feature: { key: 'tax', label: 'Tax suggestions' },
   },
   {
@@ -67,12 +73,14 @@ const STEPS: Step[] = [
 export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { settings, updateSettings, workspace, setWorkspace } = useInflow()
   const [step, setStep] = useState(0)
-  const [again, setAgain] = useState(settings.showTour)
+  // Unticked unless asked for: seeing the guide once is enough (audit B-08).
+  const [again, setAgain] = useState(false)
   const s = STEPS[step]
   const last = step === STEPS.length - 1
 
   const [startWith, setStartWith] = useState<'demo' | 'mine'>('demo')
 
+  // Skip, close and Start all mean "I've seen it": the guide returns only if its box was ticked.
   const finish = () => {
     updateSettings({ showTour: again })
     setStep(0)

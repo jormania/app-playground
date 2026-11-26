@@ -10,7 +10,7 @@ import { useInflow } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
 import { SelectInput } from '../components/fields'
 import type { CostRecord, InflowData } from '../domain/types'
-import { ACTIVITY, COST_CATEGORY, COST_GROUP, COST_GROUP_SHORT, options } from '../domain/vocabulary'
+import { ACTIVITY, COST_CATEGORY, COST_GROUP, COST_GROUP_PLAIN, options } from '../domain/vocabulary'
 import { NO_ENTITY } from '../lib/analytics'
 import { monthLabel, monthShort, parseDate, shortDate, weekdayShort } from '../lib/dates'
 import { recurringCostsMissing } from '../lib/finance'
@@ -62,7 +62,7 @@ function WhereWent({ costs, data, onPick, empty, onWiden }: { costs: CostRecord[
       const k = split === 'group' ? c.group : split === 'category' ? c.category : c.venueId ?? NO_ENTITY
       m.set(k, (m.get(k) ?? 0) + c.amountRon)
     }
-    const nameOf = (k: string) => split === 'group' ? COST_GROUP_SHORT[k as keyof typeof COST_GROUP_SHORT]
+    const nameOf = (k: string) => split === 'group' ? COST_GROUP_PLAIN[k as keyof typeof COST_GROUP_PLAIN]
       : split === 'category' ? COST_CATEGORY[k as keyof typeof COST_CATEGORY]
         : k === NO_ENTITY ? 'No venue (overheads)' : data.venues.find((v) => v.id === k)?.name ?? '—'
     return [...m.entries()].map(([id, value]) => ({ id, name: nameOf(id), value: round2(value) }))
@@ -90,6 +90,8 @@ function WhereWent({ costs, data, onPick, empty, onWiden }: { costs: CostRecord[
 
 export function Costs({ onOpen, onCopy, filter, setFilter }: { onOpen: (id: string) => void; onCopy?: (id: string) => void; filter: CostFilter; setFilter: (f: CostFilter) => void }) {
   const { data, today, costsAvailable, setPeriod } = useInflow()
+  // Costs a received reimbursement names as the one it repays.
+  const reimbursed = useMemo(() => new Set(data.records.filter((r) => r.repaysCostId && r.status === 'received').map((r) => r.repaysCostId!)), [data.records])
   const { range } = usePeriodData()
   const [showFilters, setShowFilters] = useState(false)
   const list = useMemo(() => applyCostFilter(data, filter, range), [data, filter, range])
@@ -106,7 +108,7 @@ export function Costs({ onOpen, onCopy, filter, setFilter }: { onOpen: (id: stri
   const pnl = paid.filter((c) => !['investment', 'financing'].includes(c.group))
   const name = (l: { id: string; name: string }[], id: string) => l.find((x) => x.id === id)?.name ?? '—'
   const active: [keyof CostFilter, string][] = []
-  if (filter.group) active.push(['group', COST_GROUP_SHORT[filter.group as keyof typeof COST_GROUP_SHORT]])
+  if (filter.group) active.push(['group', COST_GROUP_PLAIN[filter.group as keyof typeof COST_GROUP_PLAIN]])
   if (filter.venueId) active.push(['venueId', filter.venueId === NO_ENTITY ? 'No venue' : name(data.venues, filter.venueId)])
   if (filter.clientId) active.push(['clientId', filter.clientId === NO_ENTITY ? 'No client' : name(data.clients, filter.clientId)])
   if (filter.activity) active.push(['activity', filter.activity === NO_ENTITY ? 'No activity' : ACTIVITY[filter.activity as keyof typeof ACTIVITY]])
@@ -206,7 +208,7 @@ export function Costs({ onOpen, onCopy, filter, setFilter }: { onOpen: (id: stri
             <span>{key === 'due' ? 'Due, not paid yet' : monthLabel(`${key}-01`)}</span>
             <span className="num">{key === 'due' ? `${lei(sumRon(cs))} to pay` : lei(sumRon(cs))}</span>
           </div>
-          {cs.map((c) => <CostRow key={c.id} c={c} data={data} today={today} onOpen={onOpen} />)}
+          {cs.map((c) => <CostRow key={c.id} c={c} data={data} today={today} onOpen={onOpen} reimbursed={reimbursed.has(c.id)} />)}
         </div>
       ))}
       {list.length > 4 && <ListEnd>That's everything: {list.length} costs, {lei(sumRon(paid))} paid.</ListEnd>}
@@ -214,7 +216,7 @@ export function Costs({ onOpen, onCopy, filter, setFilter }: { onOpen: (id: stri
   )
 }
 
-function CostRow({ c, data, today, onOpen }: { c: CostRecord; data: InflowData; today: string; onOpen: (id: string) => void }) {
+function CostRow({ c, data, today, onOpen, reimbursed }: { c: CostRecord; data: InflowData; today: string; onOpen: (id: string) => void; reimbursed: boolean }) {
   const venue = data.venues.find((v) => v.id === c.venueId)?.name
   const client = data.clients.find((x) => x.id === c.clientId)?.name
   return (
@@ -228,9 +230,10 @@ function CostRow({ c, data, today, onOpen }: { c: CostRecord; data: InflowData; 
         <span className={styles.entrySub} style={{ display: 'block' }}>{[COST_CATEGORY[c.category], venue, client].filter(Boolean).join(' · ')}</span>
         <span className={styles.tags}>
           {c.status === 'due' && <span className={`${styles.tag} ${styles.tagAlert}`}>{c.date < today ? 'Overdue' : 'Due'}</span>}
-          <span className={`${styles.tag} ${c.group === 'direct' ? styles.tagReview : c.group === 'operating' ? styles.tagNon : ''}`}>{COST_GROUP_SHORT[c.group]}</span>
+          <span className={`${styles.tag} ${c.group === 'direct' ? styles.tagReview : c.group === 'operating' ? styles.tagNon : ''}`}>{COST_GROUP_PLAIN[c.group]}</span>
           {c.activity && <span className={styles.tag}>{ACTIVITY[c.activity]}</span>}
           {c.recurring && <span className={styles.tag}><Repeat size={10} aria-hidden /> recurring</span>}
+          {reimbursed && <span className={`${styles.tag} ${styles.tagNon}`}>reimbursed</span>}
         </span>
       </span>
       <span className={styles.entryAmount}>

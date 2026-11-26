@@ -59,17 +59,29 @@ export const CATEGORY: Record<Category, string> = {
 /** "Activity" in the interface: the kind of work. Same map, the name people use. */
 export const ACTIVITY = CATEGORY
 
+/** The kind of cost, in plain words first, the accounting term after (audit C-03). */
 export const COST_GROUP: Record<CostGroup, string> = {
-  direct: 'Direct cost (COGS)',
-  operating: 'Operating cost (SG&A)',
-  depreciation: 'Depreciation',
-  interest: 'Interest',
+  direct: 'Cost of the work (direct, COGS)',
+  operating: 'Running cost (operating, SG&A)',
+  depreciation: 'Equipment written off over its life (depreciation)',
+  interest: 'Loan interest',
   tax: 'Tax on profit',
-  investment: 'Investment',
-  financing: 'Financing',
+  investment: 'Equipment bought (investment)',
+  financing: 'Loan repaid or money you took out (financing)',
 }
 
-/** Short group names for P&L rows and tags. */
+/** Short plain names for tags and filters on screen. Notion and the CSV keep `COST_GROUP_SHORT`. */
+export const COST_GROUP_PLAIN: Record<CostGroup, string> = {
+  direct: 'Cost of the work',
+  operating: 'Running cost',
+  depreciation: 'Write-off',
+  interest: 'Interest',
+  tax: 'Tax',
+  investment: 'Equipment',
+  financing: 'Repaid / taken out',
+}
+
+/** Short group names: Notion's "Group" options and the CSV. A closed vocabulary: change in Notion first. */
 export const COST_GROUP_SHORT: Record<CostGroup, string> = {
   direct: 'Direct',
   operating: 'Operating',

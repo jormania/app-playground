@@ -154,56 +154,6 @@ export function SplitBar({ parts, total }: { parts: SplitPart[]; total: number }
   )
 }
 
-const SLOTS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)']
-
-export interface SharePart { id: string; name: string; value: number }
-
-/**
- * One whole split into its largest parts: a tall segmented bar (≤ 5 named
- * parts, the rest folded into "Other"), shares printed where they fit, and a
- * key below. Colours go by place in this list, which is by size.
- */
-export function ShareBar({ parts, onSelect, label, max = 5 }: { parts: SharePart[]; onSelect?: (id: string) => void; label: string; max?: number }) {
-  const [hover, setHover] = useState<string | null>(null)
-  const total = parts.reduce((s, p) => s + Math.max(0, p.value), 0)
-  if (total <= 0) return <p className={styles.hint}>Nothing in this period.</p>
-  const sorted = [...parts].filter((p) => p.value > 0).sort((a, b) => b.value - a.value)
-  const named = sorted.slice(0, sorted.length > max ? max : sorted.length)
-  const rest = sorted.slice(named.length)
-  const blocks = [
-    ...named.map((p, i) => ({ ...p, color: SLOTS[i], other: false })),
-    ...(rest.length ? [{ id: '__other', name: `${rest.length} other${rest.length === 1 ? '' : 's'}`, value: rest.reduce((s, p) => s + p.value, 0), color: 'var(--chart-other)', other: true }] : []),
-  ]
-  return (
-    <div>
-      <div className={styles.shareBar} role="img" aria-label={`${label}: ${blocks.map((b) => `${b.name} ${percent(b.value / total)}`).join(', ')}`}>
-        {blocks.map((b) => {
-          const share = b.value / total
-          return (
-            <span key={b.id} style={{ flexGrow: b.value, background: b.color, opacity: hover && hover !== b.id ? 0.45 : 1 }}
-              onMouseEnter={() => setHover(b.id)} onMouseLeave={() => setHover(null)} title={`${b.name}: ${lei(b.value)} (${percent(share)})`}>
-              {share >= 0.12 ? percent(share) : ''}
-            </span>
-          )
-        })}
-      </div>
-      <div className={styles.shareKey}>
-        {blocks.map((b) => {
-          const Row = onSelect && !b.other ? 'button' : 'div'
-          return (
-          <Row key={b.id} className={styles.shareKeyRow} onMouseEnter={() => setHover(b.id)} onMouseLeave={() => setHover(null)}
-            {...(Row === 'button' ? { type: 'button' as const, onClick: () => onSelect!(b.id) } : {})}>
-            <span className={styles.swatch} style={{ background: b.color }} />
-            <span className={styles.shareName}>{b.name}</span>
-            <span className={styles.shareValue}>{lei(b.value)} <span className={styles.panelSub}>{percent(b.value / total)}</span></span>
-          </Row>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 export interface MoverRow { key: string; name: string; tag: string; change: number; current: number; previous: number }
 
 /**

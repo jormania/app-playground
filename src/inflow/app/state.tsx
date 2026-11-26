@@ -8,14 +8,20 @@ import { indexedDbStore, type KeyValueStore } from '../../shared/kvStore'
 import { readJson, writeJson } from '../../shared/storage'
 import { useToastStack, type ToastInput } from '../../ds'
 import { buildDemo, demoOpening, hasDemo, withoutDemo } from '../data/demo'
-import type { CostRecord, FeatureKey, IncomeRecord, InflowData, Settings, Workspace } from '../domain/types'
+import type { CostRecord, FeatureKey, IncomeRecord, InflowData, Refund, Settings, Venue, Workspace } from '../domain/types'
+import { sameTerms, stampTerms, termsOf } from '../lib/deals'
+import { refundError, refundsOf, withRefunds } from '../lib/refunds'
 import { todayString, type PeriodChoice } from '../lib/period'
-import { copyToNotion, NotionRepo } from '../store/notion'
-import { DEMO_KEY, DeviceRepo, EMPTY, normalise, type Entity, type EntityKind, type Repo, listKey } from '../store/repo'
+import { copyToNotion, NotionRepo, type CopyResult } from '../store/notion'
+import { DATA_CHANNEL, DEMO_KEY, DeviceRepo, EMPTY, TAB_ID, normalise, type DataChange, type Entity, type EntityKind, type Repo, listKey } from '../store/repo'
 import { featureOn, loadSettings, mergeSettings, notionReady, saveSettings, type SettingsPatch } from '../store/settings'
 import type { Backup } from '../store/backup'
 
 const PERIOD_KEY = 'inflow:period'
+/** Device id → Notion id of every row already copied, per Income database (`copyToNotion`). */
+export const COPY_LOG_KEY = 'inflow:notion-copy'
+/** This device's data as it was just before the last restore, kept for Undo. */
+export const PRE_RESTORE_KEY = 'pre-restore'
 
 export type LoadState = 'loading' | 'ready' | 'error'
 
@@ -43,6 +49,11 @@ interface InflowState {
   /** A feature is on, and so is whatever it needs. */
   on: (key: FeatureKey) => boolean
   data: InflowData
+  /**
+   * `data` with each refund's adjustment row added to the records (`lib/refunds.ts`). Every
+   * figure (totals, P&L, cash flow, tax, deals, reports) reads this; lists and forms read `data`.
+   */
+  books: InflowData
   load: LoadState
   error: string | null
   offlineCopy: boolean
@@ -53,6 +64,9 @@ interface InflowState {
   setFilter: (f: IncomeFilter) => void
   saveRecord: (r: IncomeRecord) => Promise<IncomeRecord | null>
   deleteRecord: (r: IncomeRecord) => Promise<void>
+  /** Refund part or all of a received payment; refused (with a message) beyond what is left. */
+  saveRefund: (f: Refund) => Promise<Refund | null>
+  deleteRefund: (f: Refund) => Promise<void>
   saveCost: (c: CostRecord) => Promise<CostRecord | null>
   deleteCost: (c: CostRecord) => Promise<void>
   /** False in Notion mode when no Costs database sits next to Income. */
@@ -68,8 +82,9 @@ interface InflowState {
   loadDemo: () => Promise<void>
   /** Puts the demo back as it started, dropping changes made while exploring. */
   resetDemo: () => Promise<void>
-  restore: (b: Backup) => Promise<void>
-  copyDeviceToNotion: (onProgress?: (done: number, total: number) => void) => Promise<number>
+  /** True when the backup was restored; false (with a message) when nothing changed. */
+  restore: (b: Backup) => Promise<boolean>
+  copyDeviceToNotion: (onProgress?: (done: number, total: number) => void) => Promise<CopyResult>
   /** Your own data on this device (not the demo) has something in it. */
   deviceHasOwnData: boolean
   toast: (t: ToastInput | string) => void
@@ -199,6 +214,26 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
 
   useEffect(() => { void reload() }, [reload])
 
+  // Another tab saved to this device: show its change here too, so this tab never works from a
+  // copy older than what is stored (writes are safe either way: see DeviceRepo).
+  useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') return
+    const ch = new BroadcastChannel(DATA_CHANNEL)
+    ch.onmessage = (e: MessageEvent<DataChange>) => {
+      if (e.data?.tab === TAB_ID) return
+      if (repoRef.current === device || repoRef.current === demoRepo) void reload()
+    }
+    return () => ch.close()
+  }, [reload, device, demoRepo])
+
+  // Showing Notion's offline copy: when the connection comes back, load the real thing.
+  useEffect(() => {
+    if (!offlineCopy) return
+    const back = () => { void reload() }
+    window.addEventListener('online', back)
+    return () => window.removeEventListener('online', back)
+  }, [offlineCopy, reload])
+
   const apply = useCallback((fn: (d: InflowData) => InflowData) => {
     // Device data is kept whatever is on screen; the screen only takes rows from its own repo.
     if (repo === device) setDeviceData(fn)
@@ -209,8 +244,14 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
     toast({ message: `${what} failed: ${(e as Error).message || 'unknown error'}`, tone: 'danger', duration: 8000 })
   }, [toast])
 
-  const saveRecord = useCallback(async (r: IncomeRecord) => {
+  const dataRef = useRef(data)
+  dataRef.current = data
+
+  const saveRecordWith = useCallback(async (input: IncomeRecord, keep: boolean) => {
     try {
+      const d = dataRef.current
+      // Each payment carries its venue's deal as it stood then (see `stampTerms`).
+      const r = stampTerms(input, input.id ? d.records.find((x) => x.id === input.id) : undefined, d.venues, { keep })
       const saved = await repo.saveRecord(r)
       apply((d) => {
         const exists = d.records.some((x) => x.id === r.id && r.id)
@@ -220,17 +261,53 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
     } catch (e) { fail(e, 'Saving'); return null }
   }, [repo, apply, fail])
 
-  const deleteRecord = useCallback(async (r: IncomeRecord) => {
+  const saveRecord = useCallback((r: IncomeRecord) => saveRecordWith(r, false), [saveRecordWith])
+
+  const saveRefundRaw = useCallback(async (f: Refund) => {
+    const payment = dataRef.current.records.find((x) => x.id === f.paymentId)
+    const saved = await repo.saveRefund(f, payment)
+    apply((d) => {
+      const exists = !!f.id && d.refunds.some((x) => x.id === f.id)
+      return { ...d, refunds: exists ? d.refunds.map((x) => (x.id === f.id ? saved : x)) : [...d.refunds, saved] }
+    })
+    return saved
+  }, [repo, apply])
+
+  const saveRefund = useCallback(async (f: Refund) => {
+    const d = dataRef.current
+    const why = refundError(f, d.records.find((x) => x.id === f.paymentId), d.refunds)
+    if (why) { toast({ message: why, tone: 'danger' }); return null }
+    try { return await saveRefundRaw(f) } catch (e) { fail(e, 'Saving the refund'); return null }
+  }, [saveRefundRaw, toast, fail])
+
+  const deleteRefund = useCallback(async (f: Refund) => {
     try {
-      await repo.deleteRecord(r.id)
-      apply((d) => ({ ...d, records: d.records.filter((x) => x.id !== r.id) }))
+      await repo.deleteRefund(f.id)
+      apply((d) => ({ ...d, refunds: d.refunds.filter((x) => x.id !== f.id) }))
+      toast({ message: 'Refund deleted', actionLabel: 'Undo', onAction: () => { void saveRefund(repo.kind === 'notion' ? { ...f, id: '' } : f) } })
+    } catch (e) { fail(e, 'Deleting the refund') }
+  }, [repo, apply, toast, fail, saveRefund])
+
+  const deleteRecord = useCallback(async (r: IncomeRecord) => {
+    const refunds = refundsOf(r.id, dataRef.current.refunds)
+    try {
+      await repo.deleteRecord(r.id, refunds.map((f) => f.id))
+      apply((d) => ({ ...d, records: d.records.filter((x) => x.id !== r.id), refunds: d.refunds.filter((f) => f.paymentId !== r.id) }))
       toast({
-        message: 'Payment deleted',
+        message: refunds.length ? `Payment and its ${refunds.length === 1 ? 'refund' : `${refunds.length} refunds`} deleted` : 'Payment deleted',
         actionLabel: 'Undo',
-        onAction: () => { void saveRecord(repo.kind === 'notion' ? { ...r, id: '' } : r) },
+        onAction: () => {
+          void (async () => {
+            const back = await saveRecordWith(repo.kind === 'notion' ? { ...r, id: '' } : r, true)
+            if (!back) return
+            try {
+              for (const f of refunds) await saveRefundRaw({ ...f, id: repo.kind === 'notion' ? '' : f.id, paymentId: back.id })
+            } catch (e) { fail(e, 'Putting back the refunds') }
+          })()
+        },
       })
     } catch (e) { fail(e, 'Deleting') }
-  }, [repo, apply, fail, toast, saveRecord])
+  }, [repo, apply, fail, toast, saveRecordWith, saveRefundRaw])
 
   const saveCost = useCallback(async (c: CostRecord) => {
     try {
@@ -257,6 +334,20 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
 
   const saveEntity = useCallback(async <T extends Entity>(kind: EntityKind, e: T): Promise<T | null> => {
     try {
+      if (kind === 'venue' && e.id) {
+        // A venue's deal changing reaches only new payments. Payments here saved before snapshots
+        // existed (Notion rows from an older InFlow) are first pinned to the deal they were counted
+        // under, so their figures stay as they were.
+        const before = dataRef.current.venues.find((v) => v.id === e.id)
+        const next = e as unknown as Venue
+        if (before && !sameTerms(termsOf(before), termsOf(next))) {
+          const old = termsOf(before)
+          for (const r of dataRef.current.records.filter((x) => x.venueId === e.id && x.dealTerms === undefined)) {
+            const pinned = await repo.saveRecord({ ...r, dealTerms: old })
+            apply((d) => ({ ...d, records: d.records.map((x) => (x.id === r.id ? pinned : x)) }))
+          }
+        }
+      }
       const saved = await repo.saveEntity(kind, e)
       const key = listKey(kind)
       apply((d) => {
@@ -308,21 +399,58 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
     toast({ message: 'Demo reset to how it started', tone: 'success' })
   }, [today, demoRepo, repo, toast])
 
+  /**
+   * Restore a backup onto this device (audit B-07). What is here now is kept first, under its own
+   * key, so the restore can be undone; nothing is replaced until that copy is safely written, and
+   * a failure anywhere leaves the current data as it was and says so.
+   */
   const restore = useCallback(async (b: Backup) => {
     const data = normalise(b.data)
-    await device.replaceAll(data)
+    const before = { data: await device.load(), settings: settingsRef.current }
+    try {
+      await store.set(PRE_RESTORE_KEY, before.data)
+      await device.replaceAll(data)
+    } catch (e) {
+      // replaceAll is one write: if it failed, the stored data is still the old data.
+      await device.load().then(setDeviceData).catch(() => {})
+      fail(e, 'Restoring')
+      return false
+    }
     setDeviceData(data)
     const { notionToken: _t, ...keep } = b.settings as Settings
     updateSettings({ ...keep, features: { ...(keep.features ?? {}) }, notionToken: settingsRef.current.notionToken, mode: 'device', demoSeeded: true, workspace: 'mine' })
     if (repo === device) setData(data)
-    toast({ message: `Restored ${b.data.records.length} payments to this device`, tone: 'success' })
-  }, [device, repo, updateSettings, toast])
+    toast({
+      message: `Restored ${data.records.length} payments to this device`, tone: 'success', duration: 12000,
+      actionLabel: 'Undo',
+      onAction: () => {
+        void (async () => {
+          try {
+            await device.replaceAll(before.data)
+            setDeviceData(before.data)
+            updateSettings({ ...before.settings })
+            if (repoRef.current === device) setData(before.data)
+            await store.del(PRE_RESTORE_KEY)
+            toast({ message: 'Restore undone: your data is back as it was', tone: 'success' })
+          } catch (e) { fail(e, 'Undoing the restore') }
+        })()
+      },
+    })
+    return true
+  }, [device, repo, store, updateSettings, toast, fail])
 
   const copyDeviceToNotion = useCallback(async (onProgress?: (done: number, total: number) => void) => {
     if (repo.kind !== 'notion') throw new Error('Connect Notion first.')
-    const n = await copyToNotion(repo, withoutDemo(deviceData), onProgress)
-    await reload()
-    return n
+    // The copy log lives with the database it copies to: resumable, and never twice (audit A-03).
+    const key = `${COPY_LOG_KEY}:${settingsRef.current.incomeDbId}`
+    const entries = readJson<Record<string, string>>(key, {})
+    const log = { get: (k: string) => entries[k], put: (k: string, v: string) => { entries[k] = v; writeJson(key, entries) } }
+    try {
+      return await copyToNotion(repo, withoutDemo(deviceData), onProgress, log)
+    } finally {
+      // Whatever got there, show it; a stopped copy is resumed by running it again.
+      await reload()
+    }
   }, [repo, deviceData, reload])
 
   const deviceHasOwnData = deviceData.records.length > 0 || deviceData.costs.length > 0
@@ -332,9 +460,11 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
   // The demo keeps its own cash on hand, so the demo's never leaks into yours.
   const shownSettings = useMemo(() => (workspace === 'demo' ? { ...settings, ...demoOpening(today) } : settings), [workspace, settings, today])
 
+  const books = useMemo(() => withRefunds(data), [data])
+
   const value: InflowState = {
-    today, settings: shownSettings, updateSettings, on, data, load, error, offlineCopy, reload, period, setPeriod,
-    filter, setFilter, saveRecord, deleteRecord, saveCost, deleteCost, costsAvailable, saveEntity, deleteEntity, workspace, setWorkspace, clearDemo, loadDemo, resetDemo, restore,
+    today, settings: shownSettings, updateSettings, on, data, books, load, error, offlineCopy, reload, period, setPeriod,
+    filter, setFilter, saveRecord, deleteRecord, saveRefund, deleteRefund, saveCost, deleteCost, costsAvailable, saveEntity, deleteEntity, workspace, setWorkspace, clearDemo, loadDemo, resetDemo, restore,
     copyDeviceToNotion, deviceHasOwnData, toast, toasts,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

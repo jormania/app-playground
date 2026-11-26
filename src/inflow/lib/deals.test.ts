@@ -62,7 +62,7 @@ describe('take-home', () => {
 /** Three sessions at one venue: 1,000, 400 and 2,000 lei; 5, 2 and 10 people. */
 const room = (terms: Partial<Venue>): Venue => ({ ...venue('loft'), id: 'v_room', ...terms })
 const session = (id: string, date: string, amountRon: number, attendees: number): IncomeRecord =>
-  ({ ...demo.records[0], id, date, amount: amountRon, amountRon, currency: 'RON', fxRate: 1, venueId: 'v_room', status: 'received', category: 'workshop', attendees, sessions: 1, hours: null, demo: undefined })
+  ({ ...demo.records[0], id, date, amount: amountRon, amountRon, currency: 'RON', fxRate: 1, venueId: 'v_room', status: 'received', category: 'workshop', attendees, sessions: 1, hours: null, dealTerms: undefined, demo: undefined })
 const three = [session('a', '2026-03-02', 1000, 5), session('b', '2026-03-09', 400, 2), session('c', '2026-03-16', 2000, 10)]
 const all = { from: '2026-01-01', to: '2026-12-31' }
 

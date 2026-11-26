@@ -78,3 +78,13 @@ describe('notionProxy', () => {
     await expect(notionProxy('tok', 'x', 'POST')).rejects.toThrow('Notion request failed (504)')
   })
 })
+
+describe('notionProxy errors carry what a retry needs', () => {
+  it('puts the status and Retry-After on the error, keeping the message', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 429, headers: new Headers({ 'retry-after': '2' }), json: async () => ({ message: 'Too many requests' }) })))
+    const e = await notionProxy('t', 'pages/x', 'GET').catch((x) => x)
+    expect(e.message).toBe('Too many requests')
+    expect(e.status).toBe(429)
+    expect(e.retryAfter).toBe(2)
+  })
+})

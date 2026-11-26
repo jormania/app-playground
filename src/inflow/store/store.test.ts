@@ -5,7 +5,7 @@ import { DEFAULT_SETTINGS } from './settings'
 import { BackupError, makeBackup, readBackup, recordsCsv, toCsv } from './backup'
 import {
   clientFromPage, clientToProps, copyToNotion, costFromPage, costToProps, discoverDatabases, NotionRepo, recordFromPage, recordToProps,
-  sourceFromPage, sourceToProps, venueFromPage, venueToProps,
+  sourceFromPage, sourceToProps, venueFromPage, venueToProps, isRefundPage, refundFromPage, refundToProps, termsFromText, termsToText,
 } from './notion'
 import { DeviceRepo } from './repo'
 
@@ -120,7 +120,9 @@ describe('NotionRepo', () => {
     expect(sent).toContain('Amount')
     expect(sent).not.toContain('Sessions')
     expect(sent).not.toContain('Hours')
-    expect(sent.every((k) => k in income)).toBe(true)
+    // The venue-deal snapshot's column is added to the database (once), not left out.
+    expect(calls.find(([p, m]) => p === 'databases/inc' && m === 'PATCH')?.[2]).toEqual({ properties: { 'Venue terms': { rich_text: {} } } })
+    expect(sent.every((k) => k in income || k === 'Venue terms')).toBe(true)
   })
 
   it('copies device data to Notion with relations remapped, never demo rows', async () => {
@@ -136,11 +138,47 @@ describe('NotionRepo', () => {
       deleteCost: async () => {},
       saveEntity: async (_k: any, e: any) => ({ ...e, id: `p${n++}` }),
       deleteEntity: async () => {},
+      saveRefund: async (f: any) => ({ ...f, id: `p${n++}` }),
+      deleteRefund: async () => {},
     }
-    const count = await copyToNotion(repo, mine)
-    expect(count).toBe(1)
+    const { copied } = await copyToNotion(repo, mine)
+    expect(copied).toBeGreaterThanOrEqual(1)
+    expect(saved).toHaveLength(1)
     expect(saved[0].clientId).toMatch(/^p\d+$/)
     expect(saved[0].clientId).not.toBe(mine.records[0].clientId)
+  })
+})
+
+describe('two tabs on one device (audit A-01)', () => {
+  it('each tab keeps the other\'s new records, though both loaded before either saved', async () => {
+    const store = memoryStore()
+    await new DeviceRepo(store).replaceAll({ ...demo, records: [] })
+    const tabA = new DeviceRepo(store)
+    const tabB = new DeviceRepo(store)
+    await tabA.load()
+    await tabB.load()
+    const base = { ...demo.records[0], id: '', demo: undefined }
+    await tabA.saveRecord({ ...base, description: 'from tab A', amount: 777, amountRon: 777 })
+    await tabB.saveRecord({ ...base, description: 'from tab B', amount: 888, amountRon: 888 })
+    await tabA.saveCost({ ...demo.costs[0], id: '', demo: undefined, description: 'cost from tab A' })
+    const after = await new DeviceRepo(store).load()
+    expect(after.records.map((r) => r.description).sort()).toEqual(['from tab A', 'from tab B'])
+    expect(after.costs.some((c) => c.description === 'cost from tab A')).toBe(true)
+  })
+
+  it('a delete in one tab does not bring back a record the other tab deleted', async () => {
+    const store = memoryStore()
+    const seed = new DeviceRepo(store)
+    await seed.replaceAll({ ...demo, records: demo.records.slice(0, 3) })
+    const [x, y] = demo.records
+    const tabA = new DeviceRepo(store); await tabA.load()
+    const tabB = new DeviceRepo(store); await tabB.load()
+    await tabA.deleteRecord(x.id)
+    await tabB.deleteRecord(y.id)
+    const ids = (await new DeviceRepo(store).load()).records.map((r) => r.id)
+    expect(ids).not.toContain(x.id)
+    expect(ids).not.toContain(y.id)
+    expect(ids).toHaveLength(1)
   })
 })
 
@@ -173,7 +211,8 @@ describe('backup', () => {
   })
   it('exports CSV with names, not ids', () => {
     const csv = recordsCsv(demo.records, demo)
-    expect(csv.startsWith('﻿Date,Description')).toBe(true)
+    expect(csv.startsWith('﻿Date,Kind,Description')).toBe(true)
+    expect(csv).toContain('Cost recovery')
     expect(csv).toContain('Nordwind Software SRL')
     expect(csv).not.toContain('demo_c_')
   })
@@ -222,5 +261,80 @@ describe('older data', () => {
     delete old.hours
     const n = normalise({ records: [old as never], clients: [], sources: [], venues: [] })
     expect(n.records[0]).toMatchObject({ sessions: 1, hours: null })
+  })
+})
+
+describe('refunds and venue-deal snapshots in storage', () => {
+  const mine = withoutDemo(demo)
+  const p = { ...demo.records.find((r) => r.status === 'received')!, id: 'loc_p', demo: undefined }
+
+  it('device: data from before snapshots is migrated once on load, and written back', async () => {
+    const venue = { ...demo.venues[0], id: 'loc_v', demo: undefined }
+    const old = { records: [{ ...p, venueId: 'loc_v', dealTerms: undefined }], clients: [], sources: [], venues: [venue], costs: [] }
+    const store = memoryStore({ data: old })
+    const d = await new DeviceRepo(store).load()
+    expect(d.records[0].dealTerms).toEqual({ deal: venue.deal, feePerSession: venue.feePerSession, sharePct: venue.sharePct, monthlyFee: venue.monthlyFee })
+    expect(((await store.get('data')) as { schema: number }).schema).toBe(2)
+  })
+
+  it('device: refunds save, and go with their payment when it is deleted', async () => {
+    const repo = new DeviceRepo(memoryStore({ data: { ...mine, records: [p] } }))
+    await repo.load()
+    const f = await repo.saveRefund({ id: '', paymentId: 'loc_p', date: p.date, amount: 10, currency: p.currency, fxRate: p.fxRate, amountRon: 10, notes: '' })
+    expect(f.id).toMatch(/^loc_/)
+    expect((await repo.load()).refunds).toHaveLength(1)
+    await repo.deleteRecord('loc_p')
+    expect((await repo.load()).refunds).toHaveLength(0)
+  })
+
+  it('Notion: the snapshot and a refund row map both ways; a balance payment keeps 0 sessions', () => {
+    const r = { ...p, sessions: 0, dealTerms: { deal: 'share' as const, feePerSession: 0, sharePct: 0.3, monthlyFee: 0 } }
+    const back = recordFromPage({ id: r.id, properties: asRead(recordToProps(r)) })
+    expect(back.dealTerms).toEqual(r.dealTerms)
+    expect(back.sessions).toBe(0)
+    expect(termsFromText('')).toBeUndefined()
+    expect(termsFromText('{"deal":null}')).toBeNull()
+    expect(termsFromText('not json')).toBeUndefined()
+    expect(termsToText(null)).toBe('{"deal":null}')
+    const f = { id: 'f1', paymentId: 'abc123', date: '2026-04-05', amount: 40, currency: 'EUR' as const, fxRate: 5, amountRon: 200, notes: 'cancelled' }
+    const page = { id: 'f1', properties: asRead(refundToProps(f, p)) }
+    expect(isRefundPage(page)).toBe(true)
+    expect(refundFromPage(page)).toEqual(f)
+  })
+
+  it('Notion: refunds come out of the Income database apart from payments; a refund needs its column', async () => {
+    const pay = { id: 'pay1', properties: asRead(recordToProps({ ...p, venueId: null, clientId: null, sourceId: null })) }
+    const ref = { id: 'ref1', properties: asRead(refundToProps({ id: '', paymentId: 'pay1', date: p.date, amount: 5, currency: p.currency, fxRate: p.fxRate, amountRon: 5, notes: '' }, undefined)) }
+    const income = { Description: {}, Amount: {}, Date: {}, Taxability: {}, Client: { relation: { database_id: 'c1' } }, Source: { relation: { database_id: 's1' } }, Venue: { relation: { database_id: 'v1' } } }
+    let patchFails = false
+    const call = async (path: string, method: string) => {
+      if (path === 'databases/inc' && method === 'GET') return { properties: income }
+      if (path === 'databases/inc' && method === 'PATCH') { if (patchFails) throw new Error('no access'); return {} }
+      if (path === 'databases/inc/query') return { results: [pay, ref], has_more: false }
+      if (path.endsWith('/query')) return { results: [], has_more: false }
+      return { id: 'new1' }
+    }
+    const d = await new NotionRepo('t', 'inc', memoryStore(), call).load()
+    expect(d.records.map((r) => r.id)).toEqual(['pay1'])
+    expect(d.refunds.map((f) => f.paymentId)).toEqual(['pay1'])
+    patchFails = true
+    const repo = new NotionRepo('t', 'inc', memoryStore(), call)
+    await expect(repo.saveRefund({ ...d.refunds[0], id: '' })).rejects.toThrow(/Refund of/)
+  })
+
+  it('copying to Notion carries refunds over, pointing at the copied payment', async () => {
+    const data = { ...mine, records: [p], refunds: [{ id: 'loc_f', paymentId: 'loc_p', date: p.date, amount: 5, currency: p.currency, fxRate: p.fxRate, amountRon: 5, notes: '' }] }
+    const refunds: any[] = []
+    let n = 0
+    const repo = {
+      kind: 'notion' as const, load: async () => data,
+      saveRecord: async (r: any) => ({ ...r, id: `p${n++}` }), deleteRecord: async () => {},
+      saveCost: async (c: any) => c, deleteCost: async () => {},
+      saveEntity: async (_k: any, e: any) => ({ ...e, id: `e${n++}` }), deleteEntity: async () => {},
+      saveRefund: async (f: any) => { refunds.push(f); return f }, deleteRefund: async () => {},
+    }
+    await copyToNotion(repo, data)
+    expect(refunds).toHaveLength(1)
+    expect(refunds[0].paymentId).toMatch(/^p\d+$/)
   })
 })

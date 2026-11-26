@@ -115,8 +115,12 @@ export function incomeFindings(r: IncomeRecord, ctx: IncomeContext): Finding[] {
     }
   }
 
-  // Entered twice: same client, same amount, within three days.
-  const twin = others.find((x) => x.status === r.status && x.clientId === r.clientId && x.currency === r.currency && Math.abs(x.amount - r.amount) < 0.005 && Math.abs(daysBetween(x.date, r.date)) <= 3)
+  // Entered twice: the same client, amount and currency on the same day, or on the next or previous
+  // day with the same description (a date slip). Sessions two or more days apart are ordinary
+  // repeat work, a twice-a-week client, and are not questioned (audit B-06).
+  const same = (x: IncomeRecord) => x.status === r.status && x.clientId === r.clientId && x.currency === r.currency && Math.abs(x.amount - r.amount) < 0.005
+  const gap = (x: IncomeRecord) => Math.abs(daysBetween(x.date, r.date))
+  const twin = others.find((x) => same(x) && (gap(x) === 0 || (gap(x) === 1 && x.description.trim().toLowerCase() === r.description.trim().toLowerCase())))
   if (twin) out.push({ id: 'duplicate', text: `The same ${lei(r.amountRon)} from this client is already in, on ${shortDate(twin.date)}. Add it again?` })
 
   if (r.sessions > 40) out.push({ id: 'sessions', text: `${r.sessions} sessions in one payment?` })

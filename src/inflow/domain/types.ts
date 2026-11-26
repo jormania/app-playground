@@ -92,6 +92,51 @@ export interface IncomeRecord {
   taxWithheld: number
   /** The ruleset that produced the stored suggestion, e.g. "RO-2026". */
   taxRules: string
+  /**
+   * The venue's deal as it stood when this payment was added (or its venue last changed), so
+   * editing the venue later never rewrites what past sessions cost. null with no venue. Absent
+   * only on data read before snapshots existed; see `termsFor` and INFLOW.md, "Venue deals".
+   */
+  dealTerms?: DealTerms | null
+  /**
+   * A reimbursement can name the cost it repays: a link for the reader, so the cost shows as
+   * reimbursed. It changes no figure: the cost stays a cost, the money back stays cost recovery.
+   */
+  repaysCostId?: string | null
+  /**
+   * Derived, never stored: set on the adjustment rows `lib/refunds.ts` makes from refunds, to
+   * the id of the payment refunded. A stored payment never has it.
+   */
+  refundOf?: string
+  demo?: boolean
+}
+
+/** A venue's deal terms, on the venue and as snapshotted on each payment there. */
+export interface DealTerms {
+  deal: DealType
+  feePerSession: number
+  sharePct: number
+  monthlyFee: number
+}
+
+/**
+ * Money paid back against one received payment: its own transaction, dated when it was paid
+ * back, never a negative payment and never a change to the original. A payment can have several;
+ * together they can't exceed it. Counted in the refund's own period (see INFLOW.md, "Refunds").
+ */
+export interface Refund {
+  id: string
+  /** The received payment refunded. */
+  paymentId: string
+  /** YYYY-MM-DD: the day the money went back. */
+  date: string
+  /** In the payment's currency; positive. */
+  amount: number
+  currency: Currency
+  /** RON per unit on the refund's date. */
+  fxRate: number
+  amountRon: number
+  notes: string
   demo?: boolean
 }
 
@@ -163,6 +208,10 @@ export interface InflowData {
   clients: Client[]
   sources: Source[]
   venues: Venue[]
+  /** Refunds against received payments. Absent in data written before refunds; always present after load. */
+  refunds: Refund[]
+  /** Device data's shape version, for the migrations in `store/repo.ts`. Absent means 1. */
+  schema?: number
 }
 
 export type TaxProfileId = 'pfa_real' | 'pfa_norma' | 'srl_micro' | 'custom'
@@ -200,7 +249,7 @@ export interface TaxProfile {
   expensesFromCosts: boolean
 }
 
-export type FeatureKey = 'tax' | 'costs' | 'deals' | 'insights' | 'expected' | 'currencies' | 'printable'
+export type FeatureKey = 'tax' | 'costs' | 'deals' | 'insights' | 'expected' | 'currencies' | 'printable' | 'refunds'
 
 export type Features = Record<FeatureKey, boolean>
 

@@ -1,7 +1,7 @@
 /**
  * Backup, restore and CSV export.
  *
- * A backup is one JSON file: every record, client, source and venue, plus the
+ * A backup is one JSON file: every record, cost, refund, client, source and venue, plus the
  * settings that shape the numbers (tax profile, target). The Notion token is
  * never written into it — a backup gets emailed and dropped into Drive.
  */
@@ -38,9 +38,11 @@ export function readBackup(text: string): Backup {
   for (const k of ['records', 'clients', 'sources', 'venues'] as const) {
     if (!Array.isArray(d[k])) throw new BackupError(`The backup has no ${k} list; it may be damaged.`)
   }
-  // Backups made before costs existed have none.
+  // Backups made before costs, or refunds, existed have none.
   if (d.costs !== undefined && !Array.isArray(d.costs)) throw new BackupError('The backup has a damaged costs list.')
   d.costs = d.costs ?? []
+  if (d.refunds !== undefined && !Array.isArray(d.refunds)) throw new BackupError('The backup has a damaged refunds list.')
+  d.refunds = d.refunds ?? []
   const bad = (d.records as IncomeRecord[]).find((r) => !r || typeof r.id !== 'string' || typeof r.amountRon !== 'number' || !/^\d{4}-\d{2}-\d{2}/.test(r.date))
   if (bad) throw new BackupError('A record in the backup is missing its amount or date; it may be damaged.')
   return raw as Backup
@@ -61,10 +63,13 @@ export function toCsv(header: string[], rows: (string | number)[][]): string {
 export function recordsCsv(records: IncomeRecord[], data: InflowData): string {
   const name = (list: { id: string; name: string }[], id: string | null) => list.find((x) => x.id === id)?.name ?? ''
   return toCsv(
-    ['Date', 'Description', 'Amount', 'Currency', 'FX rate', 'Amount RON', 'Status', 'Client', 'Source', 'Venue', 'Category',
+    ['Date', 'Kind', 'Description', 'Amount', 'Currency', 'FX rate', 'Amount RON', 'Cash received RON', 'Status', 'Client', 'Source', 'Venue', 'Category',
       'Sessions', 'Hours', 'People', 'Recurring', 'Taxability', 'Tax handling', 'VAT', 'Classification', 'Tax reserve RON', 'Tax withheld RON', 'Tax rules', 'Notes'],
     [...records].sort((a, b) => a.date.localeCompare(b.date)).map((r) => [
-      r.date, r.description, r.amount, r.currency, r.fxRate, r.amountRon, STATUS[r.status],
+      // Kind and cash received keep the export reconcilable with the app (audit B-01, B-04).
+      // A refund is its own row, negative, in the month the money went back.
+      r.date, r.refundOf ? 'Refund' : r.category === 'reimbursement' ? 'Cost recovery' : 'Service', r.description, r.amount, r.currency, r.fxRate, r.amountRon,
+      r.status === 'received' ? Math.round((r.amountRon - (r.taxWithheld || 0)) * 100) / 100 : '', r.refundOf ? 'Refund' : STATUS[r.status],
       name(data.clients, r.clientId), name(data.sources, r.sourceId), name(data.venues, r.venueId),
       r.category ? CATEGORY[r.category] : '', r.sessions ?? 1, r.hours ?? '', r.attendees ?? '', r.recurring ? 'yes' : '', TAXABILITY[r.taxability],
       TAX_HANDLING[r.taxHandling], VAT[r.vat], r.classification, r.taxReserve ?? '', r.taxWithheld, r.taxRules, r.notes,

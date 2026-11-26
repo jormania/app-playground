@@ -9,7 +9,7 @@
  * package or a payout), reimbursements left out.
  */
 import type { InflowData } from '../domain/types'
-import { keyOf, nameOf, type Dimension } from './analytics'
+import { isCostRecovery, keyOf, nameOf, type Dimension } from './analytics'
 import { recordCosts } from './insights'
 import { round2 } from './money'
 
@@ -41,14 +41,15 @@ export interface EarningsRow {
 
 export interface Earnings {
   rows: EarningsRow[]
-  totals: { income: number; costs: number; kept: number; sessions: number }
+  /** `costRecovery`: reimbursements in the period, shown beside the totals, never in income or kept. */
+  totals: { income: number; costs: number; kept: number; sessions: number; costRecovery: number }
 }
 
 export function earnings(
   data: InflowData, range: { from: string; to: string }, by: EarningsBy, opts: { deals: boolean; costs: boolean },
 ): Earnings {
   const parts = recordCosts(data, opts)
-  const rs = data.records.filter((r) => r.status === 'received' && r.category !== 'reimbursement' && r.date >= range.from && r.date <= range.to)
+  const rs = data.records.filter((r) => r.status === 'received' && !isCostRecovery(r) && r.date >= range.from && r.date <= range.to)
   const groups = new Map<string, typeof rs>()
   for (const r of rs) {
     const k = keyOf(r, by)
@@ -64,13 +65,14 @@ export function earnings(
       income += p.income
       venueFees += p.venueFee
       directCosts += p.direct
-      const n = r.sessions || 1
+      const n = r.sessions ?? 1
       sessions += n
-      each.push(p.kept / n)
+      // A balance payment (0 sessions) adds to the total, not to the per-session range.
+      if (n > 0) each.push(p.kept / n)
       if (r.hours && r.hours > 0) { hours += r.hours; keptWithHours += p.kept; withHours += 1 }
       const vk = keyOf(r, partDim)
       const v = byPart.get(vk) ?? { id: vk, name: nameOf(data, partDim, vk), sessions: 0, income: 0, kept: 0 }
-      v.sessions += r.sessions || 1
+      v.sessions += r.sessions ?? 1
       v.income += p.income
       v.kept += p.kept
       byPart.set(vk, v)
@@ -79,12 +81,13 @@ export function earnings(
     return {
       id, name: nameOf(data, by, id),
       income: round2(income), venueFees: round2(venueFees), directCosts: round2(directCosts), kept: round2(kept),
-      sessions, keptPerSession: round2(kept / sessions),
-      keptPerHour: hours > 0 ? round2(keptWithHours / hours) : null, hoursCoverage: withHours / list.length,
-      lowest: round2(Math.min(...each)), highest: round2(Math.max(...each)),
+      sessions, keptPerSession: sessions > 0 ? round2(kept / sessions) : 0,
+      keptPerHour: hours > 0 ? round2(keptWithHours / hours) : null, hoursCoverage: withHours / Math.max(1, list.filter((x) => !x.refundOf).length),
+      lowest: each.length ? round2(Math.min(...each)) : 0, highest: each.length ? round2(Math.max(...each)) : 0,
       parts: [...byPart.values()].map((v) => ({ ...v, income: round2(v.income), kept: round2(v.kept) })).sort((a, b) => b.kept - a.kept),
     }
   }).sort((a, b) => b.kept - a.kept || b.sessions - a.sessions)
   const t = rows.reduce((a, r) => ({ income: a.income + r.income, costs: a.costs + r.venueFees + r.directCosts, kept: a.kept + r.kept, sessions: a.sessions + r.sessions }), { income: 0, costs: 0, kept: 0, sessions: 0 })
-  return { rows, totals: { income: round2(t.income), costs: round2(t.costs), kept: round2(t.kept), sessions: t.sessions } }
+  const costRecovery = round2(data.records.filter((r) => r.status === 'received' && isCostRecovery(r) && r.date >= range.from && r.date <= range.to).reduce((a, r) => a + r.amountRon, 0))
+  return { rows, totals: { income: round2(t.income), costs: round2(t.costs), kept: round2(t.kept), sessions: t.sessions, costRecovery } }
 }

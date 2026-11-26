@@ -1,4 +1,4 @@
-import { createStore, del, entries, get, keys, promisifyRequest, set, setMany } from 'idb-keyval'
+import { createStore, del, entries, get, keys, promisifyRequest, set, setMany, update } from 'idb-keyval'
 
 /**
  * A small key-value seam over IndexedDB, so an app's repository can run on
@@ -21,6 +21,12 @@ export interface KeyValueStore {
   entries(): Promise<[string, unknown][]>
   /** Delete these keys and write these pairs as one change: all of it lands, or none of it. */
   replace(deleteKeys: string[], pairs: [string, unknown][]): Promise<void>
+  /**
+   * Read a value, change it and write it back as one transaction, so two tabs saving at once
+   * each build on the other's write instead of overwriting it. `fn` must be synchronous.
+   * Resolves to the value written.
+   */
+  update<T>(key: string, fn: (current: T | undefined) => T): Promise<T>
 }
 
 export function indexedDbStore(dbName: string, storeName = 'records'): KeyValueStore {
@@ -38,6 +44,11 @@ export function indexedDbStore(dbName: string, storeName = 'records'): KeyValueS
       for (const [k, v] of pairs) store.put(v, k)
       return promisifyRequest(store.transaction)
     }),
+    update: async <T,>(key: string, fn: (current: T | undefined) => T) => {
+      let written: T | undefined
+      await update<T>(key, (old) => (written = fn(old)), db)
+      return written as T
+    },
   }
 }
 
@@ -55,6 +66,11 @@ export function memoryStore(initial: Record<string, unknown> = {}): KeyValueStor
       const copies = pairs.map(([k, v]): [string, unknown] => [k, structuredClone(v)])
       for (const k of deleteKeys) m.delete(k)
       for (const [k, v] of copies) m.set(k, v)
+    },
+    update: async <T,>(key: string, fn: (current: T | undefined) => T) => {
+      const next = fn(structuredClone(m.get(key)) as T | undefined)
+      m.set(key, structuredClone(next))
+      return structuredClone(next)
     },
   }
 }

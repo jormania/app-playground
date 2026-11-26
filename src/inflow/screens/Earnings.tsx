@@ -23,7 +23,7 @@ const SHOWN = 10
 
 export function EarningsReport({ initial }: { initial?: EarningsBy }) {
   // The period is the only filter here: a report filter set elsewhere must not narrow it unseen.
-  const { data, on } = useInflow()
+  const { books: data, on } = useInflow()
   const { range } = usePeriodData()
   const [by, setBy] = useState<EarningsBy>(() => initial ?? readJson<EarningsBy>(KEY, 'client'))
   const [all, setAll] = useState(false)
@@ -39,7 +39,8 @@ export function EarningsReport({ initial }: { initial?: EarningsBy }) {
           <div><span className={styles.earnLabel}><i className={styles.keyCosts} />Costs</span><b>{lei(e.totals.costs)}</b></div>
           <div><span className={styles.earnLabel}><i className={styles.keyKept} />You kept</span><b className={styles.earnKept}>{lei(e.totals.kept)}</b></div>
         </div>
-        <p className={styles.hint} style={{ margin: 'var(--space-xs) 0 0' }}>{e.totals.sessions} {e.totals.sessions === 1 ? 'session' : 'sessions'} · {range.label}</p>
+        <p className={styles.hint} style={{ margin: 'var(--space-xs) 0 0' }}>{e.totals.sessions} {e.totals.sessions === 1 ? 'session' : 'sessions'} · {range.label}
+          {e.totals.costRecovery > 0 && <> · plus {lei(e.totals.costRecovery)} cost recovery (reimbursements: not income, not in kept)</>}</p>
       </section>
 
       <SegmentedControl label="Show" value={by} onChange={(v) => { setBy(v as EarningsBy); writeJson(KEY, v) }}

@@ -10,6 +10,7 @@ import { Download, Printer } from 'lucide-react'
 import { Button } from '../../ds'
 import { readJson, writeJson } from '../../shared/storage'
 import { useInflow } from '../app/state'
+import { useDebounced } from '../app/useDebounced'
 import { useInsightFeedback } from '../app/insightFeedback'
 import { usePeriodData } from '../app/usePeriod'
 import { SelectInput, TextInput } from '../components/fields'
@@ -23,11 +24,11 @@ import { ClientPicker } from '../components/ClientPicker'
 import styles from '../styles/ui.module.css'
 
 const KEY = 'inflow:report-choice'
-const ORDER: ReportSection[] = ['summary', 'review', 'insights', 'trend', 'clients', 'venues', 'activities', 'sources', 'mix', 'margins', 'pnl', 'cashflow', 'outstanding', 'tax', 'payments']
+const ORDER: ReportSection[] = ['summary', 'review', 'insights', 'trend', 'clients', 'venues', 'activities', 'sources', 'mix', 'margins', 'pnl', 'cashflow', 'outstanding', 'tax', 'payments', 'costs']
 const PRESETS = Object.keys(PRESET_LABEL) as ReportPreset[]
 
 export function ReportBuilder() {
-  const { data, settings, today, on } = useInflow()
+  const { data, books, settings, today, on } = useInflow()
   const { range } = usePeriodData()
   const insightFb = useInsightFeedback()
   const [preset, setPreset] = useState<ReportPreset>(() => readJson<ReportPreset>(KEY, 'monthly'))
@@ -52,13 +53,13 @@ export function ReportBuilder() {
     && (s !== 'mix' || on('currencies')) && (s !== 'insights' || on('insights')))
   const live = useMemo(() => ({ ...opt, sections: opt.sections.filter((x) => sections.includes(x)) }), [opt, sections])
   const needsClient = preset === 'client' && !opt.clientId
-  const html = useMemo(
-    () => renderReport(data, live, {
-      today, trackTax: on('tax'), tax: settings.tax, insightFeedback: insightFb.feedback, trackCosts: on('costs'), trackDeals: on('deals'), trackExpected: on('expected'),
-      openingCash: settings.openingCash, openingCashDate: settings.openingCashDate,
-    }),
-    [data, live, today, on, settings.tax, settings.openingCash, settings.openingCashDate, insightFb.feedback],
-  )
+  const ctx = useMemo(() => ({
+    today, trackTax: on('tax'), tax: settings.tax, insightFeedback: insightFb.feedback, trackCosts: on('costs'), trackDeals: on('deals'), trackExpected: on('expected'),
+    openingCash: settings.openingCash, openingCashDate: settings.openingCashDate,
+  }), [today, on, settings.tax, settings.openingCash, settings.openingCashDate, insightFb.feedback])
+  // The preview follows the options once they settle (audit G-01); a download renders what is set now.
+  const shown = useDebounced(live, 300)
+  const html = useMemo(() => renderReport(books, shown, ctx), [books, shown, ctx])
 
   const print = () => {
     const w = frame.current?.contentWindow
@@ -99,7 +100,7 @@ export function ReportBuilder() {
 
           <div className={styles.buttonRow}>
             <Button onClick={print} disabled={needsClient}><Printer size={16} aria-hidden /> Print / save as PDF</Button>
-            <Button variant="secondary" disabled={needsClient} onClick={() => download(file, html, 'text/html')}><Download size={16} aria-hidden /> HTML</Button>
+            <Button variant="secondary" disabled={needsClient} onClick={() => download(file, renderReport(books, live, ctx), 'text/html')}><Download size={16} aria-hidden /> HTML</Button>
           </div>
           <p className={styles.hint} style={{ margin: 0 }}>In the print dialog choose “Save as PDF”.</p>
 

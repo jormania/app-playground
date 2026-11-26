@@ -268,3 +268,27 @@ export function costTaxEffect(profile: TaxProfile, records: IncomeRecord[], cost
   const withIt = estimateYear({ ...profile, annualExpenses: base + cost.amountRon }, year, p.projected).total
   return { saving: Math.max(0, round2(without - withIt)), note: null }
 }
+
+/**
+ * Where this year's tax stands, so far: what the year's income to date owes at the year's
+ * effective rate, what payers withheld, what is stored as set aside, and the gap ("still to set
+ * aside" when positive, "ahead" when negative). One definition for the Tax report, the printable
+ * report and Available to spend.
+ */
+export interface TaxPosition {
+  year: number
+  rate: number
+  owed: number
+  withheld: number
+  reserved: number
+  gap: number
+}
+
+export function taxPosition(profile: TaxProfile, records: IncomeRecord[], year: number, today: string, costs: CostRecord[] = []): TaxPosition {
+  const p = projectYear(profile, records, year, today, 0, costs)
+  const yr = records.filter((r) => r.status === 'received' && yearOf(r.date) === year && r.date <= today)
+  const owed = Math.round(taxableGross(records, year, today) * p.rate)
+  const withheld = round2(yr.reduce((s, r) => s + (r.taxWithheld || 0), 0))
+  const reserved = round2(yr.reduce((s, r) => s + (r.taxReserve ?? 0), 0))
+  return { year, rate: p.rate, owed, withheld, reserved, gap: Math.round(owed - withheld - reserved) }
+}

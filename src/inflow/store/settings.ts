@@ -12,8 +12,8 @@ export const SETTINGS_KEY = 'inflow:settings'
 /** Read by inflow-react.html before first paint. */
 export const THEME_KEY = 'inflow:theme'
 
-export const ALL_FEATURES: Features = { tax: true, costs: true, deals: true, insights: true, expected: true, currencies: true, printable: true }
-export const NO_FEATURES: Features = { tax: false, costs: false, deals: false, insights: false, expected: false, currencies: false, printable: false }
+export const ALL_FEATURES: Features = { tax: true, costs: true, deals: true, insights: true, expected: true, currencies: true, printable: true, refunds: true }
+export const NO_FEATURES: Features = { tax: false, costs: false, deals: false, insights: false, expected: false, currencies: false, printable: false, refunds: false }
 /** Where a new user starts: income, where it comes from, insights, expected payments. The rest is a switch away. */
 export const SIMPLE_FEATURES: Features = { ...NO_FEATURES, insights: true, expected: true }
 
@@ -54,8 +54,15 @@ export function mergeSettings(cur: Settings, patch: SettingsPatch): Settings {
 type Stored = Partial<Settings> & { trackTax?: boolean; trackCosts?: boolean; features?: Partial<Features> & { targets?: boolean; unusual?: boolean; reportTools?: boolean } }
 
 /**
+ * Features added after people already had InFlow: they start off for everyone, introduced when
+ * wanted, rather than appearing unannounced as "a feature never set" would.
+ */
+const ADDED_LATER: Partial<Features> = { refunds: false }
+
+/**
  * A new user (nothing stored) starts simple. Someone who has used InFlow keeps
- * their switches: a feature they never set stays on, as it was for them.
+ * their switches: a feature they never set stays on, as it was for them (except those added
+ * later, `ADDED_LATER`, which start off).
  * Older settings are carried over: the two early switches (trackTax,
  * trackCosts), and the target and unusual-payment flags, which are now plain
  * settings (0 = off) rather than features.
@@ -73,6 +80,7 @@ export function loadSettings(): Settings {
     tax: { ...DEFAULT_SETTINGS.tax, ...(raw.tax ?? {}) },
     features: {
       ...ALL_FEATURES,
+      ...ADDED_LATER,
       ...(trackTax === false ? { tax: false } : {}),
       ...(trackCosts === false ? { costs: false } : {}),
       ...kept,

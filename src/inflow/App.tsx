@@ -10,7 +10,7 @@ import { clearTrail } from './app/trail'
 import { BarChart3, LayoutDashboard, List, Plus, Receipt, Settings as Cog, Waves } from 'lucide-react'
 import { SegmentedControl, ToastStack } from '../ds'
 import { InflowProvider, useInflow, type ProviderProps } from './app/state'
-import { CostForm } from './components/CostForm'
+import { CostForm, type CostPreset } from './components/CostForm'
 import { EntryForm } from './components/EntryForm'
 import { Tour } from './components/Tour'
 import { PRESET_LABEL, resolvePeriod, type PeriodPreset } from './lib/period'
@@ -86,7 +86,7 @@ function Shell() {
   const { settings, data, load, error, offlineCopy, period, setPeriod, today, toasts, reload, workspace, setWorkspace } = useInflow()
   const route = useRoute()
   /** The open form: an income record or a cost; `copyOf` starts a new one from an old one. */
-  const [entry, setEntry] = useState<{ kind: 'income' | 'cost'; id: string | null; copyOf: string | null; n: number } | null>(null)
+  const [entry, setEntry] = useState<{ kind: 'income' | 'cost'; id: string | null; copyOf: string | null; n: number; preset?: CostPreset } | null>(null)
   const [costFilter, setCostFilter] = useState<CostFilter>(EMPTY_COST_FILTER)
   // The tour opens on launch while its "show next time" box is ticked, and on request from Settings.
   const [tour, setTour] = useState(() => settings.showTour)
@@ -121,7 +121,8 @@ function Shell() {
   }, [])
 
   const open = (id: string | null) => setEntry((e) => ({ kind: 'income', id, copyOf: null, n: (e?.n ?? 0) + 1 }))
-  const openCost = (id: string | null) => setEntry((e) => ({ kind: 'cost', id, copyOf: null, n: (e?.n ?? 0) + 1 }))
+  /** A new cost can start from where it was asked for: a venue's row preselects the venue (and room hire). */
+  const openCost = (id: string | null, preset?: CostPreset) => setEntry((e) => ({ kind: 'cost', id, copyOf: null, n: (e?.n ?? 0) + 1, preset }))
   const copy = (kind: 'income' | 'cost', id: string) => setEntry((e) => ({ kind, id: null, copyOf: id, n: (e?.n ?? 0) + 1 }))
   const record = entry?.kind === 'income' && entry.id ? data.records.find((r) => r.id === entry.id) ?? null : null
   const cost = entry?.kind === 'cost' && entry.id ? data.costs.find((c) => c.id === entry.id) ?? null : null
@@ -212,10 +213,10 @@ function Shell() {
                 <button type="button" className={styles.linkButton} onClick={() => setWorkspace('mine')}>Switch to my data</button>
               </div>
             )}
-            {screen === 'overview' && <Overview onOpen={open} onAdd={() => open(null)} onAddCost={() => openCost(null)} />}
+            {screen === 'overview' && <Overview onOpen={open} onAdd={() => open(null)} onAddCost={(p) => openCost(null, p)} />}
             {screen === 'income' && <Income onOpen={open} />}
             {screen === 'costs' && <Costs onOpen={openCost} onCopy={(id) => copy('cost', id)} filter={costFilter} setFilter={setCostFilter} />}
-            {screen === 'reports' && <Reports tab={route.report} anchor={route.anchor} onAddCost={() => openCost(null)} />}
+            {screen === 'reports' && <Reports tab={route.report} anchor={route.anchor} onAddCost={(p) => openCost(null, p)} />}
             {screen === 'settings' && <Settings />}
           </div>
         )}
@@ -246,7 +247,7 @@ function Shell() {
           onClose={() => setEntry(null)} onDuplicate={(r) => copy('income', r.id)} />
       )}
       {entry?.kind === 'cost' && (
-        <CostForm key={`c-${entry.id ?? 'new'}-${entry.n}`} cost={cost} copyOf={copyOfCost}
+        <CostForm key={`c-${entry.id ?? 'new'}-${entry.n}`} cost={cost} copyOf={copyOfCost} preset={entry.preset}
           onClose={() => setEntry(null)} onDuplicate={(c) => copy('cost', c.id)} />
       )}
       <Tour open={tour && !entry} onClose={() => setTour(false)} />

@@ -12,25 +12,18 @@ import { useInflow } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
 import { SegmentedControl } from '../../ds'
 import { parseAmount, TextInput } from '../components/fields'
-import { DEAL } from '../domain/vocabulary'
-import { breakEvenPeople, dealTotals, defaultAlternative, feeCoveredAt, keptPerPerson, sameDayRepeats, scenario, venueDeals, type Terms, type VenueDeal } from '../lib/deals'
+import { breakEvenPeople, dealTotals, describeTerms, defaultAlternative, feeCoveredAt, keptPerPerson, sameDayRepeats, scenario, venueDeals, type Terms, type VenueDeal } from '../lib/deals'
 import { lei, percent } from '../lib/money'
 import { WiderPeriod } from './Insights'
+import type { CostPreset } from '../components/CostForm'
 import styles from '../styles/ui.module.css'
 
 /** The deal in a few words: "Fixed fee · 600 lei a session", "Revenue share · 30%". */
-export function dealTerms(t: Terms): string {
-  switch (t.deal) {
-    case 'fixed': return `${DEAL.fixed} · ${lei(t.feePerSession)} a session`
-    case 'share': return `${DEAL.share} · ${percent(t.sharePct)}`
-    case 'hybrid': return `${DEAL.hybrid} · ${lei(t.feePerSession)} + ${percent(t.sharePct)}`
-    case 'monthly': return `${DEAL.monthly} · ${lei(t.monthlyFee)} a month`
-    case 'none': return DEAL.none
-  }
-}
+export const dealTerms = describeTerms
 
-export function DealsReport() {
-  const { data } = useInflow()
+/** `onAddCost`, with costs on: each venue's row offers a cost there, the venue already picked (room hire). */
+export function DealsReport({ onAddCost }: { onAddCost?: (preset: CostPreset) => void } = {}) {
+  const { books: data } = useInflow()
   const { range } = usePeriodData()
   const deals = useMemo(
     () => venueDeals(data.venues, data.records, range)
@@ -43,9 +36,21 @@ export function DealsReport() {
   if (!deals.length) {
     return (
       <section className={styles.panel}>
-        <p className={styles.emptyNote}>No sessions at a venue with a deal in this period.</p>
-        <p className={styles.hint} style={{ textAlign: 'center' }}>Deals are set on each venue in Settings → Clients, sources & venues.</p>
-        <div style={{ textAlign: 'center' }}><WiderPeriod what="" /></div>
+        {data.venues.some((v) => v.deal !== 'none') ? (
+          <>
+            <p className={styles.emptyNote}>No sessions at a venue with a deal in this period.</p>
+            <div style={{ textAlign: 'center' }}><WiderPeriod what="" /></div>
+          </>
+        ) : (
+          <>
+            <p className={styles.emptyNote}>No venue has a deal yet.</p>
+            <p className={styles.hint} style={{ textAlign: 'center' }}>
+              A room you pay a fee or a share for: set its deal and every session there shows what the room cost and what you kept.
+              Online work, or at the client's, needs none.{' '}
+              <a className={styles.linkButton} href="#/settings">Set a deal on a venue</a>
+            </p>
+          </>
+        )}
       </section>
     )
   }
@@ -69,14 +74,14 @@ export function DealsReport() {
           <h2 className={styles.panelTitle}>By average kept a session</h2>
         </div>
         <div className={styles.dealList}>
-          {deals.map((d) => <VenueRow key={d.venue.id} d={d} best={best} />)}
+          {deals.map((d) => <VenueRow key={d.venue.id} d={d} best={best} onAddCost={onAddCost} />)}
         </div>
       </section>
     </>
   )
 }
 
-function VenueRow({ d, best }: { d: VenueDeal; best: number }) {
+function VenueRow({ d, best, onAddCost }: { d: VenueDeal; best: number; onAddCost?: (preset: CostPreset) => void }) {
   const v = d.venue
   const n = d.sessionCount
   const covered = feeCoveredAt(d)
@@ -106,9 +111,15 @@ function VenueRow({ d, best }: { d: VenueDeal; best: number }) {
             ? <>You keep <b>{percent(1 - v.sharePct)}</b> of session revenue.</>
             : null}
         {repeats > 0 && <> {repeats} {repeats === 1 ? 'payment shares' : 'payments share'} a day with another and {repeats === 1 ? 'counts' : 'count'} as a separate session.</>}
+        {d.underEarlierDeal > 0 && <> {d.underEarlierDeal} {d.underEarlierDeal === 1 ? 'payment here was' : 'payments here were'} made under an earlier deal and {d.underEarlierDeal === 1 ? 'keeps it' : 'keep it'}.</>}
       </p>
       {(v.deal === 'fixed' || v.deal === 'share' || v.deal === 'hybrid') && <BreakEven d={d} />}
       <WhatIf d={d} />
+      {onAddCost && (
+        <button type="button" className={styles.linkButton} style={{ justifySelf: 'start' }} onClick={() => onAddCost({ venueId: v.id, group: 'direct', category: 'venue_hire' })}>
+          + Add a cost at {v.name}
+        </button>
+      )}
     </article>
   )
 }

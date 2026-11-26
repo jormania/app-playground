@@ -11,7 +11,7 @@ import { usePeriodData } from '../app/usePeriod'
 import { parseAmount, SelectInput } from '../components/fields'
 import type { IncomeRecord, InflowData } from '../domain/types'
 import { ACTIVITY, TAX_HANDLING, TAXABILITY, VAT_SHORT, options } from '../domain/vocabulary'
-import { breakdown, DIMENSION_NOUN, largeRecordIds, NO_ENTITY, sum, type Dimension } from '../lib/analytics'
+import { breakdown, DIMENSION_NOUN, earned, largeRecordIds, NO_ENTITY, recovered, sum, type Dimension } from '../lib/analytics'
 import { Donut } from '../components/Donut'
 import { ListEnd } from '../components/ListEnd'
 import { BackBar } from '../components/BackBar'
@@ -19,9 +19,14 @@ import { readJson, writeJson } from '../../shared/storage'
 import { monthLabel, monthShort, parseDate, weekdayShort } from '../lib/dates'
 import { lei, money } from '../lib/money'
 import { inRange } from '../lib/period'
+import { refundState, type RefundState } from '../lib/refunds'
 import { download, recordsCsv } from '../store/backup'
 import { ClientPicker } from '../components/ClientPicker'
+import { ReceiveActions } from '../components/ReceiveActions'
 import styles from '../styles/ui.module.css'
+
+/** Rows drawn at a time in a long list. */
+const PAGE = 200
 
 export function applyFilter(data: InflowData, f: IncomeFilter, range: { from: string; to: string }): IncomeRecord[] {
   const q = f.query.trim().toLowerCase()
@@ -41,12 +46,15 @@ export function applyFilter(data: InflowData, f: IncomeFilter, range: { from: st
 }
 
 export function Income({ onOpen }: { onOpen: (id: string) => void }) {
-  const { data, filter, setFilter, settings, today, on, setPeriod } = useInflow()
+  const { data, books, filter, setFilter, settings, today, on, setPeriod } = useInflow()
   const { range } = usePeriodData()
   const [showFilters, setShowFilters] = useState(false)
   // Expected payments switched off: they leave the list too, not just the label.
   const showExpected = on('expected')
-  const list = useMemo(() => applyFilter(data, filter, range).filter((r) => showExpected || r.status !== 'expected'), [data, filter, range, showExpected])
+  // Refunds are listed in the month the money went back, under the payment's own filters (from `books`).
+  const list = useMemo(() => applyFilter(books, filter, range).filter((r) => showExpected || r.status !== 'expected'), [books, filter, range, showExpected])
+  const payments = list.filter((r) => !r.refundOf)
+  const refundTag = useMemo(() => new Map(data.records.map((r) => [r.id, refundState(r, data.refunds)])), [data.records, data.refunds])
   const showUnusual = settings.largeMultiple > 0
   const large = useMemo(() => (showUnusual ? largeRecordIds(data.records, settings.largeMultiple) : new Set<string>()), [showUnusual, data.records, settings.largeMultiple])
   const set = (patch: Partial<IncomeFilter>) => setFilter({ ...filter, ...patch })
@@ -55,9 +63,30 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
   const groups = useMemo(() => {
     const m = new Map<string, IncomeRecord[]>()
     const expected = list.filter((r) => r.status === 'expected').sort((a, b) => a.date.localeCompare(b.date))
-    for (const r of list) if (r.status === 'received') m.set(r.date.slice(0, 7), [...(m.get(r.date.slice(0, 7)) ?? []), r])
+    for (const r of list) {
+      if (r.status !== 'received') continue
+      const k = r.date.slice(0, 7)
+      const g = m.get(k)
+      if (g) g.push(r)
+      else m.set(k, [r])
+    }
     return [...(expected.length ? [['expected', expected] as [string, IncomeRecord[]]] : []), ...m.entries()]
   }, [list])
+  // A long list (years of payments) is drawn a page at a time; totals always cover all of it (audit G-04).
+  const [shownRows, setShownRows] = useState(PAGE)
+  const [listKey, setListKey] = useState(list)
+  if (listKey !== list) { setListKey(list); setShownRows(PAGE) }
+  const visible = useMemo(() => {
+    const out: [string, IncomeRecord[], boolean][] = []
+    let left = shownRows
+    for (const [k, rs] of groups) {
+      if (left <= 0) break
+      out.push([k, rs.slice(0, left), rs.length > left])
+      left -= rs.length
+    }
+    return out
+  }, [groups, shownRows])
+  const hidden = list.length - Math.min(list.length, shownRows)
 
   const name = (l: { id: string; name: string }[], id: string | null) => l.find((x) => x.id === id)?.name
   const active: [keyof IncomeFilter, string][] = []
@@ -68,7 +97,10 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
   if (filter.taxability) active.push(['taxability', TAXABILITY[filter.taxability as keyof typeof TAXABILITY]])
   if (filter.status) active.push(['status', filter.status === 'suggested' ? 'Unconfirmed tax' : filter.status === 'expected' ? 'Expected' : 'Received'])
 
-  const receivedTotal = sum(list.filter((r) => r.status === 'received'))
+  // Earnings and cost recovery apart, as everywhere (audit B-01).
+  const receivedList = list.filter((r) => r.status === 'received')
+  const receivedTotal = sum(earned(receivedList))
+  const recoveryTotal = sum(recovered(receivedList))
 
   return (
     <>
@@ -125,7 +157,7 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
       )}
 
       <div className={styles.panelHead} style={{ marginBottom: 0 }}>
-        <span className={styles.panelSub}>{list.length} {list.length === 1 ? 'payment' : 'payments'} · {lei(receivedTotal)} received</span>
+        <span className={styles.panelSub}>{payments.length} {payments.length === 1 ? 'payment' : 'payments'} · {lei(receivedTotal)} earned{recoveryTotal > 0 ? ` · ${lei(recoveryTotal)} cost recovery` : ''}</span>
         {list.length > 0 && (
           <button type="button" className={styles.linkButton} onClick={() => download(`inflow-income-${today}.csv`, recordsCsv(list, data), 'text/csv')}>
             <Download size={12} aria-hidden /> CSV
@@ -133,22 +165,33 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
         )}
       </div>
 
-      {data.records.some((r) => r.status === 'received') && <WhereFrom list={list.filter((r) => r.status === 'received')} data={data} onPick={(patch) => set(patch)} empty={range.label.toLowerCase()} onWiden={() => setPeriod({ preset: 'year' })} />}
+      {data.records.some((r) => r.status === 'received') && <WhereFrom list={earned(receivedList)} data={data} onPick={(patch) => set(patch)} empty={range.label.toLowerCase()} onWiden={() => setPeriod({ preset: 'year' })} />}
 
       {list.length === 0 ? (
         <div className={styles.empty}>
           {data.records.length === 0 ? 'No income yet. Tap “Add income” to record your first payment.' : 'Nothing matches these filters.'}
         </div>
-      ) : groups.map(([month, rs]) => (
+      ) : visible.map(([month, rs, cut]) => (
         <div key={month} className={styles.group}>
           <div className={styles.groupHead}>
             <span>{month === 'expected' ? 'Expected' : monthLabel(`${month}-01`)}</span>
-            <span className="num">{month === 'expected' ? `${lei(sum(rs))} to come` : lei(sum(rs))}</span>
+            <span className="num">{(() => { const all = cut ? groups.find(([k]) => k === month)![1] : rs; return month === 'expected' ? `${lei(sum(all))} to come` : `${lei(sum(earned(all)))}${sum(recovered(all)) ? ` + ${lei(sum(recovered(all)))} cost recovery` : ''}` })()}</span>
           </div>
-          {rs.map((r) => <EntryRow key={r.id} r={r} data={data} large={large.has(r.id)} today={today} onOpen={onOpen} tax={settings.features.tax} currencies={on('currencies')} />)}
+          {rs.map((r) => r.status === 'expected' ? (
+            // Every expected payment can be marked received here, in full or in part (audit E-01).
+            <div key={r.id} className={styles.expectedEntry}>
+              <EntryRow r={r} data={data} large={large.has(r.id)} today={today} onOpen={onOpen} tax={settings.features.tax} currencies={on('currencies')} refund={refundTag.get(r.id)} />
+              <div className={styles.expectedActions}><ReceiveActions r={r} /></div>
+            </div>
+          ) : <EntryRow key={r.id} r={r} data={data} large={large.has(r.id)} today={today} onOpen={onOpen} tax={settings.features.tax} currencies={on('currencies')} refund={refundTag.get(r.id)} />)}
         </div>
       ))}
-      {list.length > 4 && <ListEnd>That's everything: {list.length} payments, {lei(receivedTotal)} received.</ListEnd>}
+      {hidden > 0 && (
+        <div className={styles.moreRow}>
+          <Button variant="secondary" onClick={() => setShownRows((n) => n + PAGE)}>Show {Math.min(PAGE, hidden)} more of {hidden}</Button>
+        </div>
+      )}
+      {hidden === 0 && list.length > 4 && <ListEnd>That's everything: {payments.length} payments, {lei(receivedTotal)} earned{recoveryTotal > 0 ? ` and ${lei(recoveryTotal)} cost recovery` : ''}.</ListEnd>}
     </>
   )
 }
@@ -177,7 +220,8 @@ function WhereFrom({ list, data, onPick, empty, onWiden }: { list: IncomeRecord[
   )
 }
 
-function EntryRow({ r, data, large, today, onOpen, tax, currencies }: { r: IncomeRecord; data: InflowData; large: boolean; today: string; onOpen: (id: string) => void; tax: boolean; currencies: boolean }) {
+function EntryRow({ r, data, large, today, onOpen, tax, currencies, refund }: { r: IncomeRecord; data: InflowData; large: boolean; today: string; onOpen: (id: string) => void; tax: boolean; currencies: boolean; refund?: RefundState }) {
+  if (r.refundOf) return <RefundRow r={r} onOpen={onOpen} currencies={currencies} />
   const client = data.clients.find((c) => c.id === r.clientId)?.name
   const venue = data.venues.find((v) => v.id === r.venueId)?.name
   const activity = r.category ? ACTIVITY[r.category] : null
@@ -202,6 +246,8 @@ function EntryRow({ r, data, large, today, onOpen, tax, currencies }: { r: Incom
           </span>
           <span className={styles.tag}>{VAT_SHORT[r.vat]}</span>
           </>}
+          {refund === 'full' && <span className={`${styles.tag} ${styles.tagAlert}`}>Refunded</span>}
+          {refund === 'partial' && <span className={`${styles.tag} ${styles.tagAlert}`}>Partly refunded</span>}
           {r.sessions > 1 && <span className={styles.tag}>{r.sessions} sessions</span>}
           {r.recurring && <span className={styles.tag}><Repeat size={10} aria-hidden /> recurring</span>}
           {large && <span className={`${styles.tag} ${styles.tagAlert}`}><AlertTriangle size={10} aria-hidden /> unusually large</span>}
@@ -211,6 +257,26 @@ function EntryRow({ r, data, large, today, onOpen, tax, currencies }: { r: Incom
         <span className={styles.entryAmountMain} style={{ display: 'block' }}>{currencies ? money(r.amount, r.currency) : lei(r.amountRon)}</span>
         {currencies && r.currency !== 'RON' && <span className={styles.entryAmountSub} style={{ display: 'block' }}>{lei(r.amountRon)}</span>}
         {tax && r.taxReserve !== null && r.taxReserve > 0 && <span className={styles.entryAmountSub} style={{ display: 'block' }}>set aside {lei(r.taxReserve)}</span>}
+      </span>
+    </button>
+  )
+}
+
+/** A refund, in the month the money went back. Opens the payment it belongs to, where its history is. */
+function RefundRow({ r, onOpen, currencies }: { r: IncomeRecord; onOpen: (id: string) => void; currencies: boolean }) {
+  return (
+    <button type="button" className={styles.entry} onClick={() => onOpen(r.refundOf!)} aria-label={`${r.description}, minus ${money(-r.amount, r.currency)}, ${r.date}`}>
+      <span className={styles.entryDate}>
+        <span className={styles.entryDay}>{parseDate(r.date).getDate()}</span>
+        <span className={styles.entryDow}>{weekdayShort(r.date)}</span>
+      </span>
+      <span style={{ minWidth: 0 }}>
+        <span className={styles.entryTitle} style={{ display: 'block' }}>{r.description}</span>
+        <span className={styles.tags}><span className={`${styles.tag} ${styles.tagAlert}`}>Refund</span></span>
+      </span>
+      <span className={styles.entryAmount}>
+        <span className={styles.entryAmountMain} style={{ display: 'block' }}>−{currencies ? money(-r.amount, r.currency) : lei(-r.amountRon)}</span>
+        {currencies && r.currency !== 'RON' && <span className={styles.entryAmountSub} style={{ display: 'block' }}>−{lei(-r.amountRon)}</span>}
       </span>
     </button>
   )

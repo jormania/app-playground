@@ -13,11 +13,17 @@ import { ChevronDown } from 'lucide-react'
 import { Button, ConfirmModal, Modal, SettingsToggle } from '../../ds'
 import { readJson, writeJson } from '../../shared/storage'
 import { useInflow } from '../app/state'
-import type { Currency, IncomeRecord, TaxHandling, Taxability, VatTreatment } from '../domain/types'
+import type { Currency, DealTerms, IncomeRecord, TaxHandling, Taxability, VatTreatment, Venue } from '../domain/types'
 import { CATEGORY, CURRENCIES, PROFILE, TAX_HANDLING, TAXABILITY, VAT, options } from '../domain/vocabulary'
 import { fetchRonRate, lei, money, round2, toRon } from '../lib/money'
 import { suggestClassification, suggestedWithholding } from '../tax/classify'
 import { suggestReserve } from '../tax/estimate'
+import { describeTerms as dealTerms, sameTerms, termsOf } from '../lib/deals'
+import { refundsOf } from '../lib/refunds'
+import { Refunds } from './Refunds'
+import { reminderIcs } from '../lib/ics'
+import { addDays } from '../lib/dates'
+import { download } from '../store/backup'
 import type { Entity, EntityKind } from '../store/repo'
 import { blankEntity, EntityEditor, KIND_LABEL } from './EntityEditor'
 import { DateShortcuts, parseAmount, parseRate, SelectInput, TextArea, TextInput } from './fields'
@@ -28,6 +34,8 @@ import { incomeErrors, incomeFindings, lastRate, type Finding, type Fix } from '
 import styles from '../styles/ui.module.css'
 
 const LAST_KEY = 'inflow:last-entry'
+/** Whether the payment form's "More details" was left open. */
+const DETAILS_KEY = 'inflow:form-details'
 const NEW = '__new__'
 /** A typed name that reads as a company starts as a business client. */
 const COMPANY = /\b(srl|s\.r\.l|sa|s\.a|pfa|ii|ltd|llc|gmbh|inc|ong|asocia[tț]ia|funda[tț]ia)\b/i
@@ -54,6 +62,8 @@ interface Draft {
   confirmed: boolean
   reserve: string
   withheld: string
+  /** A reimbursement's cost, by id; '' for none. */
+  repaysCostId: string
 }
 
 type TaxField = 'taxability' | 'taxHandling' | 'vat'
@@ -64,6 +74,7 @@ function fromRecord(r: IncomeRecord): Draft {
     status: r.status, clientId: r.clientId ?? '', sourceId: r.sourceId ?? '', venueId: r.venueId ?? '', category: r.category ?? '',
     recurring: r.recurring, notes: r.notes, attendees: r.attendees === null ? '' : String(r.attendees), sessions: String(r.sessions ?? 1), hours: r.hours === null || r.hours === undefined ? '' : String(r.hours), taxability: r.taxability, taxHandling: r.taxHandling, vat: r.vat,
     confirmed: r.classification === 'confirmed', reserve: r.taxReserve === null ? '' : String(r.taxReserve), withheld: r.taxWithheld ? String(r.taxWithheld) : '',
+    repaysCostId: r.repaysCostId ?? '',
   }
 }
 
@@ -84,7 +95,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
     return {
       description: '', amount: '', currency: last.currency ?? 'RON', fxRate: '1', date: today, status: 'received',
       clientId: '', sourceId: '', venueId: '', category: '', recurring: false, notes: '', attendees: '', sessions: '1', hours: '',
-      taxability: 'taxable', taxHandling: 'self_declared', vat: 'exempt', confirmed: false, reserve: '', withheld: '',
+      taxability: 'taxable', taxHandling: 'self_declared', vat: 'exempt', confirmed: false, reserve: '', withheld: '', repaysCostId: '',
     }
   }
   const [draft, setDraft] = useState<Draft>(() => {
@@ -102,6 +113,11 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
   const [creating, setCreating] = useState<{ kind: EntityKind; entity: Entity } | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [busy, setBusy] = useState(false)
+  // Amount, client and date up front; the rest folds under "More details", remembered open or closed (audit C-01, E-03).
+  const [detailsOpen, setDetailsOpen] = useState(() => readJson<boolean>(DETAILS_KEY, false))
+  const openDetails = (v: boolean) => { setDetailsOpen(v); writeJson(DETAILS_KEY, v) }
+  // Asked to count this payment under its venue's deal as it is now, not the one it was saved with.
+  const [currentTerms, setCurrentTerms] = useState(false)
   // Tax stays folded away unless the payment needs a decision; it's optional.
   const [taxOpen, setTaxOpen] = useState(record?.taxability === 'review')
   const [error, setError] = useState<string | null>(null)
@@ -112,6 +128,24 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
   const [warned, setWarned] = useState<{ draft: Draft; items: Finding[] } | null>(null)
   const warnings = warned && warned.draft === draft ? warned.items : []
   const touch = (f: TaxField | 'reserve' | 'withheld' | 'fx' | 'prefill') => setTouched((t) => new Set(t).add(f))
+  // A rate typed in this form is the user's; one stored on the payment may be refreshed on receipt.
+  const fxTyped = useRef(false)
+  /**
+   * Expected → received in the form follows the same rule as Received elsewhere (lib/receive.ts):
+   * today's date unless changed, that date's rate unless typed, and a suggested reserve unless the
+   * stored one was set by hand (audit B-02, B-03).
+   */
+  const setStatus = (v: Draft['status']) => {
+    if (record?.status === 'expected' && v === 'received' && draft.status === 'expected') {
+      setTouched((t) => {
+        const n = new Set(t)
+        if (record.reserveSource !== 'manual') n.delete('reserve')
+        if (!fxTyped.current) n.delete('fx')
+        return n
+      })
+      set({ status: v, date: draft.date === record.date ? today : draft.date })
+    } else set({ status: v })
+  }
 
 
   // The amounts this client pays most often, as one-tap chips: most freelancers charge a few set prices.
@@ -177,6 +211,8 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
     () => suggestReserve({ amountRon, date: draft.date || today, taxability: draft.taxability, taxHandling: draft.taxHandling, taxWithheld: Number.isFinite(withheldNum) ? withheldNum : 0, status: draft.status }, others, settings.tax, today, costsForTax),
     [amountRon, draft.date, draft.taxability, draft.taxHandling, withheldNum, draft.status, others, settings.tax, today, costsForTax],
   )
+  /** The venue's deal now: what a new payment here, or one moved here, is counted under. */
+  const venueTerms = useMemo(() => (venue ? termsOf(venue) : null), [venue])
   useEffect(() => {
     if (touched.has('reserve')) return
     const v = draft.taxability === 'taxable' ? String(reserveSuggestion.amount) : ''
@@ -243,11 +279,12 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
     if (!draft.date) { setError('Pick the date it was received.'); return }
     if (draft.currency !== 'RON' && (!Number.isFinite(fxRate) || fxRate <= 0)) { setError('Enter the exchange rate to lei.'); return }
     const attendeesNum = draft.attendees.trim() === '' ? null : Math.round(parseAmount(draft.attendees))
-    if (attendeesNum !== null && (!Number.isFinite(attendeesNum) || attendeesNum < 0)) { setError('People per session is a head count: one whole number, like 8.'); return }
+    if (attendeesNum !== null && (!Number.isFinite(attendeesNum) || attendeesNum < 0)) { setDetailsOpen(true); setError('People per session is a head count: one whole number, like 8.'); return }
     const sessionsNum = draft.sessions.trim() === '' ? 1 : Math.round(parseAmount(draft.sessions))
-    if (!Number.isFinite(sessionsNum) || sessionsNum < 1) { setError('Sessions should be a whole number, 1 or more.'); return }
+    // 0 is a balance payment: the sessions were counted with the part paid first.
+    if (!Number.isFinite(sessionsNum) || sessionsNum < 0) { setDetailsOpen(true); setError('Sessions should be a whole number: 1 or more, or 0 for the balance of a part payment.'); return }
     const hoursNum = draft.hours.trim() === '' ? null : parseRate(draft.hours)
-    if (hoursNum !== null && (!Number.isFinite(hoursNum) || hoursNum <= 0)) { setError('Hours should be a number above zero, or empty.'); return }
+    if (hoursNum !== null && (!Number.isFinite(hoursNum) || hoursNum <= 0)) { setDetailsOpen(true); setError('Hours should be a number above zero, or empty.'); return }
     const reserveNum = !settings.features.tax ? record?.taxReserve ?? null : draft.reserve === '' ? null : parseAmount(draft.reserve)
     if (reserveNum !== null && !Number.isFinite(reserveNum)) { setError('The tax reserve is not a number.'); return }
     const allSuggested = !touched.has('taxability') && !touched.has('taxHandling') && !touched.has('vat')
@@ -279,6 +316,9 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
       reserveSource: reserveNum === null ? null : reserveUnchanged ? record!.reserveSource : reserveIsSuggested ? 'suggested' : 'manual',
       taxWithheld: Number.isFinite(withheldNum) ? round2(withheldNum) : 0,
       taxRules: reserveUnchanged ? record!.taxRules : reserveSuggestion.rulesId,
+      // Unset: the saved snapshot is kept, and a new payment or another venue takes the venue's deal now (state's `stampTerms`).
+      dealTerms: currentTerms && venueTerms ? venueTerms : undefined,
+      repaysCostId: draft.category === 'reimbursement' && draft.repaysCostId ? draft.repaysCostId : null,
       demo: record?.demo,
     }
     const impossible = incomeErrors(r)
@@ -296,11 +336,36 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
     setBusy(false)
     if (!saved) return
     writeJson(LAST_KEY, { currency: r.currency })
-    toast({ message: isNew ? `Added ${money(r.amount, r.currency)}` : 'Saved', tone: 'success' })
+    // An expected payment can go in the calendar for its due date, as a file the calendar app opens.
+    const due = saved.status === 'expected' && (isNew || record?.status !== 'expected' || record?.date !== saved.date)
+    toast({
+      message: isNew ? `Added ${money(r.amount, r.currency)}` : 'Saved', tone: 'success',
+      ...(due ? {
+        actionLabel: 'Remind me', duration: 10000,
+        onAction: () => download(`inflow-due-${saved.date}.ics`, reminderIcs(saved, data.clients.find((c) => c.id === saved.clientId)?.name ?? null), 'text/calendar'),
+      } : {}),
+    })
     onClose()
   }
 
+  // Paid costs a reimbursement could be repaying: this client's first, then the most recent; the linked one always.
+  const repayable = draft.category === 'reimbursement'
+    ? data.costs.filter((c) => c.status === 'paid' && (c.id === draft.repaysCostId || c.date >= addDays(draft.date || today, -366)))
+      .sort((a, b) => Number(b.clientId === draft.clientId && !!draft.clientId) - Number(a.clientId === draft.clientId && !!draft.clientId) || b.date.localeCompare(a.date))
+      .slice(0, 60)
+    : []
+  const detailsSummary = [
+    draft.description.trim() || autoDescription,
+    data.sources.find((x) => x.id === draft.sourceId)?.name,
+    draft.sessions.trim() && draft.sessions.trim() !== '1' ? `${draft.sessions.trim()} sessions` : null,
+    draft.hours.trim() ? `${draft.hours.trim()} h` : null,
+    draft.recurring ? 'recurring' : null,
+    draft.notes.trim() ? 'notes' : null,
+  ].filter(Boolean).join(' · ')
   const activeSources = data.sources.filter((s) => s.active || s.id === draft.sourceId).sort((a, b) => a.name.localeCompare(b.name))
+  // A payment keeps the venue deal it was made under; say so when the venue's deal has since changed.
+  const snapshot = on('deals') && record && record.venueId === draft.venueId && venue && record.dealTerms && !sameTerms(record.dealTerms, termsOf(venue)) ? record.dealTerms : null
+  const refundCount = record ? refundsOf(record.id, data.refunds).length : 0
   const activeVenues = data.venues.filter((v) => !v.archived || v.id === draft.venueId).sort((a, b) => a.name.localeCompare(b.name))
 
   const badge = (ok: boolean) => ok
@@ -340,7 +405,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
             <TextInput
               label={`Lei per 1 ${draft.currency}`}
               value={draft.fxRate}
-              onChange={(v) => { touch('fx'); set({ fxRate: v }) }}
+              onChange={(v) => { fxTyped.current = true; touch('fx'); set({ fxRate: v }) }}
               inputMode="decimal"
               hint={<>
                 {fxState === 'loading' ? 'Fetching the ECB rate for that day…'
@@ -368,20 +433,36 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
               })}
             </div>
           )}
-          <TextInput label="Description" value={draft.description} onChange={(v) => set({ description: v })} placeholder={autoDescription === 'Payment' ? 'e.g. Coaching session' : autoDescription} name="description"
-            hint={!draft.description.trim() && autoDescription !== 'Payment' ? 'Left empty, it is saved as shown.' : undefined} />
           <div className={styles.formRow}>
             <TextInput label="Date" type="date" value={draft.date} onChange={(v) => set({ date: v })} name="date"
               hint={<DateShortcuts today={today} value={draft.date} onPick={(d) => set({ date: d })} />} />
             {showStatus ? (
-              <SelectInput label="Status" value={draft.status} onChange={(v) => set({ status: v as Draft['status'] })}
+              <SelectInput label="Status" value={draft.status} onChange={(v) => setStatus(v as Draft['status'])}
                 hint={h(draft.status === 'expected' ? 'Not paid yet: shown under Expected, counted nowhere until received.' : 'Expected: money promised but not in yet.')}>
                 <option value="received">Received</option>
                 <option value="expected">Expected</option>
               </SelectInput>
-            ) : on('deals') ? attendeesField : <span />}
+            ) : <span />}
           </div>
-          {showStatus && on('deals') && attendeesField}
+          {!detailsOpen && (
+            <button type="button" className={styles.disclosure} onClick={() => openDetails(true)} aria-expanded={false}>
+              <span>
+                <b>More details</b>
+                <span className={styles.disclosureSummary}>{detailsSummary}</span>
+              </span>
+              <ChevronDown size={18} aria-hidden />
+            </button>
+          )}
+          {detailsOpen && (
+          <div className={styles.section}>
+            <h3 className={styles.sectionTitle}>
+              <button type="button" className={styles.sectionToggle} onClick={() => openDetails(false)} aria-expanded>
+                More details <ChevronDown size={16} aria-hidden style={{ transform: 'rotate(180deg)' }} />
+              </button>
+            </h3>
+          <TextInput label="Description" value={draft.description} onChange={(v) => set({ description: v })} placeholder={autoDescription === 'Payment' ? 'e.g. Coaching session' : autoDescription} name="description"
+            hint={!draft.description.trim() && autoDescription !== 'Payment' ? 'Left empty, it is saved as shown.' : undefined} />
+          {on('deals') && attendeesField}
           <div className={styles.formRow}>
             <TextInput label="Sessions" value={draft.sessions} onChange={(v) => set({ sessions: v })} inputMode="numeric"
               hint={h('A 4-session package is 4; a payout, the sessions in it.')} />
@@ -396,7 +477,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
               <option value={NEW}>+ New source…</option>
             </SelectInput>
             <SelectInput label="Venue" value={draft.venueId} onChange={(v) => pickEntity('venue', v)} name="venue"
-              hint={h('Where it happened, online too. Its deal sets what the room costs. “+ New…” at the bottom.')}>
+              hint={snapshot && venue ? <TermsNote saved={snapshot} venue={venue} useCurrent={currentTerms} onToggle={() => setCurrentTerms((x) => !x)} /> : h('Where it happened, online too. Its deal sets what the room costs. “+ New…” at the bottom.')}>
               <option value="">— none —</option>
               {activeVenues.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
               <option value={NEW}>+ New venue…</option>
@@ -408,6 +489,17 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
             {options(CATEGORY).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </SelectInput>
           <SettingsToggle label="Recurring" hint={h('A package, retainer or regular payout. Next month’s is then suggested as expected.')} checked={draft.recurring} onChange={(e) => set({ recurring: e.target.checked })} />
+
+            {draft.category === 'reimbursement' && on('costs') && (
+              <SelectInput label="Repays which cost? (optional)" value={draft.repaysCostId} onChange={(v) => set({ repaysCostId: v })}
+                hint={h('Links the money back to what you paid out, so the cost shows as reimbursed. No figure changes.')}>
+                <option value="">— none —</option>
+                {repayable.map((c) => <option key={c.id} value={c.id}>{c.date} · {c.description} · {lei(c.amountRon)}</option>)}
+              </SelectInput>
+            )}
+            <TextArea label="Notes" value={draft.notes} onChange={(v) => set({ notes: v })} />
+          </div>
+          )}
 
           {settings.features.tax && !taxOpen && (
             <button type="button" className={styles.disclosure} onClick={() => setTaxOpen(true)} aria-expanded={false}>
@@ -443,7 +535,10 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
               {options(TAX_HANDLING).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </SelectInput>
             <SelectInput label="VAT" right={badge(isSuggested('vat') && !touched.has('vat'))} value={draft.vat}
-              onChange={(v) => setTax('vat', v as VatTreatment)} hint={isSuggested('vat') ? cls.reasons.vat : `Suggested: ${VAT[cls.vat]}. ${cls.reasons.vat}`}>
+              onChange={(v) => setTax('vat', v as VatTreatment)}
+              hint={draft.vat === 'applicable' || settings.tax.vatRegistered
+                ? 'A label only: InFlow keeps no VAT accounts. The amount counts in full, VAT included; VAT-registered use isn’t supported.'
+                : isSuggested('vat') ? cls.reasons.vat : `Suggested: ${VAT[cls.vat]}. ${cls.reasons.vat}`}>
               {options(VAT).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </SelectInput>
             {(draft.taxHandling === 'withheld' || withheldNum > 0) && (
@@ -470,7 +565,6 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
           </div>
           )}
 
-          <TextArea label="Notes" value={draft.notes} onChange={(v) => set({ notes: v })} />
           {error && <p className={styles.hint} role="alert" style={{ color: 'var(--color-danger)' }}>{error}</p>}
           <Findings items={warnings} onFix={(f: Fix) => {
             if (f.kind === 'amount') set({ amount: String(f.value) })
@@ -478,6 +572,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
             else if (f.kind === 'status') set({ status: f.value as Draft['status'] })
             else { touch('reserve'); set({ reserve: String(f.value) }) }
           }} />
+          <Refunds paymentId={record?.id ?? ''} hidden={draft.status !== 'received'} />
           <div className={styles.formActions}>
             <div>
               {!isNew && <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(true)}>Delete</Button>}
@@ -507,12 +602,22 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
       <ConfirmModal
         isOpen={confirmDelete}
         title="Delete this payment?"
-        message={record ? `${record.description} — ${money(record.amount, record.currency)} on ${record.date}.` : ''}
+        message={record ? `${record.description} — ${money(record.amount, record.currency)} on ${record.date}.${refundCount ? ` Its ${refundCount === 1 ? 'refund goes' : `${refundCount} refunds go`} with it.` : ''}` : ''}
         confirmText="Delete"
         variant="danger"
         onCancel={() => setConfirmDelete(false)}
         onConfirm={() => { setConfirmDelete(false); if (record) void deleteRecord(record); onClose() }}
       />
+    </>
+  )
+}
+
+/** Under the venue picker, when the payment was saved under a deal the venue no longer has. */
+function TermsNote({ saved, venue, useCurrent, onToggle }: { saved: DealTerms; venue: Venue; useCurrent: boolean; onToggle: () => void }) {
+  return (
+    <>
+      {useCurrent ? `Will be counted under the venue’s deal now: ${dealTerms(termsOf(venue))}. ` : `Counted under the deal when it was added: ${dealTerms(saved)}. The venue’s deal is now ${dealTerms(termsOf(venue))}. `}
+      <button type="button" className={styles.linkButton} onClick={onToggle}>{useCurrent ? 'Keep the original deal' : 'Use the current deal for this payment'}</button>
     </>
   )
 }

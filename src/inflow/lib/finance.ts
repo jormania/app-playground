@@ -9,6 +9,7 @@
 import type { CostGroup, CostRecord, IncomeRecord } from '../domain/types'
 import { COST_CATEGORY } from '../domain/vocabulary'
 import { addDays, addMonths, daysBetween, endOfMonth, monthShort, startOfMonth } from './dates'
+import { cashOf, isCostRecovery } from './analytics'
 import { round2 } from './money'
 
 export interface Column {
@@ -45,7 +46,7 @@ export function paidCosts(costs: CostRecord[], r: { from: string; to: string }):
 export interface PnlLine {
   key: string
   label: string
-  kind: 'revenue' | 'cost' | 'subtotal' | 'detail'
+  kind: 'revenue' | 'recovery' | 'cost' | 'subtotal' | 'detail'
   values: number[]
   total: number
 }
@@ -61,7 +62,14 @@ export interface Pnl {
 const P_AND_L_GROUPS: CostGroup[] = ['direct', 'operating', 'depreciation', 'interest', 'tax']
 
 export function buildPnl(records: IncomeRecord[], costs: CostRecord[], columns: Column[]): Pnl {
-  const rev = columns.map((c) => total(records.filter((r) => r.status === 'received' && inCol(r.date, c))))
+  const got = (c: Column) => records.filter((r) => r.status === 'received' && inCol(r.date, c))
+  // Revenue is service revenue; reimbursements come in on their own line (audit B-01).
+  const rev = columns.map((c) => total(got(c).filter((r) => !isCostRecovery(r))))
+  const recovery = columns.map((c) => total(got(c).filter(isCostRecovery)))
+  // Revenue is net of refunds, which are shown beneath it, in the month the money went back.
+  const refunded = columns.map((c) => total(got(c).filter((r) => r.refundOf && !isCostRecovery(r))))
+  // Tax a payer withheld was paid for you, out of revenue: it is tax paid, and never cash in (audit B-04).
+  const withheld = columns.map((c) => round2(got(c).reduce((s, r) => s + (r.taxWithheld || 0), 0)))
   const byGroup = (g: CostGroup) => columns.map((c) => total(paidCosts(costs, c).filter((x) => x.group === g)))
   const details = (g: CostGroup): PnlLine[] => {
     const cats = [...new Set(costs.filter((x) => x.group === g && x.status === 'paid').map((x) => x.category))]
@@ -75,25 +83,35 @@ export function buildPnl(records: IncomeRecord[], costs: CostRecord[], columns: 
   }
   const g = Object.fromEntries(P_AND_L_GROUPS.map((k) => [k, byGroup(k)])) as Record<CostGroup, number[]>
   const minus = (a: number[], b: number[]) => a.map((v, i) => round2(v - b[i]))
-  const gross = minus(rev, g.direct)
+  const plus = (a: number[], b: number[]) => a.map((v, i) => round2(v + b[i]))
+  const taxPaid = plus(g.tax, withheld)
+  // The cost a reimbursement repays stays a direct cost; the money back comes in beside it.
+  const gross = plus(minus(rev, g.direct), recovery)
   const ebitda = minus(gross, g.operating)
   const ebit = minus(ebitda, g.depreciation)
   const ebt = minus(ebit, g.interest)
-  const net = minus(ebt, g.tax)
+  const net = minus(ebt, taxPaid)
+  const withheldLine: PnlLine[] = withheld.some((v) => v !== 0)
+    ? [{ key: 'tax:withheld', label: 'Withheld by payers', kind: 'detail', values: withheld, total: sumArr(withheld) }]
+    : []
   const line = (key: string, label: string, kind: PnlLine['kind'], values: number[]): PnlLine => ({ key, label, kind, values, total: sumArr(values) })
   const lines: PnlLine[] = [
     line('revenue', 'Revenue', 'revenue', rev),
-    line('direct', 'Direct costs (COGS)', 'cost', g.direct),
+    ...(refunded.some((v) => v !== 0) ? [{ key: 'revenue:refunds', label: 'of which refunds', kind: 'detail' as const, values: refunded, total: sumArr(refunded) }] : []),
+    line('direct', 'Costs of the work (direct, COGS)', 'cost', g.direct),
     ...details('direct'),
-    line('gross', 'Gross margin', 'subtotal', gross),
-    line('operating', 'Operating costs (SG&A)', 'cost', g.operating),
+    ...(recovery.some((v) => v !== 0) ? [line('recovery', 'Cost recovery (reimbursed)', 'recovery', recovery)] : []),
+    line('gross', 'Left after the work’s costs (gross margin)', 'subtotal', gross),
+    line('operating', 'Running costs (operating, SG&A)', 'cost', g.operating),
     ...details('operating'),
-    line('ebitda', 'EBITDA', 'subtotal', ebitda),
-    line('depreciation', 'Depreciation', 'cost', g.depreciation),
-    line('ebit', 'Operating profit (EBIT)', 'subtotal', ebit),
-    line('interest', 'Interest', 'cost', g.interest),
+    line('ebitda', 'Profit before equipment write-off (EBITDA)', 'subtotal', ebitda),
+    line('depreciation', 'Equipment written off over its life (depreciation)', 'cost', g.depreciation),
+    line('ebit', 'Profit from the work (EBIT)', 'subtotal', ebit),
+    line('interest', 'Loan interest', 'cost', g.interest),
     line('ebt', 'Profit before tax', 'subtotal', ebt),
-    line('tax', 'Tax paid', 'cost', g.tax),
+    line('tax', 'Tax paid', 'cost', taxPaid),
+    ...withheldLine,
+    ...details('tax'),
     line('net', 'Net profit', 'subtotal', net),
   ]
   return { columns, lines, net, revenue: rev }
@@ -124,7 +142,8 @@ export interface CashFlow {
 function netFlow(records: IncomeRecord[], costs: CostRecord[], from: string, to: string): number {
   if (from > to) return 0
   const r = { from, to }
-  const inflow = total(records.filter((x) => x.status === 'received' && inCol(x.date, r)))
+  // Cash that arrived: withheld tax never did (audit B-04).
+  const inflow = round2(records.filter((x) => x.status === 'received' && inCol(x.date, r)).reduce((s, x) => s + cashOf(x), 0))
   const outflow = total(paidCosts(costs, r).filter((x) => x.group !== 'depreciation'))
   return round2(inflow - outflow)
 }
@@ -138,16 +157,23 @@ export function balanceAt(date: string, records: IncomeRecord[], costs: CostReco
 export function buildCashFlow(records: IncomeRecord[], costs: CostRecord[], columns: Column[], opening: number, openingDate: string): CashFlow {
   const relative = !openingDate
   let start = relative ? 0 : balanceAt(columns[0]?.from ?? '', records, costs, opening, openingDate)
-  const rows: Record<string, number[]> = { open: [], in: [], op: [], inv: [], fin: [], net: [], close: [] }
+  const rows: Record<string, number[]> = { open: [], in: [], back: [], refunds: [], op: [], inv: [], fin: [], net: [], close: [] }
   for (const c of columns) {
     const pc = paidCosts(costs, c)
-    const inn = total(records.filter((r) => r.status === 'received' && inCol(r.date, c)))
+    const got = records.filter((r) => r.status === 'received' && inCol(r.date, c))
+    // Cash that arrived: withheld tax never did (audit B-04). Reimbursements on their own line.
+    // Refunds paid back are money out, on their own line.
+    const inn = round2(got.filter((r) => !isCostRecovery(r) && !r.refundOf).reduce((s, r) => s + cashOf(r), 0))
+    const back = round2(got.filter((r) => isCostRecovery(r) && !r.refundOf).reduce((s, r) => s + cashOf(r), 0))
+    const refunds = round2(-got.filter((r) => r.refundOf).reduce((s, r) => s + cashOf(r), 0))
     const op = total(pc.filter((x) => ['direct', 'operating', 'interest', 'tax'].includes(x.group)))
     const inv = total(pc.filter((x) => x.group === 'investment'))
     const fin = total(pc.filter((x) => x.group === 'financing'))
-    const net = round2(inn - op - inv - fin)
+    const net = round2(inn + back - refunds - op - inv - fin)
     rows.open.push(start)
     rows.in.push(inn)
+    rows.back.push(back)
+    rows.refunds.push(refunds)
     rows.op.push(op)
     rows.inv.push(inv)
     rows.fin.push(fin)
@@ -161,9 +187,11 @@ export function buildCashFlow(records: IncomeRecord[], costs: CostRecord[], colu
     closing: rows.close,
     rows: [
       { key: 'open', label: 'Cash at start', kind: 'balance', values: rows.open },
-      { key: 'in', label: 'Income received', kind: 'in', values: rows.in },
+      { key: 'in', label: 'Income received (after tax withheld)', kind: 'in', values: rows.in },
+      ...(rows.back.some((v) => v !== 0) ? [{ key: 'back', label: 'Cost recovery received', kind: 'in' as const, values: rows.back }] : []),
+      ...(rows.refunds.some((v) => v !== 0) ? [{ key: 'refunds', label: 'Refunds paid back', kind: 'out' as const, values: rows.refunds }] : []),
       { key: 'op', label: 'Costs and taxes paid', kind: 'out', values: rows.op },
-      { key: 'opnet', label: 'From operations', kind: 'subtotal', values: rows.in.map((v, i) => round2(v - rows.op[i])) },
+      { key: 'opnet', label: 'From operations', kind: 'subtotal', values: rows.in.map((v, i) => round2(v + rows.back[i] - rows.refunds[i] - rows.op[i])) },
       { key: 'inv', label: 'Equipment & investments', kind: 'out', values: rows.inv },
       { key: 'fin', label: 'Loan repayments & drawings', kind: 'out', values: rows.fin },
       { key: 'net', label: 'Net change', kind: 'subtotal', values: rows.net },
@@ -192,13 +220,15 @@ export function breakEven(records: IncomeRecord[], costs: CostRecord[], today: s
   const r = { from: start, to: end }
   const pc = paidCosts(costs, r)
   const fixed = total(pc.filter((x) => x.group === 'operating' || x.group === 'interest'))
-  const rev = total(records.filter((x) => x.status === 'received' && inCol(x.date, r)))
+  const got = records.filter((x) => x.status === 'received' && inCol(x.date, r))
+  const rev = total(got.filter((x) => !isCostRecovery(x)))
   if (fixed <= 0 || rev <= 0 || daysBetween(start, end) < 27) return null
-  const direct = total(pc.filter((x) => x.group === 'direct'))
+  // Direct costs a client paid back don't weigh on the margin.
+  const direct = total(pc.filter((x) => x.group === 'direct')) - total(got.filter(isCostRecovery))
   const grossRate = Math.max(0.05, (rev - direct) / rev)
   const fixedPerMonth = round2(fixed / 3)
   const revenueNeeded = round2(fixedPerMonth / grossRate)
-  const thisMonth = total(records.filter((x) => x.status === 'received' && inCol(x.date, { from: startOfMonth(today), to: today })))
+  const thisMonth = total(records.filter((x) => x.status === 'received' && !isCostRecovery(x) && inCol(x.date, { from: startOfMonth(today), to: today })))
   return { fixedPerMonth, grossRate, revenueNeeded, thisMonth, covered: revenueNeeded > 0 ? thisMonth / revenueNeeded : 0 }
 }
 

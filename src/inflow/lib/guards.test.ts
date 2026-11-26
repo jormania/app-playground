@@ -33,6 +33,17 @@ describe('payments: what gets a second look', () => {
   it('the same payment twice', () => {
     expect(ids(incomeFindings(fresh({ date: ioana.date, amount: ioana.amount, amountRon: ioana.amountRon }), ctx))).toContain('duplicate')
   })
+
+  it('a twice-a-week client at the same price is ordinary, not a duplicate (audit B-06)', () => {
+    const at = (date: string) => ({ ...ioana, id: `x${date}`, date, status: 'received' as const, description: 'Coaching session' })
+    const records = [...demo.records, at('2026-11-16'), at('2026-11-19')]
+    // Monday, Thursday, then Monday again: two and three days apart.
+    expect(ids(incomeFindings({ ...at('2026-11-23'), id: '' }, { records, today }))).not.toContain('duplicate')
+    expect(ids(incomeFindings({ ...at('2026-11-21'), id: '' }, { records, today }))).not.toContain('duplicate')
+    // A slip of a day with the same description is still caught; a different one is not.
+    expect(ids(incomeFindings({ ...at('2026-11-20'), id: '' }, { records, today }))).toContain('duplicate')
+    expect(ids(incomeFindings({ ...at('2026-11-20'), id: '', description: 'Second session this week' }, { records, today }))).not.toContain('duplicate')
+  })
   it('a rate typed the wrong way round', () => {
     const eur = demo.records.find((r) => r.currency === 'EUR')!
     const f = incomeFindings({ ...eur, id: '', date: '2026-11-20', fxRate: 0.2, amountRon: eur.amount * 0.2 }, ctx).find((x) => x.id === 'fx')!

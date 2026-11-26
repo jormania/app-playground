@@ -7,7 +7,7 @@ import { act, cleanup, render, screen, waitFor, within } from '@testing-library/
 import userEvent from '@testing-library/user-event'
 import { memoryStore, type KeyValueStore } from '../shared/kvStore'
 import App from './App'
-import { ALL_FEATURES, SETTINGS_KEY } from './store/settings'
+import { ALL_FEATURES, loadSettings, SETTINGS_KEY } from './store/settings'
 import { buildDemo } from './data/demo'
 import type { FeatureKey, InflowData } from './domain/types'
 import type { Repo } from './store/repo'
@@ -44,17 +44,30 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('InFlow', () => {
-  it('shows the tour on first run, and remembers "don\'t show next time"', async () => {
+  it('shows the tour on first run; Skip dismisses it for good (audit B-08)', async () => {
     const user = userEvent.setup()
     const { unmount } = render(<App store={store} today={today} />)
     expect(await screen.findByText('Welcome to InFlow')).toBeTruthy()
-    await user.click(screen.getByLabelText(/Show this guide next time/))
+    expect((screen.getByLabelText(/Show this guide next time/) as HTMLInputElement).checked).toBe(false)
     await user.click(screen.getByRole('button', { name: 'Skip' }))
     expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).showTour).toBe(false)
     unmount()
     render(<App store={store} today={today} />)
     await screen.findByTestId('period-total')
     expect(screen.queryByText('Welcome to InFlow')).toBeNull()
+  })
+
+  it('completing the tour with its box ticked brings it back next time', async () => {
+    const user = userEvent.setup()
+    const { unmount } = render(<App store={store} today={today} />)
+    await screen.findByText('Welcome to InFlow')
+    await user.click(screen.getByLabelText(/Show this guide next time/))
+    for (let i = 0; i < 7; i++) await user.click(screen.getByRole('button', { name: 'Next', exact: true } as never))
+    await user.click(screen.getByRole('button', { name: 'Start', exact: true } as never))
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).showTour).toBe(true)
+    unmount()
+    render(<App store={store} today={today} />)
+    expect(await screen.findByText('Welcome to InFlow')).toBeTruthy()
   })
 
   it('opens on a dashboard built from the seeded demo', async () => {
@@ -113,12 +126,13 @@ describe('InFlow', () => {
     await user.click(screen.getByRole('radio', { name: /Client statement/ }))
     expect(screen.queryByTitle('Report preview')).toBeNull()
     await chooseClient(user, screen, 'Andreea Vlad')
-    expect((await screen.findByTitle('Report preview')).getAttribute('srcdoc')).toContain('Andreea Vlad')
+    // The preview settles a moment after a change (audit G-01).
+    await waitFor(() => expect(screen.getByTitle('Report preview').getAttribute('srcdoc')).toContain('Andreea Vlad'))
     // Adjust: a section off leaves the print.
     await user.click(screen.getByRole('radio', { name: /Year in review/ }))
     await user.click(screen.getByText('Adjust this report'))
     await user.click(screen.getByLabelText('By venue'))
-    expect((screen.getByTitle('Report preview') as HTMLIFrameElement).getAttribute('srcdoc')).not.toContain('By venue')
+    await waitFor(() => expect((screen.getByTitle('Report preview') as HTMLIFrameElement).getAttribute('srcdoc')).not.toContain('By venue'))
   })
 
   it('the review tells the period: summary, movers, who pays; a drill-down offers the way back', async () => {
@@ -207,6 +221,7 @@ describe('small conveniences', () => {
     await screen.findByTestId('period-total')
     await user.click(screen.getByRole('button', { name: /Add income/ }))
     const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: /^More details/ }))
     await chooseClient(user, within(dialog), 'Radu Stoica')
     const chips = within(within(dialog).getByLabelText('Usual amounts')).getAllByRole('button')
     expect(chips.length).toBeGreaterThan(0)
@@ -238,6 +253,7 @@ describe('small conveniences', () => {
     await screen.findByTestId('period-total')
     await user.click(screen.getByRole('button', { name: /Add income/ }))
     const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: /^More details/ }))
     expect(within(dialog).queryByText(/A 4-session package/)).toBeNull()
     // Live: the per-head figure still shows once people are entered.
     await user.selectOptions(within(dialog).getByLabelText('Venue'), within(dialog).getByRole('option', { name: 'Casa Verde loft' }))
@@ -265,7 +281,7 @@ describe('small conveniences', () => {
     render(<App store={store} today={today} />)
     await screen.findByTestId('period-total')
     await go('#/reports/pnl')
-    const line = await screen.findByRole('button', { name: /Operating costs/ })
+    const line = await screen.findByRole('button', { name: /Running costs/ })
     expect(screen.queryByText('Rent')).toBeNull()
     await user.click(line)
     expect(line.getAttribute('aria-expanded')).toBe('true')
@@ -300,6 +316,7 @@ describe('small conveniences', () => {
     await screen.findByTestId('period-total')
     await user.click(screen.getByRole('button', { name: /Add income/ }))
     const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: /^More details/ }))
     await user.selectOptions(within(dialog).getByLabelText('Venue'), within(dialog).getByRole('option', { name: 'Casa Verde loft' }))
     await user.type(within(dialog).getByLabelText(/People per session/), '10')
     expect(within(dialog).getByText(/10 × 150 lei/)).toBeTruthy()
@@ -364,6 +381,297 @@ describe('one period, no repeats', () => {
     expect(screen.queryByRole('button', { name: 'All time' })).toBeNull()
     // Expected payments stay in view whatever the period.
     expect((await screen.findAllByText('Expected')).length).toBeGreaterThan(0)
+  })
+})
+
+describe('marking expected payments received, from every screen (audit B-02, B-03, E-01)', () => {
+  const stored = async () => (await store.get<InflowData>('demo'))!.records
+  beforeEach(() => { vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ rates: { RON: 6.02 } }) }))) })
+  afterEach(() => { vi.unstubAllGlobals() })
+
+  it('Overview: one tap marks it received today, with a tax reserve suggested', async () => {
+    settings()
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    const before = (await stored()).find((r) => r.description.startsWith('Team-lead coaching circle — next invoice'))!
+    await user.click(screen.getByRole('button', { name: /Mark Team-lead coaching circle — next invoice received/ }))
+    await waitFor(async () => expect((await stored()).find((r) => r.id === before.id)!.status).toBe('received'))
+    const after = (await stored()).find((r) => r.id === before.id)!
+    expect(after.date).toBe(today)
+    expect(after.taxReserve).toBeGreaterThan(0)
+    expect(after.reserveSource).toBe('suggested')
+  })
+
+  it('a foreign-currency payment is booked at the rate of the day it arrives, not the day it was expected', async () => {
+    settings()
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    const gbp = (await stored()).find((r) => r.status === 'expected' && r.currency === 'GBP')!
+    expect(gbp.fxRate).not.toBe(6.02)
+    await user.click(screen.getByRole('button', { name: new RegExp(`Mark ${gbp.description} received`) }))
+    await waitFor(async () => expect((await stored()).find((r) => r.id === gbp.id)!.status).toBe('received'))
+    const after = (await stored()).find((r) => r.id === gbp.id)!
+    expect(after.fxRate).toBe(6.02)
+    expect(after.amountRon).toBeCloseTo(gbp.amount * 6.02, 2)
+  })
+
+  it('Income: part of a payment received, the balance still expected, nothing recreated by hand', async () => {
+    settings()
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/income')
+    const q1 = (await stored()).find((r) => r.description === 'Leadership workshop — Q1 booking')!
+    await user.click(await screen.findByRole('button', { name: /Part of Leadership workshop — Q1 booking received/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Part received' })
+    await user.type(within(dialog).getByLabelText(/Amount received/), '3000')
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(async () => expect((await stored()).find((r) => r.id === q1.id)!.amount).toBe(q1.amount - 3000))
+    const rs = await stored()
+    expect(rs.find((r) => r.id === q1.id)).toMatchObject({ status: 'expected', sessions: 0 })
+    expect(rs.find((r) => r.status === 'received' && r.description === q1.description && r.amount === 3000)).toMatchObject({ date: today })
+  })
+
+  it('the form: switching an expected payment to Received sets today, and suggests a reserve', async () => {
+    settings()
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/income')
+    const q1 = (await stored()).find((r) => r.description === 'Leadership workshop — Q1 booking')!
+    await user.click(await screen.findByRole('button', { name: new RegExp(`^Leadership workshop — Q1 booking`) }))
+    const dialog = await screen.findByRole('dialog', { name: 'Edit payment' })
+    await user.selectOptions(within(dialog).getByLabelText(/^Status/), 'received')
+    await user.click(within(dialog).getByRole('button', { name: /^(Save|Save anyway)$/ }))
+    const again = within(dialog).queryByRole('button', { name: 'Save anyway' })
+    if (again) await user.click(again)
+    await waitFor(async () => expect((await stored()).find((r) => r.id === q1.id)!.status).toBe('received'))
+    const after = (await stored()).find((r) => r.id === q1.id)!
+    expect(after.date).toBe(today)
+    expect(after.taxReserve).toBeGreaterThan(0)
+  })
+})
+
+describe('refunds (from the payment itself)', () => {
+  const stored = async () => (await store.get<InflowData>('demo'))!.records
+  it('off by default: a received payment offers no refund, and nothing about refunds shows', async () => {
+    settings()
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/income')
+    const p = (await stored()).filter((r) => r.status === 'received' && r.date.startsWith('2026-11'))[0]
+    await user.click((await screen.findAllByRole('button', { name: new RegExp(`, ${p.date}$`) }))[0])
+    const form = await screen.findByRole('dialog', { name: 'Edit payment' })
+    expect(within(form).queryByRole('button', { name: 'Refund…' })).toBeNull()
+    expect(within(form).queryByRole('region', { name: 'Refunds' })).toBeNull()
+  })
+
+  it('refunds part of a payment from its form: the payment stays, the refund is listed in its month and on the payment', async () => {
+    settings({ features: { ...ALL_FEATURES } })
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/income')
+    const p = (await stored()).filter((r) => r.status === 'received' && r.currency === 'RON' && r.date.startsWith('2026-11')).sort((a, b) => b.amount - a.amount)[0]
+    await user.click((await screen.findAllByRole('button', { name: new RegExp(`^${p.description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}, `) })).find((b) => b.getAttribute('aria-label')!.includes(p.date))!)
+    const form = await screen.findByRole('dialog', { name: 'Edit payment' })
+    await user.click(within(form).getByRole('button', { name: 'Refund…' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Refund' })
+    const amount = within(dialog).getByLabelText(/Amount paid back/)
+    await user.clear(amount)
+    await user.type(amount, String(p.amount + 1))
+    await user.click(within(dialog).getByRole('button', { name: 'Save refund' }))
+    expect((await within(dialog).findByRole('alert')).textContent).toMatch(/more than/)
+    await user.clear(amount)
+    await user.type(amount, '100')
+    await user.click(within(dialog).getByRole('button', { name: 'Save refund' }))
+    await waitFor(async () => expect(((await store.get('demo')) as InflowData).refunds).toHaveLength(1))
+    expect((await stored()).find((r) => r.id === p.id)).toEqual(p)
+    await waitFor(() => expect(within(form).getByRole("region", { name: "Refunds" }).textContent).toMatch(/Refunded 100 lei on/))
+    expect(screen.queryByRole('dialog', { name: 'Refund' })).toBeNull()
+    // The payment's own form never saved: still open, unchanged.
+    expect(screen.getByRole('dialog', { name: 'Edit payment' })).toBeTruthy()
+    await user.click(within(form).getByRole('button', { name: 'Cancel' }))
+    expect(await screen.findByRole('button', { name: new RegExp(`^Refund: .*minus 100 lei`) })).toBeTruthy()
+    expect(screen.getAllByText('Partly refunded').length).toBeGreaterThan(0)
+  })
+})
+
+describe('estimated available to spend (audit F-01)', () => {
+  it('sits under the period’s income, not in its place, and opens to show how it is worked out', async () => {
+    settings()
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    const panel = screen.getByRole('region', { name: 'Available to spend' })
+    expect(within(panel).getByTestId('available').textContent).toMatch(/lei/)
+    await user.click(panel.querySelector('summary')!)
+    expect(within(panel).getByText(/^Received since/)).toBeTruthy()
+    expect(within(panel).getByText(/Tax still owed/)).toBeTruthy()
+    expect(within(panel).getByText(/Expected payments are left out/)).toBeTruthy()
+  })
+})
+
+describe('stage 6: shorter form, more ways in', () => {
+  const stored = async () => (await store.get<InflowData>('demo'))!
+
+  it('the payment form asks for amount, client and date; the rest folds away and stays as left (C-01, E-03)', async () => {
+    settings()
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await user.click(screen.getByRole('button', { name: /Add income/ }))
+    let dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByLabelText(/^Amount/)).toBeTruthy()
+    expect(within(dialog).getByRole('combobox', { name: 'Client' })).toBeTruthy()
+    expect(within(dialog).getByLabelText(/^Date/)).toBeTruthy()
+    expect(within(dialog).queryByLabelText(/^Sessions/)).toBeNull()
+    expect(within(dialog).queryByLabelText(/^Venue/)).toBeNull()
+    await user.click(within(dialog).getByRole('button', { name: /^More details/ }))
+    expect(within(dialog).getByLabelText(/^Sessions/)).toBeTruthy()
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    // Opened once, it opens that way next time.
+    await user.click(screen.getByRole('button', { name: /Add income/ }))
+    dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByLabelText(/^Sessions/)).toBeTruthy()
+  })
+
+  it('a cost added from a venue’s row in Venue deals starts at that venue, as room hire (E-04)', async () => {
+    settings({ features: { ...ALL_FEATURES } })
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/reports/deals')
+    const add = (await screen.findAllByRole('button', { name: /^\+ Add a cost at / }))[0]
+    const venue = add.textContent!.replace('+ Add a cost at ', '')
+    await user.click(add)
+    const dialog = await screen.findByRole('dialog')
+    const pick = within(dialog).getByLabelText(/^Venue/) as HTMLSelectElement
+    expect(pick.selectedOptions[0].textContent).toBe(venue)
+    expect((within(dialog).getByLabelText(/^Category/) as HTMLSelectElement).value).toBe('venue_hire')
+  })
+
+  it('the Overview offers a cost too (E-02)', async () => {
+    settings({ features: { ...ALL_FEATURES } })
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await user.click(within(screen.getByRole('region', { name: 'Available to spend' })).getByRole('button', { name: /Add a cost/ }))
+    expect(await screen.findByRole('dialog', { name: /cost/i })).toBeTruthy()
+  })
+
+  it('after saving an expected payment, the toast offers a calendar reminder for its due date', async () => {
+    settings()
+    const user = userEvent.setup()
+    const made: string[] = []
+    const url = vi.spyOn(URL, 'createObjectURL').mockImplementation((b) => { void (b as Blob).text().then((t) => made.push(t)); return 'blob:x' })
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await user.click(screen.getByRole('button', { name: /Add income/ }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText(/^Amount/), '900')
+    const date = within(dialog).getByLabelText(/^Date/)
+    await user.clear(date)
+    await user.type(date, '2026-12-15')
+    await user.selectOptions(within(dialog).getByLabelText(/^Status/), 'expected')
+    await user.click(within(dialog).getByRole('button', { name: /^(Add|Save anyway)$/ }))
+    const again = within(dialog).queryByRole('button', { name: 'Save anyway' })
+    if (again) await user.click(again)
+    await user.click(await screen.findByRole('button', { name: 'Remind me' }))
+    await waitFor(() => expect(made.join('')).toContain('DTSTART;VALUE=DATE:20261215'))
+    url.mockRestore()
+  })
+
+  it('a reimbursement can name the cost it repays; the cost then shows as reimbursed', async () => {
+    settings({ features: { ...ALL_FEATURES } })
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await user.click(screen.getByRole('button', { name: /Add income/ }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText(/^Amount/), '120')
+    await user.click(within(dialog).getByRole('button', { name: /^More details/ }))
+    await user.selectOptions(within(dialog).getByLabelText(/^Activity/), 'reimbursement')
+    const pick = within(dialog).getByLabelText(/^Repays which cost/) as HTMLSelectElement
+    const cost = pick.options[1]
+    await user.selectOptions(pick, cost.value)
+    await user.click(within(dialog).getByRole('button', { name: /^(Add|Save anyway)$/ }))
+    const again = within(dialog).queryByRole('button', { name: 'Save anyway' })
+    if (again) await user.click(again)
+    await waitFor(async () => expect((await stored()).records.some((r) => r.repaysCostId === cost.value)).toBe(true))
+  })
+
+  it('a long Income list is drawn a page at a time, totals still covering all of it (G-04)', async () => {
+    settings({ workspace: 'mine', demoSeeded: true })
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
+    const demo = buildDemo(today)
+    const base = { ...demo.records.find((r) => r.status === 'received')!, demo: undefined, clientId: null, sourceId: null, venueId: null, category: 'workshop' as const }
+    const many = Array.from({ length: 450 }, (_, i) => ({ ...base, id: `loc_${i}`, description: `Session ${i}`, date: `2026-${String(1 + (i % 10)).padStart(2, '0')}-${String(1 + (i % 27)).padStart(2, '0')}`, amount: 100, amountRon: 100, currency: 'RON' as const, fxRate: 1 }))
+    await store.set('data', { records: many, costs: [], clients: [], sources: [], venues: [], refunds: [] })
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await go('#/income')
+    expect(await screen.findByText(/450 payments · 45,000 lei earned/)).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: /^Session \d+, / })).toHaveLength(200)
+    await user.click(screen.getByRole('button', { name: /Show 200 more of 250/ }))
+    expect(screen.getAllByRole('button', { name: /^Session \d+, / })).toHaveLength(400)
+    await user.click(screen.getByRole('button', { name: /Show 50 more of 50/ }))
+    expect(screen.getAllByRole('button', { name: /^Session \d+, / })).toHaveLength(450)
+  })
+})
+
+describe('optional parts stay out of the way until wanted', () => {
+  it('Refunds starts off for a new user and for someone who has used InFlow before; Everything turns it on', () => {
+    localStorage.clear()
+    expect(loadSettings().features.refunds).toBe(false)
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ showTour: false, features: { tax: true } }))
+    expect(loadSettings().features.refunds).toBe(false)
+    expect(loadSettings().features.costs).toBe(true)
+    expect(ALL_FEATURES.refunds).toBe(true)
+  })
+
+  it('switched off, a refund already recorded still shows on its payment, and counts', async () => {
+    settings({ workspace: 'mine', demoSeeded: true })
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
+    const p = { ...buildDemo(today).records.find((r) => r.status === 'received' && r.currency === 'RON' && r.date.startsWith('2026-11'))!, id: 'loc_p', demo: undefined, clientId: null, sourceId: null, venueId: null }
+    await store.set('data', { records: [p], costs: [], clients: [], sources: [], venues: [], refunds: [{ id: 'loc_f', paymentId: 'loc_p', date: p.date, amount: 10, currency: 'RON', fxRate: 1, amountRon: 10, notes: '' }] })
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await go('#/income')
+    await user.click(await screen.findByRole('button', { name: new RegExp(`^${p.description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}, `) }))
+    const form = await screen.findByRole('dialog', { name: 'Edit payment' })
+    expect(within(form).getByRole('region', { name: 'Refunds' }).textContent).toMatch(/Refunded 10 lei/)
+    expect(within(form).queryByRole('button', { name: /^Refund/ })).toBeNull()
+  })
+
+  it('a simple start shows no Available to spend: with tax and costs off it would only repeat what came in', async () => {
+    localStorage.clear()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    expect(screen.queryByRole('region', { name: 'Available to spend' })).toBeNull()
+  })
+})
+
+describe('empty reports (audit C-04)', () => {
+  it('with nothing recorded, a report says what it will show and how to start, instead of zeros', async () => {
+    settings({ workspace: 'mine', demoSeeded: true })
+    render(<App store={store} today={today} />)
+    await go('#/reports/insights')
+    const empty = await screen.findByRole('region', { name: 'Nothing to report yet' })
+    expect(within(empty).getByRole('link', { name: 'Add your first payment' }).getAttribute('href')).toBe('#/add/income')
+    expect(screen.queryByText(/0 lei/)).toBeNull()
+    await go('#/reports/pnl')
+    expect(await screen.findByRole('region', { name: 'Nothing to report yet' })).toBeTruthy()
   })
 })
 
@@ -554,7 +862,7 @@ describe('insight feedback', () => {
 describe('switching between the demo and Notion', () => {
   const mineInNotion: InflowData = {
     records: [{ ...buildDemo(today).records.find((r) => r.status === 'received' && r.date.startsWith('2026-11'))!, id: 'notion1', clientId: null, sourceId: null, venueId: null, demo: undefined, amount: 1234, amountRon: 1234, currency: 'RON', fxRate: 1 }],
-    costs: [], clients: [], sources: [], venues: [],
+    costs: [], clients: [], sources: [], venues: [], refunds: [],
   }
   const fakeNotion = (load: () => Promise<InflowData>) => {
     const writes = vi.fn()
@@ -563,6 +871,7 @@ describe('switching between the demo and Notion', () => {
       saveRecord: async (r) => { writes('saveRecord'); return r }, deleteRecord: async () => { writes('deleteRecord') },
       saveCost: async (c) => { writes('saveCost'); return c }, deleteCost: async () => { writes('deleteCost') },
       saveEntity: async (_k, e) => { writes('saveEntity'); return e }, deleteEntity: async () => { writes('deleteEntity') },
+      saveRefund: async (f) => { writes('saveRefund'); return f }, deleteRefund: async () => { writes('deleteRefund') },
     }
     return { repo, writes }
   }
@@ -655,7 +964,7 @@ describe('feature switches', () => {
     // The master switch turns them all off, and back to simple.
     await go('#/settings')
     await user.click(screen.getByRole('checkbox', { name: /^Everything/ }))
-    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).features).toEqual({ tax: false, costs: false, deals: false, insights: false, expected: false, currencies: false, printable: false })
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).features).toEqual({ tax: false, costs: false, deals: false, insights: false, expected: false, currencies: false, printable: false, refunds: false })
     await user.click(screen.getByRole('button', { name: 'Back to simple start' }))
     expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).features.insights).toBe(true)
   })

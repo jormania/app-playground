@@ -43,7 +43,8 @@ Seven steps on first open (`components/Tour.tsx`), at most three short points ea
 them carry their feature's switch: insights, expected payments, venue deals, costs and tax.
 The last step picks between the demo and your own data, then **Start**. Skip, Back and the
 forward button keep the same places on every step. Its checkbox, "Show this guide next time",
-decides whether it returns; Settings can switch it back on or show it now.
+decides whether it returns. It starts unticked, so Skip, close or Start all dismiss the guide
+for good unless the box was ticked (audit B-08); Settings can switch it back on or show it now.
 
 ### Reports (simplified 25 Nov 2026)
 Six tabs at most, as links (`#/reports/<route>`), so back and forward work and old links
@@ -235,15 +236,212 @@ comparison, currencies and notes wait under *Adjust this report*. `lib/report.ts
 self-contained HTML document (inline CSS and SVG, every user string escaped). A year's P&L
 uses smaller type so twelve months fit A4.
 
+## Money in: three definitions (26 Nov 2026)
+
+Used the same way on every screen, report and export (`lib/analytics.ts`: `isCostRecovery`,
+`earned`, `recovered`, `cashOf`; audit B-01, B-04):
+
+- **Service revenue**: received payments for work, every activity except *Reimbursement*. The
+  Overview headline, Income's "earned", the trend, breakdowns, movers, insights, Clients & work,
+  Venue deals and P&L *Revenue* all use it.
+- **Cost recovery**: received payments with activity *Reimbursement*: money back for a cost paid
+  on a client's behalf. Never revenue, margin or earnings; shown on its own line (Overview hero,
+  Income header and month totals, Clients & work summary, P&L "+ Cost recovery (reimbursed)",
+  cash flow "Cost recovery received", print cards and payment list, CSV `Kind`). The cost it
+  repays stays a cost; in the P&L the recovery comes in beside it, so profit counts both. Not
+  assumed non-taxable: taxability stays a per-payment choice, and the Tax report's split covers
+  all money received.
+- **Cash received**: both, less tax the payer withheld (which never reached you). Cash flow's
+  "Income received (after tax withheld)" and the CSV's `Cash received RON` use it. In the P&L the
+  withheld tax is part of *Tax paid* (detail "Withheld by payers"), so profit and cash count it
+  once.
+
+`summarise(service, recovery)` returns `total` (service revenue), `costRecovery`,
+`receivedGross` and `cashIn`; `lib/agreement.test.ts` checks that the Overview summary, P&L,
+Clients & work, cash flow, print and CSV agree for one period.
+
+### Receiving an expected payment
+
+One rule wherever it starts (`lib/receive.ts`, `app/receive.ts`, `components/ReceiveActions.tsx`;
+audit B-02, B-03, E-01). **Received** marks all of it received today in one tap; **Part…** asks
+how much and when. Every expected payment has both, on the Overview and in Income.
+- *All of it*: the expected record becomes received on the receipt date, at that date's rate
+  (fetched; offline, the last rate used, else its own), with the tax reserve suggested unless it
+  was set by hand (`reserveSource: 'manual'` is kept).
+- *Part of it*: a new received payment holds the part, with the sessions and hours and a share
+  of any tax withheld; the expected record stays, holding the balance, with 0 sessions so a
+  session is never counted twice. The balance can be received the same way later.
+- In the edit form, switching an expected payment to *Received* does the same: today's date
+  unless changed, that date's rate unless typed in the form, a suggested reserve unless set by
+  hand.
+
+Sessions may be 0 (a balance payment); every per-session figure skips it.
+
+**Duplicate warning** (`lib/guards.ts`): the same client, amount and currency on the same day,
+or on the next or previous day with the same description. Sessions two or more days apart (a
+twice-a-week client) are not questioned (audit B-06).
+
+**Empty reports:** with nothing recorded, every report shows what it will show and *Add your
+first payment*; with data but an empty period, the Review says so and offers the whole year
+(audit C-04).
+
+## Estimated available to spend (26 Nov 2026, audit F-01)
+
+Shown with Tax or Costs on (with both off it would only repeat what came in). An Overview
+panel under the period's income, never in its place: roughly what of this year's
+money is yours to use (`lib/available.ts`). Always 1 January to today, whatever period is
+picked; it opens to show every part.
+
+| Line | What it is |
+|---|---|
+| Cash on 1 January | Only with an opening cash balance set (Cash flow); the figure is then a cash estimate. Without one it starts at 0 and reads as this year's money. |
+| Received | Cash that arrived: payments and cost recovery, less tax withheld at source (it never arrived), less refunds paid back. |
+| − Costs paid | Everything paid this year, depreciation aside. Off with costs off. |
+| − Tax still owed | This year's taxable income so far × the year's effective rate (`taxPosition`, the same figure as the Tax report's), less tax withheld, less tax paid towards this year. Never below 0. Off with tax off. |
+| − Costs due | Costs marked due, dated up to 30 days ahead. |
+
+Withheld tax counts once: it is neither cash in nor still owed. Reserves set aside are not
+available: that money is the tax still owed. Expected payments count only once received.
+
+**Tax paid during the year.** A tax payment is a paid cost, so it lowers the cash; it lowers
+what is still owed only when it is *for* this year: PFA (sistem real, normă) declares and pays
+the year's tax the following spring, so tax paid this year is taken as last year's; SRL micro
+pays quarterly, so payments after 25 January are this year's; under a custom profile all of
+it is this year's. The breakdown says which way each went. **Not included:** last year's tax
+still unpaid. An estimate from what is recorded, labelled as one, not advice.
+
+The "still to set aside" of the Tax report, the printable report and this panel is now one
+function (`taxPosition`, `tax/estimate.ts`); it was written out twice before.
+
+## Usability, performance and workflow (26 Nov 2026, audit C, E, F-03, G)
+
+- **A shorter payment form (C-01, E-03).** Amount, currency, client, date and status up front;
+  description, people, sessions, hours, source, venue, activity, recurring, the reimbursement's
+  cost and notes under **More details**, with a one-line summary of what is in it. Left open or
+  closed, it opens that way next time (`inflow:form-details`); a mistake in a folded field
+  opens it.
+- **Plain words first (C-03).** P&L: *Costs of the work (direct, COGS)*, *Left after the work's
+  costs (gross margin)*, *Running costs (operating, SG&A)*, *Profit before equipment write-off
+  (EBITDA)*, *Equipment written off over its life (depreciation)*, *Profit from the work (EBIT)*,
+  *Loan interest*. The cost form's kinds read the same way; tags on Costs use short plain names
+  (`COST_GROUP_PLAIN`). Notion's "Group" options and the CSV keep `COST_GROUP_SHORT`: a closed
+  vocabulary, unchanged. The P&L's Revenue opens into its refunds like a cost line into its
+  categories.
+- **Touch targets (C-02).** Text links, chips, report tabs, donut keys, P&L and Tax rows and
+  Settings headers answer a finger across at least 44 px, through an invisible extension of
+  their hit area: nothing on screen moved. Measured at 360 px. Still under 44 px: the design
+  system's `SegmentedControl` (27–40 px) and `Button size="sm"` (32–36 px), which `src/ds`
+  owns for every app; changing them is a DS decision, not InFlow's.
+- **Start here (C-05).** The rooms step shows only with venue deals on, as "Where you work
+  (optional)".
+- **The accountant's report lists every cost (F-03).** A *Costs* section (date, description,
+  kind, venue or client, lei, deductible), paid ones totalled with the deductible part, due
+  ones greyed. In the "For my accountant" preset; offered with costs on.
+- **More ways to add a cost (E-02, E-04).** *Add a cost* on the Overview, under Available to
+  spend; *+ Add a cost at {venue}* on each Venue deals row, the venue picked and *Room or venue
+  hire* chosen.
+- **A reminder for an expected payment.** Saving one (or moving its date) offers *Remind me*:
+  a calendar file (`.ics`, `lib/ics.ts`) for the due date, all day, with a morning alert. The
+  calendar app opens it; nothing is sent anywhere.
+- **A reimbursement names the cost it repays** (`IncomeRecord.repaysCostId`, optional, under
+  More details when the activity is Reimbursement). The cost then shows *reimbursed* on Costs.
+  A link only: no figure changes. Notion: a "Repays cost" text column, added when first needed;
+  the copy to Notion now copies costs before payments so the link points at the copied cost.
+- **VAT-registered use is unsupported, and says so.** The VAT-registered setting explains that
+  InFlow keeps no VAT accounts and, switched on, warns that income, the estimate and reserves
+  would include VAT. Choosing "VAT applicable" on a payment says the label is only a label.
+  The Tax report's panel is a *VAT threshold watch*: a running count to see the threshold
+  coming, not VAT accounting, not a decision on whether to register. The welcome guide no
+  longer says "VAT included".
+- **Empty states.** Venue deals tells "no venue has a deal yet" (with a way to set one) apart
+  from "none in this period".
+- **Performance (G-01, G-04).** Cost allocation indexes payments by venue and client and finds
+  the nearest date by halving (`nearest`, `lib/insights.ts`); `lib/scale.test.ts` checks it gives
+  exactly the old rule's result on 5,000 payments and 600 costs. Measured there: `insights()`
+  236 → 44 ms, `earnings()` 211 → 16 ms. The print preview renders once the options settle
+  (300 ms, `useDebounced`); a download renders what is set at that moment. The Income list
+  draws 200 rows at a time (*Show 200 more*), its totals always covering the whole list.
+- **Unused code (G-03).** `ShareBar` and its styles removed.
+
+## Refunds and venue-deal history (26 Nov 2026)
+
+### Refunds
+
+Optional: Settings → Features → **Refunds**, also in the guide; off by default, for new and
+existing users alike. Off hides the action only (see "Feature switches").
+
+A refund is its own transaction (`Refund`: payment id, date, amount in the payment's
+currency, that date's rate, lei, note), stored beside the payments (`data.refunds`), never a
+negative payment and never an edit to the original. Recorded from the payment itself: its
+form lists every refund with its date and offers **Refund…** (or *Refund more (X left)*)
+until it is refunded in full. Partial and several refunds are fine; together they can't
+exceed the payment (`refundError`: refused in the form and again in the provider), can't be
+dated before it, and only a received payment can be refunded. Deleting a payment deletes its
+refunds, and *Undo* brings both back.
+
+**How the figures take it** (`lib/refunds.ts`). Each refund becomes an *adjustment row*, a copy
+of the payment dated the day the money went back with the amount negative, and every figure
+reads `books` (the payments plus these rows; `state.tsx`), while lists and forms read `data`:
+
+| Where | Effect |
+|---|---|
+| Overview, Income totals, Clients & work | Revenue (or cost recovery, for a reimbursement) less the refund, in the refund's period. Payment counts don't change. |
+| Income list | The refund is a row of its own in its month ("Refund: …", −X), opening the payment; the payment is tagged *Partly refunded* or *Refunded*. |
+| P&L | Revenue is net of refunds, with "of which refunds" beneath it. |
+| Cash flow | "Refunds paid back", money out, on its own line. |
+| Venue deals | Revenue at that venue less the refund. The venue's fee or share stays paid: InFlow doesn't assume a venue gives its cut back. A refund is never a "losing session". |
+| Tax | Taxable income of the **refund's** year falls by it (cash basis, like everything else here). A refund in January of a payment from December leaves December's year as it was. |
+| Tax reserves | The reserve stored on the payment is never rewritten (reserves are never recomputed). The year's estimate falls, so *still to set aside* falls too, and what was already put by shows as ahead. |
+| Print, CSV | A refund row of its own: Kind and Status "Refund", negative amounts. |
+
+An adjustment row covers no session, hours or people, carries no reserve and no withheld tax,
+and is never recurring. Tax withheld by the payer on the original isn't reversed by the app:
+what the payer does with it is between them and ANAF, so record what actually happens. How a
+refund of income is treated for your tax is your accountant's call; the app's rule is only
+that it counts when the money went back.
+
+**In Notion** a refund is a row in the Income database with Status **Refund** and a
+**Refund of** text column holding the payment's page id (positive amounts; the Status says
+what it is). If the column is missing, InFlow adds it to the database (once); if the token
+can't change the schema, the refund is refused with a message naming the column to add.
+An older InFlow on another device would read a Refund row as received income: update every
+device.
+
+### Venue deals are kept per payment
+
+Each payment at a venue stores the deal it was made under (`IncomeRecord.dealTerms`: deal,
+fee, share, monthly rent). A new payment, or one moved to another venue, takes the venue's
+deal as it is now (`stampTerms`, applied in the provider on every save); editing a payment
+keeps its deal. Editing a venue's deal therefore changes only payments from then on: past
+sessions keep what they cost. The payment form says when its deal differs from the venue's
+current one and offers *Use the current deal for this payment*; Venue deals says how many
+payments there were made under an earlier deal.
+
+**Migration 2** (`store/repo.ts`, `normalise`; device data carries `schema`). What the deal was
+when an old payment was made was never recorded, so payments saved before snapshots take the
+venue's terms **as stored at migration**: every figure stays exactly as it was the moment
+before, and later venue edits no longer reach back. Nothing is invented. It runs once, on
+load, and is written back; backups restored from before it are migrated the same way.
+
+**Notion** keeps the snapshot in a **Venue terms** text column (short JSON), added to the
+database on first save when missing; without permission to add it, payments still save
+without it. Rows from before snapshots fall back to the venue's current deal, and the first
+time a venue's deal is edited InFlow first pins those rows to the old deal, so the edit
+doesn't reach back there either.
+
+*Also fixed:* Notion read a balance payment's 0 sessions back as 1.
+
 ## Costs, P&L and cash flow (optional)
 
 `settings.features.costs` (an older stored `trackCosts` is migrated on load). **Cash basis**: income counts when received, a cost when paid; due
 costs and expected income stay out until they happen. Structure (`lib/finance.ts`):
 
 ```
-Revenue − Direct costs (COGS) = Gross margin − Operating costs (SG&A) = EBITDA
+Revenue − Direct costs (COGS) + Cost recovery = Gross margin − Operating costs (SG&A) = EBITDA
 − Depreciation = Operating profit (EBIT) − Interest = Profit before tax − Tax paid = Net profit
 ```
+
+Revenue is service revenue. *Tax paid* is tax costs paid plus tax withheld by payers.
 
 *Investment* (buying equipment) and *financing* (loan repayments, owner drawings,
 dividends) are cash movements, never P&L lines; depreciation is the reverse. Cash flow
@@ -299,11 +497,22 @@ CASS 5,700, tax 3,915).
 
 ## Data
 
-`domain/types.ts`: `IncomeRecord`, `CostRecord`, `Client`, `Source`, `Venue`, `Settings`.
+`domain/types.ts`: `IncomeRecord`, `CostRecord`, `Refund`, `Client`, `Source`, `Venue`, `Settings`.
 "Activity" in the interface is `category` on income and `activity` on costs.
 
 **On this device:** one IndexedDB value (`inflow` database, key `data`); data written
 before costs existed loads with an empty cost list. Settings in localStorage (`inflow:settings`).
+Every write is a change applied to what is stored at that moment, read and written in one
+IndexedDB transaction (`KeyValueStore.update` in `src/shared/kvStore.ts`, `DeviceRepo.mutate`),
+never a tab's in-memory copy written over it, so two open tabs (or the installed app beside a
+browser tab) keep each other's records. After a write the repo posts on the `inflow-data`
+BroadcastChannel and the other tabs reload (device and demo modes). *Fixed 26 Nov 2026, audit
+A-01: before this, the last tab to save overwrote the other's new records.*
+
+**Restore** (Settings → Backup & export) first copies this device's data to the key
+`pre-restore` and keeps the current settings in memory; only then is the backup written, as
+one write. A successful restore shows *Undo* (puts both data and settings back); a failed one
+leaves the data as it was and says "Restoring failed: …" (audit B-07).
 
 **Demo or my data (`settings.workspace`).** The demo practice lives under its own key
 (`demo`), never in `data` and never in Notion; the screens show one or the other. A first
@@ -322,7 +531,7 @@ still works and says costs can't be saved there. Reads and writes go through
 
 | Database | Properties |
 |---|---|
-| InFlow — Income | Description, Amount, Currency, FX rate, Amount RON, Date, Status, Client/Source/Venue (relations), Category, Recurring, Attendees, Sessions, Hours, Taxability, Tax handling, VAT, Classification, Tax reserve RON, Reserve source, Tax withheld RON, Tax rules, Notes |
+| InFlow — Income | Description, Amount, Currency, FX rate, Amount RON, Date, Status (Received/Expected/Refund), Client/Source/Venue (relations), Category, Recurring, Attendees, Sessions, Hours, Taxability, Tax handling, VAT, Classification, Tax reserve RON, Reserve source, Tax withheld RON, Tax rules, Venue terms, Refund of, Notes |
 | InFlow — Costs | Description, Amount, Currency, FX rate, Amount RON, Date, Status (Paid/Due), Group, Category, Venue/Client (relations), Activity, Recurring, Deductible, Notes |
 | InFlow — Clients | Name, Kind, Country, Contact, Notes, Archived |
 | InFlow — Sources | Name, Type, Description, Active, Tax default |
@@ -331,8 +540,36 @@ still works and says costs can't be saved there. Reads and writes go through
 Select options are a closed vocabulary mirrored in `domain/vocabulary.ts`: add an option
 in Notion first. Saves write only the columns a database actually has (`NotionRepo.fit`), so a
 copy made before a column was added keeps saving without it. The Starter Template (`Dev → Starter Templates`) has all five, linked to
-each other. Moving from device to Notion: a one-time copy of the user's own rows, entities
-first so relations point at new ids; demo rows never leave the device.
+each other. Moving from device to Notion: a copy of the user's own rows, entities first so relations
+point at new ids, resumable and never twice (below); demo rows never leave the device.
+
+**Notion reliability (26 Nov 2026, audit A-03, B-09).** Notion is a full path, not a
+second-class one:
+
+- *Paced and retried* (`store/notionCall.ts`). Every call waits its turn, at most 18 in any 10
+  seconds (the relay allows 20 per device), and a refusal that means "later" is tried again
+  after 0.5, 1, 2, 4 s (with jitter, or as long as Notion's Retry-After asks), five tries in
+  all: 429 always; 500–504 and a dropped connection for reads and updates. A page create is
+  retried on 429 only: after a 5xx or a lost answer it may already exist. 400/401/403/404 are
+  answers and come back at once. `notionProxy` errors now carry `status` and `retryAfter`.
+- *Loaded in order:* the five databases one after another, page by page, never in parallel.
+- *Copy to Notion is resumable and never twice.* Each row copied is logged on the device
+  (`inflow:notion-copy:<income db id>`: device id → Notion id) the moment Notion has it. A copy
+  that stops partway says so; running it again skips what is there and carries on, and a
+  third run copies nothing. Payments, refunds (pointing at the copied payment) and costs are
+  all copied. The log is per device: copying the same data from a second device would copy
+  it again.
+- *The offline copy follows every write.* The cache (`notion-cache`) is updated after each
+  save and delete, not only after a full load, so opened offline the app shows this
+  session's changes. Shown the offline copy, the app reloads from Notion as soon as the
+  browser says it is back online.
+- *Tested* against an in-memory Notion that pages its results, turns requests away with 429
+  and drops connections, on a simulated clock (`store/notionReliability.test.ts`), including
+  parity: the demo copied to Notion and loaded back gives the same summary, P&L and
+  Clients & work figures as on the device. **Not run against live Notion:** the relay's real
+  429s, Notion's real Retry-After, the select option "Refund" being created on first use,
+  adding the "Venue terms" and "Refund of" columns with a real integration's permissions,
+  and timing on a large real workspace.
 
 **Demo:** `data/demo.ts`, twenty-six months of a coaching practice relative to today, so
 every feature has something real to show (extended 25 Nov 2026):
@@ -374,7 +611,7 @@ every feature has something real to show (extended 25 Nov 2026):
 ## Feature switches
 
 Settings → Features (`FEATURES` in `screens/Settings.tsx`, `settings.features`, `on(key)`
-in state). Seven switches since 25 Nov 2026.
+in state). Seven switches since 25 Nov 2026; eight since 26 Nov (Refunds).
 
 **Simple start for new users only.** With no stored settings, InFlow starts on
 `SIMPLE_FEATURES` (insights and expected payments) and no target, and the Overview shows a
@@ -399,6 +636,20 @@ twisty; every Settings section folds, remembered per device (`inflow:settings-op
 | expected | Expected status, panel, suggestions from recurring payments and overdue insight |
 | currencies | currency select (lei only; an existing foreign record keeps its currency) |
 | printable | Print tab |
+| refunds | the Refund action on a received payment (and the guide's step says so). **Starts off for everyone**, existing users too (`ADDED_LATER` in `store/settings.ts`): a switch added later is introduced, never sprung on anyone. Unlike the others, off does not take refunds out of the figures: money paid back is never hidden from a total, so a refund already recorded still counts and stays listed on its payment, deletable. |
+
+**Complexity comes in when it's asked for (26 Nov 2026).** The basic workflow is amount, client
+and date. What the remediation added sits behind the switch it belongs to, or folds away:
+
+| Added | Shown when |
+|---|---|
+| Refunds | Refunds on (or the payment already has one) |
+| Part received, Remind me (.ics) | Expected payments on |
+| Available to spend (Overview) | Tax or Costs on; with both off it would only repeat what came in |
+| Add a cost (Overview, a venue's row) | Costs on |
+| "Counted under the deal when it was added" | Venue deals on, and the venue's deal has since changed |
+| Repays which cost | Costs on, activity Reimbursement, under More details |
+| Description, sessions, hours, source, venue, activity, recurring, notes | under More details, folded by default |
 
 Screens enter with Stillflow's 320 ms rise (`.screenIn`, off under reduced motion); the
 theme is Device / Light / Dark.

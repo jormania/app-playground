@@ -38,7 +38,17 @@ export async function notionProxy(
   try { data = await res.json() } catch { /* non-JSON error body */ }
   if (!res.ok) {
     const msg = data?.message || data?.error || `Notion request failed (${res.status})`
-    throw new Error(String(msg))
+    // The status (and Notion's Retry-After, in seconds) ride on the error, so a caller can tell
+    // "slow down" and "try again" from "this is wrong". Additive: the message is unchanged.
+    const retry = Number(res.headers?.get?.('retry-after'))
+    throw Object.assign(new Error(String(msg)), { status: res.status, ...(Number.isFinite(retry) && retry > 0 ? { retryAfter: retry } : {}) }) as NotionError
   }
   return data
+}
+
+/** What `notionProxy` throws when the relay answers with an error. A network failure throws fetch's own error, with no status. */
+export interface NotionError extends Error {
+  status?: number
+  /** Seconds, when Notion said how long to wait. */
+  retryAfter?: number
 }

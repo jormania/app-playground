@@ -898,16 +898,7 @@ a.modeTag { text-decoration: none; }
 @media (max-width: 400px) { .tourActions, .tourActions > div { gap: var(--space-xs); } }
 @media (max-width: 360px) { .tourActions > span > button { padding-inline: var(--space-xs); } }
 
-/* ── part-to-whole bar ─────────────────────────────────────────────────── */
-.shareBar {
-  display: flex; gap: 2px; height: 34px; border-radius: 6px; overflow: hidden;
-}
-.shareBar > span {
-  min-width: 3px; display: grid; place-items: center;
-  font-size: var(--text-xs); font-weight: var(--weight-medium); color: #fff;
-  transition: opacity 160ms ease, flex-grow 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
-  white-space: nowrap; overflow: hidden;
-}
+/* ── part-to-whole key (Donut) ─────────────────────────────────────────── */
 .shareKey { display: grid; gap: 2px; margin-top: var(--space-sm); }
 .shareKeyRow {
   display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: var(--space-xs); align-items: center;
@@ -994,7 +985,6 @@ button.mover:hover { background: var(--color-surface-2); }
   font: inherit; font-size: var(--text-sm); color: var(--color-ink); background: var(--color-surface);
   border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 4px 8px;
 }
-.shareBar > span { text-shadow: 0 0 3px rgba(0, 0, 0, 0.45); }
 
 /* A long list keeps its month in view: each month's heading sticks under the header. */
 .groupHead {
@@ -1239,6 +1229,10 @@ button.hlRow:hover .hlValue { color: var(--color-accent); }
 .masterSwitch > button { justify-self: start; }
 .simpleNotice { display: grid; gap: var(--space-sm); border-color: color-mix(in srgb, var(--chart-2) 40%, var(--color-border)); }
 .simpleHead { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: var(--space-sm); align-items: start; }
+/* The icon tile is shared with the Review's highlights, whose grid names an "icon" area. Here it
+   sits in the first column: without this its named area made an implicit column and squeezed the
+   text to one word a line (audit B-05). */
+.simpleHead > .hlIcon { grid-area: auto; }
 .simpleHead b { display: block; }
 .simpleHead span:last-child { font-size: var(--text-sm); color: var(--color-muted); line-height: 1.45; }
 a.chip { text-decoration: none; color: inherit; }
@@ -1314,3 +1308,52 @@ a.chip { text-decoration: none; color: inherit; }
 .pickActive { background: var(--color-surface-2); }
 .pickMeta { font-size: var(--text-xs); color: var(--color-muted); white-space: nowrap; }
 .pickAdd { color: var(--color-accent); font-weight: var(--weight-medium); }
+
+/* An expected payment in Income: its row, then Received / Part… under it. */
+.expectedEntry { display: grid; gap: 4px; padding-bottom: var(--space-xs); }
+.expectedEntry > .expectedActions { padding-left: 52px; flex-direction: row; flex-wrap: wrap; }
+
+/* A payment's refunds, in its form (lib/refunds.ts). */
+.refunds { display: grid; gap: var(--space-xs); padding: var(--space-sm) 0; border-top: 1px solid var(--color-border); }
+.refundList { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: var(--font-size-sm); }
+.refundList > li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-xs); min-height: 44px; }
+.iconButton {
+  display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; padding: 0;
+  border: 0; background: none; color: var(--color-muted); cursor: pointer; border-radius: var(--radius-sm);
+}
+.iconButton:hover { color: var(--color-danger); }
+.iconButton:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.refunds > .linkButton { justify-self: start; }
+
+/* Estimated available to spend (Overview; lib/available.ts): secondary to the period's income. */
+.avail > summary { list-style: none; cursor: pointer; display: grid; gap: 2px; min-height: 44px; }
+.avail > summary::-webkit-details-marker { display: none; }
+.avail > summary:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 4px; border-radius: var(--radius-sm); }
+.availHead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-sm); flex-wrap: wrap; }
+.availValue { font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.avail[open] > .lineList { margin-top: var(--space-sm); }
+.availNote { display: block; font-size: var(--font-size-xs, 0.75rem); color: var(--color-muted); }
+.availTotal { font-weight: 600; border-top: 1px solid var(--color-border); }
+
+/* "Show more" under a long list (Income, audit G-04). */
+.moreRow { display: flex; justify-content: center; padding: var(--space-md) 0; }
+
+/*
+ * Touch targets (audit C-02): every small control answers a finger across at least 44 px, through
+ * an invisible extension of its hit area, so nothing on screen moves or grows.
+ */
+.linkButton, .chip, .reportTab, .shareKeyRow { position: relative; }
+.linkButton::after, .chip::after, .reportTab::after, .shareKeyRow::after { content: ''; position: absolute; }
+.linkButton::after { inset: -15px -6px; }
+.chip::after { inset: -10px -3px; }
+.reportTab::after { inset: -7px -3px; }
+.shareKeyRow::after { inset: -8px 0; }
+.twisty > summary { min-height: 44px; }
+.lineToggle, button.line, .featureMore > summary { position: relative; }
+.lineToggle::after, button.line::after, .featureMore > summary::after { content: ''; position: absolute; }
+.lineToggle::after { inset: -14px -4px; }
+button.line::after { inset: -8px 0; }
+.featureMore > summary::after { inset: -15px -6px; }
+
+/* A panel's own actions, under its content (Overview: Add a cost). */
+.panelActions { display: flex; gap: var(--space-xs); flex-wrap: wrap; margin-top: var(--space-sm); }

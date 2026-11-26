@@ -7,9 +7,9 @@
  * Pure: options and data in, a string out. Every user-supplied string is escaped.
  */
 import type { InflowData, TaxProfile } from '../domain/types'
-import { ACTIVITY, PROFILE, TAX_HANDLING, TAXABILITY, VAT } from '../domain/vocabulary'
+import { ACTIVITY, COST_CATEGORY, COST_GROUP_SHORT, PROFILE, TAX_HANDLING, TAXABILITY, VAT } from '../domain/vocabulary'
 import {
-  breakdown, DIMENSION_NOUN, inScope, NO_ENTITY, outstanding, received, scopeIsSet, series, summarise, sum,
+  breakdown, DIMENSION_NOUN, earned, inScope, isCostRecovery, NO_ENTITY, outstanding, received, recovered, scopeIsSet, series, summarise, sum,
   type BreakdownRow, type Dimension, type Scope,
 } from './analytics'
 import { buildCashFlow, buildPnl, monthColumns } from './finance'
@@ -17,14 +17,14 @@ import { earnings } from './earnings'
 import { addDays, daysBetween, monthLabel, shortDate, yearOf } from './dates'
 import { delta, lei, money, percent } from './money'
 import { buckets, inRange } from './period'
-import { projectYear, taxableGross } from '../tax/estimate'
+import { projectYear, taxPosition } from '../tax/estimate'
 import { insights } from './insights'
 import { applyFeedback, type Feedback } from '../app/insightFeedback'
 import { movers, reviewHighlights } from './review'
 
 export type ReportSection =
   | 'summary' | 'review' | 'insights' | 'trend' | 'clients' | 'venues' | 'activities' | 'sources' | 'mix' | 'margins'
-  | 'pnl' | 'cashflow' | 'outstanding' | 'tax' | 'payments'
+  | 'pnl' | 'cashflow' | 'outstanding' | 'tax' | 'payments' | 'costs'
 
 export const SECTION_LABEL: Record<ReportSection, string> = {
   summary: 'Headline figures',
@@ -42,10 +42,11 @@ export const SECTION_LABEL: Record<ReportSection, string> = {
   outstanding: 'Expected payments',
   tax: 'Tax summary (optional)',
   payments: 'Payment list',
+  costs: 'Cost list (costs)',
 }
 
 /** Sections that need costs tracked, or tax tracked. */
-export const COST_SECTIONS: ReportSection[] = ['margins', 'pnl', 'cashflow']
+export const COST_SECTIONS: ReportSection[] = ['margins', 'pnl', 'cashflow', 'costs']
 
 export interface ReportOptions {
   title: string
@@ -81,7 +82,7 @@ export const PRESET_ADVICE: Record<ReportPreset, { when: string; holds: string }
   monthly: { when: 'At the end of each month.', holds: 'What came in, what moved, who paid most, and what to look at next.' },
   annual: { when: 'Once a year, or before planning the next.', holds: 'The year’s shape, the best and weakest work, venues and clients, and the profit.' },
   client: { when: 'When a client asks what they’ve paid.', holds: 'Their payments in the period and the total — nothing about anyone else.' },
-  accountant: { when: 'Before filing, or when they ask.', holds: 'Income by source, the P&L, the tax summary and every payment with its notes.' },
+  accountant: { when: 'Before filing, or when they ask.', holds: 'Income by source, the P&L, the tax summary, every payment with its notes, and every cost with whether it is deductible.' },
 }
 
 export function presetOptions(preset: ReportPreset, range: { from: string; to: string }, today: string, trackTax: boolean, trackCosts = false): Partial<ReportOptions> {
@@ -95,7 +96,7 @@ export function presetOptions(preset: ReportPreset, range: { from: string; to: s
     case 'client':
       return { title: 'Statement of payments', subtitle: '', from: range.from, to: range.to, sections: ['summary', 'payments'], topN: 0, compare: false, paymentsSort: 'date', includeNotes: false, sourceId: '', venueId: '', activity: '' }
     case 'accountant':
-      return { title: `Income for ${year}`, subtitle: 'Prepared for my accountant', from: `${year}-01-01`, to: `${year}-12-31`, sections: keep(['summary', 'sources', 'pnl', 'tax', 'payments']), topN: 0, compare: false, ...ALL, showOriginalCurrency: true, paymentsSort: 'date', includeNotes: true }
+      return { title: `Income for ${year}`, subtitle: 'Prepared for my accountant', from: `${year}-01-01`, to: `${year}-12-31`, sections: keep(['summary', 'sources', 'pnl', 'tax', 'payments', 'costs']), topN: 0, compare: false, ...ALL, showOriginalCurrency: true, paymentsSort: 'date', includeNotes: true }
   }
 }
 
@@ -179,10 +180,13 @@ export function renderReport(data: InflowData, opt: ReportOptions, ctx: ReportCo
   const scoped: InflowData = { ...data, records: data.records.filter((r) => inScope(r, sc)), costs: scopedCosts }
   const range = { from, to }
   const prevRange = previous(from, to)
-  const cur = received(scoped.records, range)
-  const before = received(scoped.records, prevRange)
-  const s = summarise(cur)
-  const ps = summarise(before)
+  // Service payments drive every figure; cost recovery is shown on its own line (audit B-01).
+  const allCur = received(scoped.records, range)
+  const allBefore = received(scoped.records, prevRange)
+  const cur = earned(allCur)
+  const before = earned(allBefore)
+  const s = summarise(cur, recovered(allCur))
+  const ps = summarise(before, recovered(allBefore))
   // A comparison reaching before the first record would show "new" and runaway percentages.
   const firstRec = data.records.reduce((m, r) => (r.status === 'received' && r.date < m ? r.date : m), '9999')
   const comparable = !(firstRec > prevRange.from && ps.total > 0)
@@ -194,9 +198,10 @@ export function renderReport(data: InflowData, opt: ReportOptions, ctx: ReportCo
     const partialPrev = first > prevRange.from && ps.total > 0
     const d = delta(s.total, ps.total)
     const cards = [
-      ['Income received', lei(s.total), opt.compare ? (partialPrev ? `records start ${monthLabel(first)}: no full period to compare` : `${d.text} vs previous ${daysBetween(from, to) + 1} days (${lei(ps.total)})`) : `${s.count} payments`],
+      ['Earned (service revenue)', lei(s.total), opt.compare ? (partialPrev ? `records start ${monthLabel(first)}: no full period to compare` : `${d.text} vs previous ${daysBetween(from, to) + 1} days (${lei(ps.total)})`) : `${s.count} payments`],
       ['Payments', String(s.count), `average ${lei(s.count ? s.total / s.count : 0)}`],
       ['Clients paid', String(new Set(cur.map((r) => r.clientId).filter(Boolean)).size), opt.clientId ? '' : `largest: ${esc(breakdown(scoped, cur, [], 'client')[0]?.name ?? '—')}`],
+      ...(s.costRecovery > 0 ? [['Cost recovery', lei(s.costRecovery), 'reimbursed costs, not earnings']] : []),
       ...(ctx.trackTax ? [['Set aside for tax*', lei(s.reserve), `withheld ${lei(s.taxWithheld)}`]] : []),
     ]
     parts.push(`<section class="cards">${cards.map(([k, v, n]) => `<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n}</div></div>`).join('')}</section>`)
@@ -268,7 +273,7 @@ ${[...byCur.entries()].sort((a, b) => b[1] - a[1]).map(([c, v]) => `<tr><td>Paid
     const many = cols.length > 1
     parts.push(`<section class="break"><h2>Profit &amp; loss</h2><table class="statement${cols.length > 6 ? ' wide' : ''}"><thead><tr><th></th>${cols.map((c) => `<th>${esc(c.label)}</th>`).join('')}${many ? '<th>Total</th>' : ''}<th>%</th></tr></thead><tbody>${
       // Paper can't expand a line, so each cost's categories print under it.
-      pnl.lines.map((l) => `<tr class="${l.kind === 'subtotal' || l.kind === 'revenue' ? 'total' : l.kind === 'detail' ? 'detail' : ''}"><td>${l.kind === 'cost' ? '− ' : ''}${esc(l.label)}</td>${l.values.map((v) => `<td class="${v < 0 ? 'down' : ''}">${num(v)}</td>`).join('')}${many ? `<td>${num(l.total)}</td>` : ''}<td>${rev && l.kind !== 'detail' ? percent(l.total / rev) : ''}</td></tr>`).join('')
+      pnl.lines.map((l) => `<tr class="${l.kind === 'subtotal' || l.kind === 'revenue' ? 'total' : l.kind === 'detail' ? 'detail' : ''}"><td>${l.kind === 'cost' ? '− ' : l.kind === 'recovery' ? '+ ' : ''}${esc(l.label)}</td>${l.values.map((v) => `<td class="${v < 0 ? 'down' : ''}">${num(v)}</td>`).join('')}${many ? `<td>${num(l.total)}</td>` : ''}<td>${rev && l.kind !== 'detail' ? percent(l.total / rev) : ''}</td></tr>`).join('')
     }</tbody></table><p class="muted">Cash basis: income when received, costs when paid. Lei.${scopeIsSet(sc) ? ' Filtered: only costs linked to the filters are counted.' : ''}</p></section>`)
   }
 
@@ -303,27 +308,34 @@ ${p.estimate.lines.map((l) => `<tr><td>${esc(l.label)}${l.rate !== null && l.bas
 <tr class="total"><td>Estimated total</td><td>${lei(p.estimate.total)}</td></tr><tr><td>Effective rate</td><td>${percent(p.rate, 1)}</td></tr></tbody></table>
 ${(() => {
     // The same "still to set aside" as the app's Tax report.
-    const yr = data.records.filter((r) => r.status === 'received' && yearOf(r.date) === year)
-    const owed = Math.round(taxableGross(data.records, year) * p.rate)
-    const withheld = sum(yr, (r) => r.taxWithheld)
-    const reserved = sum(yr, (r) => r.taxReserve ?? 0)
-    const gap = Math.round(owed - withheld - reserved)
+    const { owed, withheld, reserved, gap } = taxPosition(ctx.tax, data.records, year, ctx.today, ctx.trackCosts ? data.costs : [])
     return `<table><tbody><tr><td>Owed on ${year} income so far, at that rate</td><td>${lei(owed)}</td></tr><tr><td>Withheld or paid this year</td><td>− ${lei(withheld)}</td></tr><tr><td>Already set aside this year</td><td>− ${lei(reserved)}</td></tr><tr class="total"><td>${gap > 0 ? 'Still to set aside' : 'Ahead of the reserve by'}</td><td>${lei(Math.abs(gap))}</td></tr></tbody></table>`
   })()}
 <p class="muted">${p.estimate.notes.map(esc).join(' ')}</p></section>`)
   }
 
   if (has('payments')) {
-    const rs = [...cur, ...scoped.records.filter((r) => r.status === 'expected' && inRange(r.date, range))]
+    const rs = [...allCur, ...scoped.records.filter((r) => r.status === 'expected' && inRange(r.date, range))]
       .sort(opt.paymentsSort === 'amount' ? (a, b) => b.amountRon - a.amountRon : (a, b) => a.date.localeCompare(b.date))
     const name = (l: { id: string; name: string }[], id: string | null) => esc(l.find((x) => x.id === id)?.name ?? '')
     const taxCols = ctx.trackTax
-    const rows = rs.map((r) => `<tr${r.status === 'expected' ? ' class="muted"' : ''}><td>${r.date}</td><td>${esc(r.description)}${r.status === 'expected' ? ' (expected)' : ''}${opt.includeNotes && r.notes ? `<div class="note">${esc(r.notes)}</div>` : ''}</td>
+    const rows = rs.map((r) => `<tr${r.status === 'expected' ? ' class="muted"' : ''}><td>${r.date}</td><td>${esc(r.description)}${r.status === 'expected' ? ' (expected)' : ''}${isCostRecovery(r) ? ' <span class="muted">(cost recovery)</span>' : ''}${opt.includeNotes && r.notes ? `<div class="note">${esc(r.notes)}</div>` : ''}</td>
 ${opt.clientId ? '' : `<td>${name(data.clients, r.clientId)}</td>`}<td>${name(data.venues, r.venueId)}</td>
 ${opt.showOriginalCurrency ? `<td>${r.currency === 'RON' ? '' : esc(money(r.amount, r.currency))}</td>` : ''}<td>${lei(r.amountRon)}</td>
 ${taxCols ? `<td>${TAXABILITY[r.taxability]}${r.taxability === 'taxable' ? `, ${TAX_HANDLING[r.taxHandling].toLowerCase()}` : ''}; VAT ${VAT[r.vat].toLowerCase()}${r.taxWithheld ? `; withheld ${lei(r.taxWithheld)}` : ''}</td>` : ''}</tr>`).join('')
     parts.push(`<section class="break"><h2>Payments</h2>${rs.length ? `<table class="list"><thead><tr><th>Date</th><th>Description</th>${opt.clientId ? '' : '<th>Client</th>'}<th>Venue</th>${opt.showOriginalCurrency ? '<th>Original</th>' : ''}<th>Lei</th>${taxCols ? '<th>Tax*</th>' : ''}</tr></thead><tbody>${rows}</tbody>
-<tfoot><tr><td></td><td>Received</td>${opt.clientId ? '' : '<td></td>'}<td></td>${opt.showOriginalCurrency ? '<td></td>' : ''}<td>${lei(s.total)}</td>${taxCols ? '<td></td>' : ''}</tr></tfoot></table>` : '<p class="muted">No payments in this period.</p>'}</section>`)
+<tfoot><tr><td></td><td>Earned${s.costRecovery ? ` (plus ${lei(s.costRecovery)} cost recovery)` : ''}</td>${opt.clientId ? '' : '<td></td>'}<td></td>${opt.showOriginalCurrency ? '<td></td>' : ''}<td>${lei(s.total)}</td>${taxCols ? '<td></td>' : ''}</tr></tfoot></table>` : '<p class="muted">No payments in this period.</p>'}</section>`)
+  }
+
+  if (has('costs')) {
+    // Every cost in the period, for the accountant: paid ones counted, due ones shown greyed (audit F-03).
+    const cs = (scoped.costs ?? []).filter((c) => inRange(c.date, range)).sort((a, b) => a.date.localeCompare(b.date))
+    const paid = cs.filter((c) => c.status === 'paid')
+    const total = (xs: typeof cs) => Math.round(xs.reduce((t, c) => t + c.amountRon, 0) * 100) / 100
+    const name = (l: { id: string; name: string }[], id: string | null) => esc(l.find((x) => x.id === id)?.name ?? '')
+    const rows = cs.map((c) => `<tr${c.status === 'due' ? ' class="muted"' : ''}><td>${c.date}</td><td>${esc(c.description)}${c.status === 'due' ? ' (due)' : ''}${opt.includeNotes && c.notes ? `<div class="note">${esc(c.notes)}</div>` : ''}</td><td>${esc(COST_GROUP_SHORT[c.group])} · ${esc(COST_CATEGORY[c.category])}</td><td>${name(data.venues, c.venueId) || name(data.clients, c.clientId)}</td>${opt.showOriginalCurrency ? `<td>${c.currency === 'RON' ? '' : esc(money(c.amount, c.currency))}</td>` : ''}<td>${lei(c.amountRon)}</td><td>${c.deductible ? 'yes' : ''}</td></tr>`).join('')
+    parts.push(`<section class="break"><h2>Costs</h2>${cs.length ? `<table class="list"><thead><tr><th>Date</th><th>Description</th><th>Kind</th><th>Venue / client</th>${opt.showOriginalCurrency ? '<th>Original</th>' : ''}<th>Lei</th><th>Deductible</th></tr></thead><tbody>${rows}</tbody>
+<tfoot><tr><td></td><td>Paid</td><td></td><td></td>${opt.showOriginalCurrency ? '<td></td>' : ''}<td>${lei(total(paid))}</td><td>${lei(total(paid.filter((c) => c.deductible)))}</td></tr></tfoot></table><p class="muted">Paid costs counted; due ones shown greyed, not counted. "Deductible" is as you marked each cost.</p>` : '<p class="muted">No costs in this period.</p>'}</section>`)
   }
 
   const periodText = `${shortDate(from, 0)} – ${shortDate(to, 0)}`

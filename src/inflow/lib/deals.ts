@@ -12,12 +12,60 @@
  *   monthly  rent per month, spread over that month's sessions there
  *   none     nothing (online, client's office, an agency pays)
  */
-import type { IncomeRecord, Venue } from '../domain/types'
-import { round2 } from './money'
+import type { DealTerms, IncomeRecord, Venue } from '../domain/types'
+import { DEAL } from '../domain/vocabulary'
+import { lei, percent, round2 } from './money'
 
 const inRange = (d: string, r: { from: string; to: string }) => d >= r.from && d <= r.to
 
-/** Sessions that earn: received, at a venue, not a reimbursement. */
+/** The deal in a few words: "Fixed fee · 600 lei a session", "Revenue share · 30%". */
+export function describeTerms(t: DealTerms): string {
+  switch (t.deal) {
+    case 'fixed': return `${DEAL.fixed} · ${lei(t.feePerSession)} a session`
+    case 'share': return `${DEAL.share} · ${percent(t.sharePct)}`
+    case 'hybrid': return `${DEAL.hybrid} · ${lei(t.feePerSession)} + ${percent(t.sharePct)}`
+    case 'monthly': return `${DEAL.monthly} · ${lei(t.monthlyFee)} a month`
+    case 'none': return DEAL.none
+  }
+}
+
+/** A venue's current deal, as a set of terms. */
+export const termsOf = (v: Pick<Venue, 'deal' | 'feePerSession' | 'sharePct' | 'monthlyFee'>): DealTerms =>
+  ({ deal: v.deal, feePerSession: v.feePerSession, sharePct: v.sharePct, monthlyFee: v.monthlyFee })
+
+/**
+ * The deal a payment was made under: its own snapshot, else (data from before snapshots, never
+ * migrated) the venue's current deal. Editing a venue therefore changes only new payments.
+ */
+export function termsFor(r: Pick<IncomeRecord, 'dealTerms'>, v: Venue): DealTerms {
+  return r.dealTerms ?? termsOf(v)
+}
+
+export const sameTerms = (a: DealTerms, b: DealTerms): boolean =>
+  a.deal === b.deal && a.feePerSession === b.feePerSession && a.sharePct === b.sharePct && a.monthlyFee === b.monthlyFee
+
+/**
+ * The snapshot a payment is saved with. A new payment, or one moved to another venue, takes the
+ * venue's deal as it is now; a payment that stays at its venue keeps the deal it has (or, saved
+ * before snapshots, the venue's current deal, which is what it was being counted under). No venue,
+ * no terms. `keep` puts a payment back exactly as it was (undoing a delete).
+ */
+export function stampTerms(r: IncomeRecord, stored: IncomeRecord | undefined, venues: Venue[], opts: { keep?: boolean } = {}): IncomeRecord {
+  if (!r.venueId) return r.dealTerms === null ? r : { ...r, dealTerms: null }
+  if (opts.keep && r.dealTerms) return r
+  const v = venues.find((x) => x.id === r.venueId)
+  const current = v ? termsOf(v) : undefined
+  if (stored && stored.venueId === r.venueId) return { ...r, dealTerms: r.dealTerms ?? stored.dealTerms ?? current }
+  return current ? { ...r, dealTerms: current } : r
+}
+
+/**
+ * What a payment costs at its venue. A refund's adjustment row costs nothing: the venue's fee or
+ * share was paid on the original, and InFlow doesn't assume the venue gives any of it back.
+ */
+const costApplies = (r: IncomeRecord) => !r.refundOf
+
+/** Sessions that earn: received, at a venue, not a reimbursement. Refunds at the venue are included, as negative revenue. */
 export function sessionsAt(records: IncomeRecord[], venueId: string, r: { from: string; to: string }): IncomeRecord[] {
   return records.filter((x) => x.status === 'received' && x.venueId === venueId && x.category !== 'reimbursement' && inRange(x.date, r))
 }
@@ -41,15 +89,15 @@ export function venueCosts(records: IncomeRecord[], venues: Venue[]): Map<string
   const byVenue = new Map(venues.map((v) => [v.id, v]))
   const monthCount = new Map<string, number>()
   for (const r of records) {
-    if (r.status !== 'received' || !r.venueId || r.category === 'reimbursement') continue
+    if (r.status !== 'received' || !r.venueId || r.category === 'reimbursement' || !costApplies(r)) continue
     const k = `${r.venueId}|${r.date.slice(0, 7)}`
-    monthCount.set(k, (monthCount.get(k) ?? 0) + (r.sessions || 1))
+    monthCount.set(k, (monthCount.get(k) ?? 0) + (r.sessions ?? 1))
   }
   const out = new Map<string, number>()
   for (const r of records) {
     const v = r.venueId ? byVenue.get(r.venueId) : undefined
-    if (!v || r.status !== 'received' || r.category === 'reimbursement') continue
-    out.set(r.id, venueCostOf(r.amountRon, v, monthCount.get(`${r.venueId}|${r.date.slice(0, 7)}`) ?? 1, r.sessions || 1))
+    if (!v || r.status !== 'received' || r.category === 'reimbursement' || !costApplies(r)) continue
+    out.set(r.id, venueCostOf(r.amountRon, termsFor(r, v), monthCount.get(`${r.venueId}|${r.date.slice(0, 7)}`) ?? 1, r.sessions ?? 1))
   }
   return out
 }
@@ -64,6 +112,8 @@ export interface DealSession {
   sessions: number
   venueCost: number
   takeHome: number
+  /** A refund against an earlier session here: negative revenue, no venue cost. */
+  refund?: boolean
 }
 
 export interface VenueDeal {
@@ -85,16 +135,18 @@ export interface VenueDeal {
   breakEvenAttendees: number | null
   losing: DealSession[]
   lost: number
+  /** Payments here counted under a deal the venue no longer has (each keeps the one it was made under). */
+  underEarlierDeal: number
 }
 
 export function venueDeal(venue: Venue, records: IncomeRecord[], r: { from: string; to: string }): VenueDeal {
   const rs = sessionsAt(records, venue.id, r)
   const months = new Map<string, number>()
-  for (const x of rs) months.set(x.date.slice(0, 7), (months.get(x.date.slice(0, 7)) ?? 0) + (x.sessions || 1))
+  for (const x of rs) if (costApplies(x)) months.set(x.date.slice(0, 7), (months.get(x.date.slice(0, 7)) ?? 0) + (x.sessions ?? 1))
   const sessions = rs.map((x): DealSession => {
-    const n = x.sessions || 1
-    const cost = venueCostOf(x.amountRon, venue, months.get(x.date.slice(0, 7)) ?? 1, n)
-    return { id: x.id, date: x.date, description: x.description, revenue: x.amountRon, attendees: x.attendees, sessions: n, venueCost: cost, takeHome: round2(x.amountRon - cost) }
+    const n = x.sessions ?? 1
+    const cost = costApplies(x) ? venueCostOf(x.amountRon, termsFor(x, venue), months.get(x.date.slice(0, 7)) ?? 1, n) : 0
+    return { id: x.id, date: x.date, description: x.description, revenue: x.amountRon, attendees: x.attendees, sessions: n, venueCost: cost, takeHome: round2(x.amountRon - cost), refund: !!x.refundOf }
   }).sort((a, b) => a.date.localeCompare(b.date))
   const sum = (f: (s: DealSession) => number) => round2(sessions.reduce((a, s) => a + f(s), 0))
   const revenue = sum((s) => s.revenue)
@@ -105,7 +157,7 @@ export function venueDeal(venue: Venue, records: IncomeRecord[], r: { from: stri
   const heads = counted.reduce((a, s) => a + (s.attendees ?? 0) * s.sessions, 0)
   const revenuePerHead = heads ? round2(counted.reduce((a, s) => a + s.revenue, 0) / heads) : null
   const keepPerHead = revenuePerHead === null ? null : revenuePerHead * (1 - (venue.deal === 'hybrid' ? venue.sharePct : 0))
-  const losing = sessions.filter((s) => s.takeHome < 0)
+  const losing = sessions.filter((s) => s.takeHome < 0 && !s.refund)
   return {
     venue, sessions, sessionCount, revenue, venueCost,
     takeHome: round2(revenue - venueCost),
@@ -117,6 +169,7 @@ export function venueDeal(venue: Venue, records: IncomeRecord[], r: { from: stri
       ? Math.ceil(venue.feePerSession / keepPerHead) : null,
     losing,
     lost: round2(-losing.reduce((a, s) => a + s.takeHome, 0)),
+    underEarlierDeal: rs.filter((x) => !x.refundOf && x.dealTerms && !sameTerms(x.dealTerms, termsOf(venue))).length,
   }
 }
 
@@ -143,7 +196,7 @@ export function defaultAlternative(d: VenueDeal): Terms {
 
 
 /** A venue's deal terms: the actual ones on the venue, or a hypothetical set to compare. */
-export type Terms = Pick<Venue, 'deal' | 'feePerSession' | 'sharePct' | 'monthlyFee'>
+export type Terms = DealTerms
 
 export interface Scenario {
   /** Retained under the venue's actual deal (as recorded). */
@@ -161,7 +214,7 @@ export interface Scenario {
  * retained. Pure — the venue and its records are never changed.
  */
 export function scenario(d: VenueDeal, alt: Terms): Scenario {
-  const hypothetical = round2(d.sessions.reduce((s, x) => s + x.revenue - venueCostOf(x.revenue, alt, 1, x.sessions), 0))
+  const hypothetical = round2(d.sessions.reduce((s, x) => s + x.revenue - (x.refund ? 0 : venueCostOf(x.revenue, alt, 1, x.sessions)), 0))
   const current = d.takeHome
   const difference = round2(hypothetical - current)
   return { current, hypothetical, difference, differencePct: current > 0 ? difference / current : null }
@@ -188,7 +241,8 @@ export function feeCoveredAt(d: VenueDeal): { revenue: number; people: number | 
  * count as two sessions, and two fees. The number of such extra payments.
  */
 export function sameDayRepeats(d: VenueDeal): number {
-  return d.sessions.length - new Set(d.sessions.map((x) => x.date)).size
+  const real = d.sessions.filter((x) => !x.refund)
+  return real.length - new Set(real.map((x) => x.date)).size
 }
 
 /** What one more person at a session leaves you under these terms. */

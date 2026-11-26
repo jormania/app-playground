@@ -3,6 +3,7 @@
  * a look, where it came from, and what's still to come. Profit, tax detail and
  * unusual payments live in Reports and Income.
  */
+import { availableToSpend } from '../lib/available'
 import { useMemo, useState } from 'react'
 import { ArrowDownRight, ArrowUpRight, CalendarClock, CalendarPlus, Check, Copy, DoorOpen, HardDriveDownload, Plus, Info, Lightbulb, PieChart, Receipt, Sparkles, TrendingUp } from 'lucide-react'
 import { SegmentedControl } from '../../ds'
@@ -17,15 +18,16 @@ import {
 import { daysBetween, shortDate, yearOf } from '../lib/dates'
 import { delta, lei, money, percent } from '../lib/money'
 import { alignedPrevious, buckets, type Bucket } from '../lib/period'
-import { suggestReserve } from '../tax/estimate'
 import { insights } from '../lib/insights'
 import { InsightList } from '../components/insightsUi'
+import { ReceiveActions } from '../components/ReceiveActions'
 import { useInsightFeedback } from '../app/insightFeedback'
 import type { IncomeRecord } from '../domain/types'
 import { readJson, writeJson } from '../../shared/storage'
 import { download, makeBackup } from '../store/backup'
 import { LAST_BACKUP_KEY } from './Settings'
 import { ALL_FEATURES } from '../store/settings'
+import type { CostPreset } from '../components/CostForm'
 import styles from '../styles/ui.module.css'
 
 /** The reminder "Remind" copies: short, friendly, with what, how much and when. */
@@ -51,12 +53,11 @@ const DIMS: { value: Dimension; label: string }[] = [
 ]
 
 
-export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) => void; onAddCost: () => void; onAdd?: () => void }) {
-  const { data, settings, today, setFilter, saveRecord, toast, on, loadDemo, period } = useInflow()
+export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) => void; onAddCost: (preset?: CostPreset) => void; onAdd?: () => void }) {
+  const { books: data, settings, today, setFilter, saveRecord, toast, on, loadDemo, period } = useInflow()
   const { range, prev, prevWhole, cur, before, summary, prevSummary } = usePeriodData()
   const [dim, setDim] = useState<Dimension>('client')
   const go = (patch: Partial<typeof EMPTY_FILTER>) => { setFilter({ ...EMPTY_FILTER, ...patch }); location.hash = '#/income' }
-  const costsForTax = useMemo(() => (settings.features.costs ? data.costs : []), [settings.features.costs, data.costs])
 
   const d = delta(summary.total, prevSummary.total)
   const heroTotal = useCountUp(summary.total)
@@ -89,18 +90,6 @@ export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) =>
   const fb = useInsightFeedback()
   const top = fb.apply(all)
 
-  // One tap when an expected payment lands: received today, with its tax reserve suggested.
-  const markReceived = async (r: IncomeRecord) => {
-    const others = data.records.filter((x) => x.id !== r.id)
-    const next: IncomeRecord = { ...r, status: 'received', date: today }
-    if (settings.features.tax && r.taxability === 'taxable' && r.taxReserve === null) {
-      const s = suggestReserve(next, others, settings.tax, today, costsForTax)
-      next.taxReserve = s.amount
-      next.reserveSource = 'suggested'
-      next.taxRules = s.rulesId
-    }
-    if (await saveRecord(next)) toast({ message: `Marked received: ${money(r.amount, r.currency)}`, tone: 'success' })
-  }
   // A polite note for the client, ready to paste into a message or an email.
   const copyReminder = (r: IncomeRecord) => {
     const who = data.clients.find((c) => c.id === r.clientId)
@@ -118,7 +107,7 @@ export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) =>
   const recurringShare = summary.total > 0 ? recurringTotal / summary.total : 0
 
   // A first run with nothing recorded: a few steps in, not a dashboard of zeros.
-  if (data.records.length === 0) return <><SimpleStartNotice /><StartHere onAdd={onAdd} onAddCost={on('costs') ? onAddCost : undefined} onDemo={() => void loadDemo()} hasVenues={data.venues.length > 0} /></>
+  if (data.records.length === 0) return <><SimpleStartNotice /><StartHere onAdd={onAdd} onAddCost={on('costs') ? () => onAddCost() : undefined} onDemo={() => void loadDemo()} hasVenues={data.venues.length > 0} deals={on('deals')} /></>
 
   return (
     <>
@@ -137,6 +126,11 @@ export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) =>
             <span>vs {prev.label}{prev.to !== prevWhole.to ? ' to date' : ''} ({lei(prevSummary.total)})</span>
             <span>{summary.count} {summary.count === 1 ? 'payment' : 'payments'}</span>
           </div>
+          {summary.costRecovery > 0 && (
+            <div className={styles.heroMeta}>
+              <span title="Money back for costs you paid on a client's behalf: not earnings">+ {lei(summary.costRecovery)} cost recovery (reimbursements, not earnings)</span>
+            </div>
+          )}
         </div>
         {targetFor > 0 && (
           <div className={styles.heroTarget}>
@@ -176,6 +170,9 @@ export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) =>
           )}
         </div>
       </section>
+
+      {/* Only once there is something to take off what came in: with tax and costs both off it would just repeat "received". */}
+      {(on('tax') || on('costs')) && <AvailablePanel onAddCost={on('costs') ? () => onAddCost() : undefined} />}
 
       <section className={styles.panel} aria-label="Trend">
         <div className={styles.panelHead}>
@@ -231,9 +228,7 @@ export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) =>
                       </span>
                     </button>
                     <div className={styles.expectedActions}>
-                      <button type="button" className={styles.chip} onClick={() => void markReceived(r)} aria-label={`Mark ${r.description} received`}>
-                        <Check size={12} aria-hidden /> Received
-                      </button>
+                      <ReceiveActions r={r} />
                       <button type="button" className={styles.chip} onClick={() => copyReminder(r)} aria-label={`Copy a reminder for ${r.description}`}>
                         <Copy size={12} aria-hidden /> Remind
                       </button>
@@ -274,10 +269,14 @@ export function Overview({ onOpen, onAddCost, onAdd }: { onOpen: (id: string) =>
   )
 }
 
-function StartHere({ onAdd, onAddCost, onDemo, hasVenues }: { onAdd?: () => void; onAddCost?: () => void; onDemo: () => void; hasVenues: boolean }) {
+/**
+ * The first steps on an empty Overview. Rooms come up only with venue deals on, and as optional:
+ * plenty of the work is online or at the client's (audit C-05).
+ */
+function StartHere({ onAdd, onAddCost, onDemo, hasVenues, deals }: { onAdd?: () => void; onAddCost?: () => void; onDemo: () => void; hasVenues: boolean; deals: boolean }) {
   const steps: { icon: typeof Check; title: string; note: string; action: string; run: () => void }[] = [
-    { icon: Plus, title: 'Add a payment', note: 'The rest is remembered next time.', action: 'Add income', run: () => onAdd?.() },
-    { icon: DoorOpen, title: hasVenues ? 'Check your rooms' : 'Add your rooms', note: 'With their fee or share.', action: 'Venues', run: () => { location.hash = '#/settings' } },
+    { icon: Plus, title: 'Add a payment', note: 'Amount and client are enough; the rest is remembered next time.', action: 'Add income', run: () => onAdd?.() },
+    ...(deals ? [{ icon: DoorOpen, title: hasVenues ? 'Check where you work' : 'Where you work (optional)', note: 'A room you pay a fee or a share for. Online work needs none.', action: 'Venues', run: () => { location.hash = '#/settings' } }] : []),
     ...(onAddCost ? [{ icon: Receipt, title: 'Record a cost', note: 'Room hire, software, the accountant.', action: 'Add cost', run: onAddCost }] : []),
     { icon: Sparkles, title: 'Or try the demo', note: 'Your data stays apart.', action: 'See the demo', run: onDemo },
   ]
@@ -342,6 +341,57 @@ function SimpleStartNotice() {
         <a className={styles.chip} href="#/settings" onClick={() => updateSettings({ simpleStartNotice: false })}>Choose features</a>
         <button type="button" className={styles.chip} onClick={() => updateSettings({ simpleStartNotice: false })}>Got it</button>
       </div>
+    </section>
+  )
+}
+
+/**
+ * Estimated available to spend (audit F-01): beside the period's income, never instead of it.
+ * Always this year to today, whatever period is picked; the breakdown shows every part.
+ */
+function AvailablePanel({ onAddCost }: { onAddCost?: () => void }) {
+  const { books, settings, today, on } = useInflow()
+  const a = useMemo(() => availableToSpend(books.records, books.costs, settings, today, { trackTax: on('tax'), trackCosts: on('costs') }),
+    [books.records, books.costs, settings, today, on])
+  const line = (label: string, value: number, sign: '' | '+' | '−', note?: string) => (
+    <div className={`${styles.row} ${styles.line}`}>
+      <span>{label}{note && <span className={styles.availNote}>{note}</span>}</span>
+      <span className="num">{sign}{sign ? ' ' : ''}{lei(Math.abs(value))}</span>
+    </div>
+  )
+  return (
+    <section className={styles.panel} aria-label="Available to spend">
+      <details className={styles.avail}>
+        <summary>
+          <span className={styles.availHead}>
+            <span className={styles.statLabel}>Estimated available to spend</span>
+            <span className={styles.availValue} data-testid="available">{a.available < 0 ? '−' : ''}{lei(Math.abs(a.available))}</span>
+          </span>
+          <span className={styles.statNote}>
+            {a.hasOpening ? 'Cash on hand' : 'This year’s money'} after {[a.trackTax && 'tax still owed', a.trackCosts && 'costs due'].filter(Boolean).join(' and ') || 'what you paid'}. An estimate; see how.
+          </span>
+        </summary>
+        <div className={styles.lineList}>
+          {a.hasOpening && line(`Cash on ${shortDate(a.from, 0)}`, a.startCash, '')}
+          {line(`Received since ${shortDate(a.from, 0)}`, a.received, a.hasOpening ? '+' : '', a.withheldLeftOut > 0 ? `${lei(a.withheldLeftOut)} withheld by payers never arrived, so it isn’t here` : 'payments and cost recovery, less refunds')}
+          {a.trackCosts && line('Costs paid', a.costsPaid, '−', 'everything paid, depreciation aside')}
+          {a.trackTax && line('Tax still owed on this year’s income', a.taxOwed, '−',
+            [a.taxPaidForThisYear > 0 && `after ${lei(a.taxPaidForThisYear)} already paid for this year`,
+              a.taxPaidForLastYear > 0 && `${lei(a.taxPaidForLastYear)} paid this year counts as last year’s tax`,
+              'what you set aside stays set aside: it isn’t counted as available'].filter(Boolean).join('; '))}
+          {a.trackCosts && line(`Costs due by ${shortDate(a.dueBy, 0)}`, a.costsDue, '−')}
+          <div className={`${styles.row} ${styles.line} ${styles.availTotal}`}><span>Estimated available to spend</span><span className="num">{a.available < 0 ? '− ' : ''}{lei(Math.abs(a.available))}</span></div>
+        </div>
+        <p className={styles.hint}>
+          Expected payments are left out until they arrive.{!a.hasOpening && ' Set your cash on hand (Reports → Cash flow) to start from what is actually in the bank.'}
+          {a.trackTax && ' Tax still unpaid from last year isn’t included.'} An estimate from what is recorded, not advice.
+        </p>
+      </details>
+      {onAddCost && (
+        <div className={styles.panelActions}>
+          <button type="button" className={styles.chip} onClick={onAddCost}><Receipt size={13} aria-hidden /> Add a cost</button>
+        </div>
+      )}
     </section>
   )
 }

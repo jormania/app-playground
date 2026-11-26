@@ -72,7 +72,7 @@ export function SectionIndex({ items: all = REVIEW_SECTIONS }: { items?: IndexIt
  * moved and who carries the income, then what to act on and where to dig.
  */
 export function ReviewReport() {
-  const { data, today, on, setFilter, toast } = useInflow()
+  const { books: data, today, on, setFilter, toast } = useInflow()
   const { range, prev, cur, before } = usePeriodData()
   const fb = useInsightFeedback()
   const list = useMemo(() => (on('insights') ? insights(data, range, today, { deals: on('deals'), costs: on('costs'), expected: on('expected'), tax: on('tax') }) : []), [data, range, today, on])
@@ -101,6 +101,17 @@ export function ReviewReport() {
   const copy = () => {
     const text = `${reviewTitle(range)}\n\n${summary}`
     void navigator.clipboard?.writeText(text).then(() => toast({ message: 'Summary copied', tone: 'success' }), () => toast('Could not copy'))
+  }
+
+  // Data, but nothing received in this period: say so, rather than a review of zeros (audit C-04).
+  if (cur.length === 0 && !data.records.some((r) => r.status === 'received' && r.date >= range.from && r.date <= range.to)) {
+    return (
+      <section id="review-summary" className={styles.panel} aria-label="Summary">
+        <h2 className={styles.reviewTitle}>{reviewTitle(range)}</h2>
+        <p className={styles.emptyNote}>Nothing received in this period.</p>
+        <div style={{ textAlign: 'center' }}><WiderPeriod what="" /></div>
+      </section>
+    )
   }
 
   return (

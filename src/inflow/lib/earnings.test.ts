@@ -9,13 +9,13 @@ const demo = buildDemo('2026-11-25')
 const base = demo.records[0]
 const venue: Venue = { ...demo.venues[0], id: 'v1', name: 'Loft', deal: 'fixed', feePerSession: 300, sharePct: 0, monthlyFee: 0 }
 const rec = (id: string, clientId: string, category: IncomeRecord['category'], date: string, amount: number, venueId: string | null = 'v1'): IncomeRecord =>
-  ({ ...base, id, clientId, category, date, amount, amountRon: amount, currency: 'RON', fxRate: 1, venueId, status: 'received', sessions: 1, hours: null, demo: undefined })
+  ({ ...base, id, clientId, category, date, amount, amountRon: amount, currency: 'RON', fxRate: 1, venueId, status: 'received', sessions: 1, hours: null, dealTerms: undefined, demo: undefined })
 const cost = (date: string, amount: number): CostRecord =>
   ({ ...demo.costs[0], id: `c${date}`, date, amount, amountRon: amount, currency: 'RON', fxRate: 1, status: 'paid', group: 'direct', category: 'materials', venueId: 'v1', clientId: null, activity: null, demo: undefined })
 
 const data: InflowData = {
   clients: [{ ...demo.clients[0], id: 'ana', name: 'Ana' }, { ...demo.clients[0], id: 'bo', name: 'Bo' }],
-  sources: [], venues: [venue],
+  sources: [], venues: [venue], refunds: [],
   records: [
     rec('1', 'ana', 'workshop', '2026-03-02', 1000),
     rec('2', 'ana', 'workshop', '2026-03-09', 500),
@@ -44,7 +44,7 @@ describe('earnings by client', () => {
     expect(e.rows.map((r) => r.id)).toEqual(['ana', 'bo'])
   })
   it('keeps to the period, received payments and real sessions', () => {
-    expect(e.totals).toEqual({ income: 2600, costs: 1000, kept: 1600, sessions: 4 })
+    expect(e.totals).toEqual({ income: 2600, costs: 1000, kept: 1600, sessions: 4, costRecovery: 90 })
   })
   it('agrees with the per-payment take-home it is built on', () => {
     const t = takeHome(data, opts)
@@ -64,7 +64,7 @@ describe('earnings by type of work', () => {
   })
   it('with deals and costs off, kept is income', () => {
     const e = earnings(data, range, 'activity', { deals: false, costs: false })
-    expect(e.totals).toEqual({ income: 2600, costs: 0, kept: 2600, sessions: 4 })
+    expect(e.totals).toEqual({ income: 2600, costs: 0, kept: 2600, sessions: 4, costRecovery: 90 })
   })
 })
 

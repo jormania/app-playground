@@ -18,6 +18,8 @@
 import type { Category, Client, CostRecord, Currency, IncomeRecord, InflowData, Settings, Source, Venue } from '../domain/types'
 import { addDays, addMonths, parseDate, startOfMonth, startOfWeek as startOfWeekOf, toDateString } from '../lib/dates'
 import { round2, toRon } from '../lib/money'
+import { termsOf } from '../lib/deals'
+import { SCHEMA } from '../store/repo'
 import { suggestClassification, suggestedWithholding } from '../tax/classify'
 import { suggestReserve } from '../tax/estimate'
 
@@ -377,12 +379,17 @@ export function buildDemo(today: string, tax: Settings['tax'] = DEMO_SETTINGS_TA
       demo: true,
     })
   })
+  // Each payment carries its venue's deal, as every payment saved now does.
+  const terms = new Map(DEMO_VENUES.map((v) => [v.id, termsOf(v)]))
+  const stamped = records.map((r) => ({ ...r, dealTerms: r.venueId ? terms.get(r.venueId) ?? null : null }))
   return {
-    records,
-    costs: demoCosts(today, records),
+    records: stamped,
+    costs: demoCosts(today, stamped),
     clients: DEMO_CLIENTS.map((c) => ({ ...c })),
     sources: DEMO_SOURCES.map((s) => ({ ...s })),
     venues: DEMO_VENUES.map((v) => ({ ...v })),
+    refunds: [],
+    schema: SCHEMA,
   }
 }
 
@@ -543,6 +550,8 @@ export function withoutDemo(data: InflowData): InflowData {
     clients: keep(data.clients),
     sources: keep(data.sources),
     venues: keep(data.venues),
+    refunds: (data.refunds ?? []).filter((f) => !f.demo),
+    schema: data.schema,
   }
 }
 

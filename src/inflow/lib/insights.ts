@@ -7,7 +7,7 @@
  * Every insight is computed from the records; nothing is a canned tip.
  */
 import type { IncomeRecord, InflowData } from '../domain/types'
-import { nameOf } from './analytics'
+import { isCostRecovery, nameOf } from './analytics'
 import { addMonths, daysBetween, monthShort, shortDate, startOfMonth, endOfMonth } from './dates'
 import { venueCosts, venueDeals } from './deals'
 import { lei, percent, round2 } from './money'
@@ -26,27 +26,59 @@ export function takeHome(data: InflowData, opts: { deals: boolean; costs: boolea
   return out
 }
 
+/**
+ * The payments in a date-sorted list closest in date to `date`, within `maxDays`: all of them when
+ * several share that distance (the same day, or the days either side).
+ */
+export function nearest(sorted: IncomeRecord[], date: string, maxDays: number): IncomeRecord[] {
+  let lo = 0
+  let hi = sorted.length
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (sorted[mid].date < date) lo = mid + 1; else hi = mid }
+  // sorted[lo] is the first on or after `date`; sorted[lo - 1] the last before it.
+  const after = lo < sorted.length ? Math.abs(daysBetween(date, sorted[lo].date)) : Infinity
+  const before = lo > 0 ? Math.abs(daysBetween(date, sorted[lo - 1].date)) : Infinity
+  const best = Math.min(after, before)
+  if (best > maxDays) return []
+  const out: IncomeRecord[] = []
+  if (before === best) { const d = sorted[lo - 1].date; for (let i = lo - 1; i >= 0 && sorted[i].date === d; i--) out.push(sorted[i]) }
+  if (after === best) { const d = sorted[lo].date; for (let i = lo; i < sorted.length && sorted[i].date === d; i++) out.push(sorted[i]) }
+  return out
+}
+
 export interface RecordCosts { income: number; venueFee: number; direct: number; kept: number }
 
 /** takeHome's parts, per received payment: the venue's fee, the direct costs shared to it, and what was kept. */
 export function recordCosts(data: InflowData, opts: { deals: boolean; costs: boolean }): Map<string, RecordCosts> {
   const venue = opts.deals ? venueCosts(data.records, data.venues) : new Map<string, number>()
   // A reimbursement is money back, not a session: it takes no share of any cost.
-  const sessions = data.records.filter((r) => r.status === 'received' && r.category !== 'reimbursement')
+  const sessions = data.records.filter((r) => r.status === 'received' && r.category !== 'reimbursement' && !r.refundOf)
   const direct = new Map<string, number>()
   if (opts.costs) {
+    // Payments indexed by venue and by client, each list in date order, so each cost looks only at
+    // its own and finds the nearest date by halving (audit G-01: was every cost × every payment).
+    const index = (key: (r: IncomeRecord) => string | null) => {
+      const m = new Map<string, IncomeRecord[]>()
+      for (const r of sessions) {
+        const k = key(r)
+        if (!k) continue
+        const list = m.get(k)
+        if (list) list.push(r)
+        else m.set(k, [r])
+      }
+      for (const list of m.values()) list.sort((x, y) => x.date.localeCompare(y.date))
+      return m
+    }
+    const byVenue = index((r) => r.venueId)
+    const byClient = index((r) => r.clientId)
     for (const c of data.costs) {
       if (c.status !== 'paid' || c.group !== 'direct') continue
       if (opts.deals && (c.category === 'venue_hire' || c.category === 'platform_fees')) continue
       // The most specific link wins: the venue, else the client. A cost with neither stays an overhead.
-      const at = c.venueId ? sessions.filter((r) => r.venueId === c.venueId) : c.clientId ? sessions.filter((r) => r.clientId === c.clientId) : []
+      const at = (c.venueId ? byVenue.get(c.venueId) : c.clientId ? byClient.get(c.clientId) : undefined) ?? []
       if (!at.length) continue
       // The payment closest in date (materials bought days before a retreat, flights the week before),
       // within a month; payments sharing that date split it. The same day, when there is one, is closest.
-      let best = Infinity
-      for (const r of at) best = Math.min(best, Math.abs(daysBetween(c.date, r.date)))
-      if (best > 31) continue
-      const targets = at.filter((r) => Math.abs(daysBetween(c.date, r.date)) === best)
+      const targets = nearest(at, c.date, 31)
       for (const r of targets) direct.set(r.id, (direct.get(r.id) ?? 0) + c.amountRon / targets.length)
     }
   }
@@ -130,7 +162,7 @@ export interface Practice {
 }
 
 export function practice(data: InflowData, today: string): Practice {
-  const rec = data.records.filter((x) => x.status === 'received' && x.date <= today)
+  const rec = data.records.filter((x) => x.status === 'received' && !isCostRecovery(x) && x.date <= today)
   const first = rec.reduce((m, x) => (x.date < m ? x.date : m), today)
   const firstFullMonth = addMonths(startOfMonth(first), 1)
   const fullMonths = Math.max(0, monthsBetween(firstFullMonth, startOfMonth(today)))
@@ -150,8 +182,9 @@ export function practice(data: InflowData, today: string): Practice {
 export function insights(data: InflowData, r: { from: string; to: string }, today: string, opts: InsightOptions): Insight[] {
   const out: Insight[] = []
   const p = practice(data, today)
-  const rec = data.records.filter((x) => x.status === 'received')
-  const inR = rec.filter((x) => x.date >= r.from && x.date <= r.to && x.category !== 'reimbursement')
+  // What the work earned: reimbursements are cost recovery, never income (audit B-01).
+  const rec = data.records.filter((x) => x.status === 'received' && !isCostRecovery(x))
+  const inR = rec.filter((x) => x.date >= r.from && x.date <= r.to)
   const take = takeHome(data, { deals: opts.deals, costs: opts.costs })
   const kept = (x: IncomeRecord) => take.get(x.id) ?? x.amountRon
 
@@ -189,7 +222,7 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
       const m = pairs.get(x.category) ?? new Map()
       const c = m.get(x.venueId) ?? { kept: 0, n: 0 }
       c.kept += kept(x)
-      c.n += x.sessions || 1
+      c.n += x.sessions ?? 1
       m.set(x.venueId, c)
       pairs.set(x.category, m)
     }
@@ -213,7 +246,7 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
     if (!x.category) continue
     const a = byActivity.get(x.category) ?? { kept: 0, n: 0, income: 0 }
     a.kept += kept(x)
-    a.n += x.sessions || 1
+    a.n += x.sessions ?? 1
     a.income += x.amountRon
     byActivity.set(x.category, a)
   }
@@ -329,6 +362,7 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
   // Individual clients who came once: about 1:1 practice, not companies booking a project.
   const firstSeen = new Map<string, { first: string; n: number }>()
   for (const x of rec) {
+    if (x.refundOf) continue
     const c = x.clientId ? data.clients.find((y) => y.id === x.clientId) : undefined
     if (!c || c.kind !== 'individual') continue
     const f = firstSeen.get(c.id)
@@ -363,7 +397,7 @@ export function insights(data: InflowData, r: { from: string; to: string }, toda
   // Payments marked "review": the tax estimate cannot count them until you decide.
   if (opts.tax) {
     const year = today.slice(0, 4)
-    const open = rec.filter((x) => x.taxability === 'review' && x.date.startsWith(year))
+    const open = rec.filter((x) => x.taxability === 'review' && !x.refundOf && x.date.startsWith(year))
     if (open.length) {
       out.push({
         id: 'tax-review', rule: 'tax-review', kind: 'pain', weight: sum(open) * 1.5,

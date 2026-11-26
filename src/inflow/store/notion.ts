@@ -14,13 +14,14 @@
 import type { KeyValueStore } from '../../shared/kvStore'
 import { notionProxy } from '../../shared/notionClient'
 import { parseNotionId } from '../../shared/notionId'
-import type { Category, Client, CostRecord, Currency, IncomeRecord, InflowData, Source, Venue } from '../domain/types'
+import type { Category, Client, CostRecord, Currency, DealTerms, IncomeRecord, InflowData, Refund, Source, Venue } from '../domain/types'
 import {
   CATEGORY, CLIENT_COUNTRY, COST_CATEGORY, DEAL, COST_GROUP_SHORT, COST_STATUS, CLIENT_KIND, CURRENCIES, SOURCE_TAX_DEFAULT, SOURCE_TYPE, STATUS,
   TAX_HANDLING, TAXABILITY, VAT, VENUE_TYPE, fromLabel,
 } from '../domain/vocabulary'
 import { round2 } from '../lib/money'
-import { normalise, type Entity, type EntityKind, type Repo } from './repo'
+import { listKey, normalise, type Entity, type EntityKind, type Repo } from './repo'
+import { reliable, type Call, type CallOptions } from './notionCall'
 
 export const CACHE_KEY = 'notion-cache'
 
@@ -35,7 +36,6 @@ export function refuseDemo(row: { demo?: boolean }, ids: (string | null | undefi
 }
 
 type Props = Record<string, any>
-type Call = (path: string, method: string, body?: unknown) => Promise<Record<string, any>>
 
 // ── property readers ────────────────────────────────────────────────────────
 const text = (p: any): string => (p?.title ?? p?.rich_text ?? []).map((t: any) => t.plain_text ?? t.text?.content ?? '').join('')
@@ -60,6 +60,62 @@ const wRel = (id: string | null) => ({ relation: id ? [{ id }] : [] })
 const wChk = (b: boolean) => ({ checkbox: !!b })
 
 // ── mappers (pure; tested) ──────────────────────────────────────────────────
+/** A payment's venue-deal snapshot, kept in Notion as a short JSON text ("Venue terms"). */
+export function termsFromText(s: string): DealTerms | null | undefined {
+  if (!s.trim()) return undefined
+  try {
+    const t = JSON.parse(s)
+    if (!t || typeof t !== 'object') return undefined
+    if (t.deal === null) return null
+    if (!(Object.keys(DEAL) as string[]).includes(t.deal)) return undefined
+    const n = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? x : 0)
+    return { deal: t.deal, feePerSession: n(t.feePerSession), sharePct: n(t.sharePct), monthlyFee: n(t.monthlyFee) }
+  } catch { return undefined }
+}
+
+export const termsToText = (t: DealTerms | null | undefined): string =>
+  t === undefined ? '' : t === null ? '{"deal":null}' : JSON.stringify({ deal: t.deal, feePerSession: t.feePerSession, sharePct: t.sharePct, monthlyFee: t.monthlyFee })
+
+/** Refunds live in the Income database too, as rows with Status "Refund" pointing at their payment. */
+export const REFUND_STATUS = 'Refund'
+export const isRefundPage = (page: { properties: Props }): boolean => sel(page.properties['Status']) === REFUND_STATUS
+
+export function refundFromPage(page: { id: string; properties: Props }): Refund {
+  const p = page.properties
+  const currencyName = sel(p['Currency'])
+  const currency = (CURRENCIES as string[]).includes(currencyName ?? '') ? (currencyName as Currency) : 'RON'
+  const amount = Math.abs(num(p['Amount']) ?? 0)
+  const fxRate = num(p['FX rate']) ?? (currency === 'RON' ? 1 : 0)
+  return {
+    id: page.id.replace(/-/g, ''),
+    paymentId: text(p['Refund of']).replace(/-/g, '').trim(),
+    date: date(p['Date']),
+    amount,
+    currency,
+    fxRate,
+    amountRon: Math.abs(num(p['Amount RON']) ?? round2(amount * fxRate)),
+    notes: text(p['Notes']),
+  }
+}
+
+/** A refund row: positive amounts, as entered; the Status says what it is. */
+export function refundToProps(f: Refund, payment: Pick<IncomeRecord, 'description' | 'clientId' | 'sourceId' | 'venueId'> | undefined): Props {
+  return {
+    'Description': wTitle(`Refund: ${payment?.description ?? ''}`.trim()),
+    'Amount': wNum(f.amount),
+    'Currency': wSel(f.currency),
+    'FX rate': wNum(f.fxRate),
+    'Amount RON': wNum(f.amountRon),
+    'Date': { date: f.date ? { start: f.date } : null },
+    'Status': wSel(REFUND_STATUS),
+    'Refund of': wText(f.paymentId),
+    'Client': wRel(payment?.clientId ?? null),
+    'Source': wRel(payment?.sourceId ?? null),
+    'Venue': wRel(payment?.venueId ?? null),
+    'Notes': wText(f.notes),
+  }
+}
+
 export function recordFromPage(page: { id: string; properties: Props }): IncomeRecord {
   const p = page.properties
   const currencyName = sel(p['Currency'])
@@ -84,7 +140,8 @@ export function recordFromPage(page: { id: string; properties: Props }): IncomeR
     recurring: chk(p['Recurring']),
     notes: text(p['Notes']),
     attendees: num(p['Attendees']),
-    sessions: Math.max(1, num(p['Sessions']) ?? 1),
+    // 0 is a balance payment's (a partial receipt's remainder); only a missing value means 1.
+    sessions: Math.max(0, num(p['Sessions']) ?? 1),
     hours: num(p['Hours']),
     taxability: fromLabel(TAXABILITY, sel(p['Taxability']), 'review'),
     taxHandling: fromLabel(TAX_HANDLING, sel(p['Tax handling']), 'other'),
@@ -94,6 +151,8 @@ export function recordFromPage(page: { id: string; properties: Props }): IncomeR
     reserveSource: sel(p['Reserve source']) === 'Manual' ? 'manual' : reserve === null ? null : 'suggested',
     taxWithheld: num(p['Tax withheld RON']) ?? 0,
     taxRules: text(p['Tax rules']),
+    dealTerms: termsFromText(text(p['Venue terms'])),
+    ...(text(p['Repays cost']).trim() ? { repaysCostId: text(p['Repays cost']).replace(/-/g, '').trim() } : {}),
   }
 }
 
@@ -123,6 +182,8 @@ export function recordToProps(r: IncomeRecord): Props {
     'Reserve source': wSel(r.reserveSource === 'manual' ? 'Manual' : r.reserveSource === 'suggested' ? 'Suggested' : null),
     'Tax withheld RON': wNum(r.taxWithheld),
     'Tax rules': wText(r.taxRules),
+    'Venue terms': wText(termsToText(r.dealTerms)),
+    'Repays cost': wText(r.repaysCostId ?? ''),
   }
 }
 
@@ -239,6 +300,10 @@ export function venueToProps(v: Venue): Props {
 }
 
 // ── the repo ────────────────────────────────────────────────────────────────
+function upsert<T extends { id: string }>(list: T[], item: T): T[] {
+  return list.some((x) => x.id === item.id) ? list.map((x) => (x.id === item.id ? item : x)) : [...list, item]
+}
+
 export interface NotionDbs {
   income: string
   clients: string
@@ -304,8 +369,22 @@ export class NotionRepo implements Repo {
   /** Whether a Costs database was found next to Income. */
   hasCosts = false
 
-  constructor(token: string, private incomeDbId: string, private cache: KeyValueStore, call?: Call) {
-    this.call = call ?? ((path, method, body) => notionProxy(token, path, method, body))
+  /** What was last loaded, kept up to date by every write, and mirrored to the device cache (audit B-09). */
+  private data: InflowData | null = null
+
+  /** `call` is injected in tests; either way it is paced and retried (`notionCall.ts`). */
+  constructor(token: string, private incomeDbId: string, private cache: KeyValueStore, call?: Call, opts: CallOptions = {}) {
+    this.call = reliable(call ?? ((path, method, body) => notionProxy(token, path, method, body)), opts)
+  }
+
+  /**
+   * After a write, the offline copy follows: opened without a connection, the app shows what was
+   * saved this session, not only what the last full load brought (audit B-09).
+   */
+  private async remember(fn: (d: InflowData) => InflowData): Promise<void> {
+    if (!this.data) return
+    this.data = fn(this.data)
+    await this.cache.set(CACHE_KEY, this.data).catch(() => {})
   }
 
   private async databases(): Promise<NotionDbs> {
@@ -329,21 +408,43 @@ export class NotionRepo implements Repo {
     return Object.fromEntries(Object.entries(props).filter(([k]) => known.has(k)))
   }
 
+  /**
+   * Adds text columns a database lacks (a database duplicated before they existed). Returns
+   * whether they are there now: a token without permission to change the schema can't add them.
+   */
+  private async ensureText(dbId: string, names: string[]): Promise<boolean> {
+    await this.fit(dbId, {})
+    const known = await this.columns.get(dbId)!
+    if (!known) return true
+    const missing = names.filter((n) => !known.has(n))
+    if (!missing.length) return true
+    try {
+      await this.call(`databases/${dbId}`, 'PATCH', { properties: Object.fromEntries(missing.map((n) => [n, { rich_text: {} }])) })
+      for (const n of missing) known.add(n)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   async load(): Promise<InflowData> {
     const dbs = await this.databases()
-    const [records, clients, sources, venues, costs] = await Promise.all([
-      queryAll(this.call, dbs.income), queryAll(this.call, dbs.clients),
-      queryAll(this.call, dbs.sources), queryAll(this.call, dbs.venues),
-      dbs.costs ? queryAll(this.call, dbs.costs) : Promise.resolve([]),
-    ])
+    // One database after another, each page after the last: never a burst the relay turns away (audit A-03).
+    const records = await queryAll(this.call, dbs.income)
+    const clients = await queryAll(this.call, dbs.clients)
+    const sources = await queryAll(this.call, dbs.sources)
+    const venues = await queryAll(this.call, dbs.venues)
+    const costs = dbs.costs ? await queryAll(this.call, dbs.costs) : []
     this.hasCosts = !!dbs.costs
     const data: InflowData = {
-      records: records.map(recordFromPage).filter((r) => r.date),
+      records: records.filter((p) => !isRefundPage(p)).map(recordFromPage).filter((r) => r.date),
       costs: costs.map(costFromPage).filter((c) => c.date),
       clients: clients.map(clientFromPage),
       sources: sources.map(sourceFromPage),
       venues: venues.map(venueFromPage),
+      refunds: records.filter(isRefundPage).map(refundFromPage).filter((f) => f.date && f.paymentId),
     }
+    this.data = data
     await this.cache.set(CACHE_KEY, data).catch(() => {})
     return data
   }
@@ -356,16 +457,47 @@ export class NotionRepo implements Repo {
   async saveRecord(r: IncomeRecord): Promise<IncomeRecord> {
     refuseDemo(r, [r.id, r.clientId, r.sourceId, r.venueId])
     const dbs = await this.databases()
+    // The venue-deal snapshot needs its column; without it the payment still saves (see "Venue terms").
+    if (r.dealTerms !== undefined) await this.ensureText(dbs.income, ['Venue terms'])
+    // A reimbursement's link to its cost; without the column the payment still saves, unlinked.
+    if (r.repaysCostId) await this.ensureText(dbs.income, ['Repays cost'])
     const properties = await this.fit(dbs.income, recordToProps(r))
     const page = r.id
       ? await this.call(`pages/${r.id}`, 'PATCH', { properties })
       : await this.call('pages', 'POST', { parent: { database_id: dbs.income }, properties })
-    return { ...r, id: String(page.id).replace(/-/g, ''), demo: undefined }
+    const saved = { ...r, id: String(page.id).replace(/-/g, ''), demo: undefined }
+    await this.remember((d) => ({ ...d, records: upsert(d.records, saved) }))
+    return saved
   }
 
-  async deleteRecord(id: string): Promise<void> {
+  /** The payment's refunds are archived with it, so none is left pointing at nothing. */
+  async deleteRecord(id: string, refundIds: string[] = []): Promise<void> {
     refuseDemo({}, [id])
     await this.call(`pages/${id}`, 'PATCH', { archived: true })
+    for (const f of refundIds) await this.call(`pages/${f}`, 'PATCH', { archived: true })
+    await this.remember((d) => ({ ...d, records: d.records.filter((r) => r.id !== id), refunds: d.refunds.filter((f) => f.paymentId !== id) }))
+  }
+
+  /** `payment` is the refunded payment as loaded, for the row's description and links. */
+  async saveRefund(f: Refund, payment?: IncomeRecord): Promise<Refund> {
+    refuseDemo(f, [f.id, f.paymentId])
+    const dbs = await this.databases()
+    if (!(await this.ensureText(dbs.income, ['Refund of']))) {
+      throw new Error('Your Income database in Notion has no "Refund of" column, and InFlow could not add it. Add a text property named "Refund of", then try again.')
+    }
+    const properties = await this.fit(dbs.income, refundToProps(f, payment))
+    const page = f.id
+      ? await this.call(`pages/${f.id}`, 'PATCH', { properties })
+      : await this.call('pages', 'POST', { parent: { database_id: dbs.income }, properties })
+    const saved = { ...f, id: String(page.id).replace(/-/g, ''), demo: undefined }
+    await this.remember((d) => ({ ...d, refunds: upsert(d.refunds, saved) }))
+    return saved
+  }
+
+  async deleteRefund(id: string): Promise<void> {
+    refuseDemo({}, [id])
+    await this.call(`pages/${id}`, 'PATCH', { archived: true })
+    await this.remember((d) => ({ ...d, refunds: d.refunds.filter((f) => f.id !== id) }))
   }
 
   async saveCost(c: CostRecord): Promise<CostRecord> {
@@ -376,12 +508,15 @@ export class NotionRepo implements Repo {
     const page = c.id
       ? await this.call(`pages/${c.id}`, 'PATCH', { properties })
       : await this.call('pages', 'POST', { parent: { database_id: dbs.costs }, properties })
-    return { ...c, id: String(page.id).replace(/-/g, ''), demo: undefined }
+    const saved = { ...c, id: String(page.id).replace(/-/g, ''), demo: undefined }
+    await this.remember((d) => ({ ...d, costs: upsert(d.costs, saved) }))
+    return saved
   }
 
   async deleteCost(id: string): Promise<void> {
     refuseDemo({}, [id])
     await this.call(`pages/${id}`, 'PATCH', { archived: true })
+    await this.remember((d) => ({ ...d, costs: d.costs.filter((c) => c.id !== id) }))
   }
 
   async saveEntity<T extends Entity>(kind: EntityKind, e: T): Promise<T> {
@@ -392,42 +527,97 @@ export class NotionRepo implements Repo {
     const page = e.id
       ? await this.call(`pages/${e.id}`, 'PATCH', { properties })
       : await this.call('pages', 'POST', { parent: { database_id: db }, properties })
-    return { ...e, id: String(page.id).replace(/-/g, ''), demo: undefined }
+    const saved = { ...e, id: String(page.id).replace(/-/g, ''), demo: undefined }
+    const key = listKey(kind)
+    await this.remember((d) => ({ ...d, [key]: upsert(d[key] as Entity[], saved) }))
+    return saved
   }
 
-  async deleteEntity(_kind: EntityKind, id: string): Promise<void> {
+  async deleteEntity(kind: EntityKind, id: string): Promise<void> {
     refuseDemo({}, [id])
     await this.call(`pages/${id}`, 'PATCH', { archived: true })
+    const key = listKey(kind)
+    const field = kind === 'client' ? 'clientId' : kind === 'source' ? 'sourceId' : 'venueId'
+    await this.remember((d) => ({
+      ...d,
+      [key]: (d[key] as Entity[]).filter((x) => x.id !== id),
+      records: d.records.map((r) => (r[field] === id ? { ...r, [field]: null } : r)),
+    }))
   }
 }
 
 /**
- * Copy what was entered on this device into Notion: entities first, so the
- * records can point at their new Notion ids. Demo rows are never copied.
- * Returns how many records were written.
+ * Which of this device's rows are already in Notion, by device id → Notion page id. Kept on the
+ * device per Income database (`inflow:notion-copy:<db>`), written after every row, so a copy that
+ * stops partway (offline, a refusal) resumes where it stopped, and running it again copies only
+ * what is new: never a second copy of anything (audit A-03).
  */
-export async function copyToNotion(repo: Repo, data: InflowData, onProgress?: (done: number, total: number) => void): Promise<number> {
+export interface CopyLog {
+  get(key: string): string | undefined
+  put(key: string, notionId: string): void
+}
+
+export function memoryCopyLog(seed: Record<string, string> = {}): CopyLog & { entries: Record<string, string> } {
+  const entries = { ...seed }
+  return { entries, get: (k) => entries[k], put: (k, v) => { entries[k] = v } }
+}
+
+export interface CopyResult {
+  /** Rows written this time. */
+  copied: number
+  /** Rows already in Notion from an earlier run, left alone. */
+  skipped: number
+}
+
+/**
+ * Copy what was entered on this device into Notion: entities first, so the records can point at
+ * their Notion ids, then costs, payments (a reimbursement pointing at its copied cost) and refunds.
+ * Demo rows are never copied.
+ * One row at a time, each logged as soon as Notion has it (see `CopyLog`).
+ */
+export async function copyToNotion(repo: Repo, data: InflowData, onProgress?: (done: number, total: number) => void, log: CopyLog = memoryCopyLog()): Promise<CopyResult> {
   const records = data.records.filter((r) => !r.demo)
   const costs = (data.costs ?? []).filter((c) => !c.demo)
+  const refunds = (data.refunds ?? []).filter((f) => !f.demo)
   const used = new Set([...records.flatMap((r) => [r.clientId, r.sourceId, r.venueId]), ...costs.flatMap((c) => [c.clientId, c.venueId])])
-  const idMap = new Map<string, string>()
   const kinds: [EntityKind, Entity[]][] = [['client', data.clients], ['source', data.sources], ['venue', data.venues]]
   const entities = kinds.flatMap(([k, list]) => list.filter((e) => !e.demo || used.has(e.id)).map((e) => [k, e] as const))
-  const total = entities.length + records.length + costs.length
+  const total = entities.length + records.length + refunds.length + costs.length
   let done = 0
-  for (const [kind, e] of entities) {
-    const saved = await repo.saveEntity(kind, { ...e, id: '', demo: undefined })
-    idMap.set(e.id, saved.id)
+  let copied = 0
+  let skipped = 0
+  /** Writes one row unless the log has it; returns its Notion id. */
+  const once = async (key: string, write: () => Promise<string>): Promise<string> => {
+    let id = log.get(key)
+    if (id) skipped++
+    else {
+      id = await write()
+      log.put(key, id)
+      copied++
+    }
     onProgress?.(++done, total)
+    return id
+  }
+  const idMap = new Map<string, string>()
+  for (const [kind, e] of entities) {
+    idMap.set(e.id, await once(`${kind}:${e.id}`, async () => (await repo.saveEntity(kind, { ...e, id: '', demo: undefined })).id))
   }
   const map = (id: string | null) => (id ? idMap.get(id) ?? null : null)
-  for (const r of records) {
-    await repo.saveRecord({ ...r, id: '', clientId: map(r.clientId), sourceId: map(r.sourceId), venueId: map(r.venueId) })
-    onProgress?.(++done, total)
-  }
+  // Costs before payments, so a reimbursement's link to its cost points at the cost in Notion.
+  const costIds = new Map<string, string>()
   for (const c of costs) {
-    await repo.saveCost({ ...c, id: '', clientId: map(c.clientId), venueId: map(c.venueId) })
-    onProgress?.(++done, total)
+    costIds.set(c.id, await once(`cost:${c.id}`, async () => (await repo.saveCost({ ...c, id: '', clientId: map(c.clientId), venueId: map(c.venueId), demo: undefined })).id))
   }
-  return records.length + costs.length
+  const recordIds = new Map<string, IncomeRecord>()
+  for (const r of records) {
+    const copy = { ...r, id: '', clientId: map(r.clientId), sourceId: map(r.sourceId), venueId: map(r.venueId), repaysCostId: r.repaysCostId ? costIds.get(r.repaysCostId) ?? null : r.repaysCostId, demo: undefined }
+    const id = await once(`record:${r.id}`, async () => (await repo.saveRecord(copy)).id)
+    recordIds.set(r.id, { ...copy, id })
+  }
+  for (const f of refunds) {
+    const p = recordIds.get(f.paymentId)
+    if (!p) { onProgress?.(++done, total); continue }
+    await once(`refund:${f.id}`, async () => (await repo.saveRefund({ ...f, id: '', paymentId: p.id, demo: undefined }, p)).id)
+  }
+  return { copied, skipped }
 }

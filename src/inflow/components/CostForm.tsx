@@ -57,19 +57,24 @@ export interface CostFormProps {
   copyOf?: CostRecord | null
   onClose: () => void
   onDuplicate?: (c: CostRecord) => void
+  /** Where a new cost was asked for, e.g. a venue's row in Venue deals. */
+  preset?: CostPreset
 }
 
-export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) {
+/** What a new cost starts with when it is added from somewhere specific. */
+export interface CostPreset { venueId?: string; group?: CostGroup; category?: CostRecord['category'] }
+
+export function CostForm({ cost, copyOf, onClose, onDuplicate, preset }: CostFormProps) {
   const { data, today, saveCost, deleteCost, toast, on, settings } = useInflow()
   const isNew = !cost
   const [draft, setDraft] = useState<Draft>(() => {
     if (cost) return fromCost(cost)
     if (copyOf) return fromCost(copyOf, today)
     const last = readJson<{ currency?: Currency; group?: CostGroup }>(LAST_KEY, {})
-    const group = last.group ?? 'operating'
+    const group = preset?.group ?? last.group ?? 'operating'
     return {
       description: '', amount: '', currency: last.currency ?? 'RON', fxRate: '1', date: today, status: 'paid', group,
-      category: CATEGORIES_BY_GROUP[group][0], venueId: '', clientId: '', activity: '', recurring: false,
+      category: preset?.category ?? CATEGORIES_BY_GROUP[group][0], venueId: preset?.venueId ?? '', clientId: '', activity: '', recurring: false,
       deductible: deductibleByDefault(group), notes: '',
     }
   })

@@ -12,6 +12,7 @@ import { MonthlyPair, SplitBar } from '../components/charts'
 import { ReportBuilder } from './ReportBuilder'
 import { ReviewReport, SectionIndex } from './Insights'
 import { DealsReport } from './VenueDeals'
+import type { CostPreset } from '../components/CostForm'
 import { EarningsReport } from './Earnings'
 import { PROFILE } from '../domain/vocabulary'
 import { sum, type Dimension } from '../lib/analytics'
@@ -19,7 +20,7 @@ import { daysBetween, yearOf } from '../lib/dates'
 import { breakEven, buildCashFlow, buildPnl, monthColumns } from '../lib/finance'
 import { lei, percent, round2 } from '../lib/money'
 import { download, toCsv } from '../store/backup'
-import { estimateYear, projectYear, taxableGross } from '../tax/estimate'
+import { estimateYear, projectYear, taxPosition } from '../tax/estimate'
 import { leaveTrail } from '../app/trail'
 import styles from '../styles/ui.module.css'
 
@@ -48,8 +49,10 @@ const GROUPS: Group[] = [
 ]
 const SUB_LABEL: Partial<Record<ReportTab, string>> = { pnl: 'P&L', cashflow: 'Cash flow' }
 
-export function Reports({ tab, anchor = '', onAddCost }: { tab: ReportTab; anchor?: string; onAddCost: () => void }) {
-  const { on } = useInflow()
+export function Reports({ tab, anchor = '', onAddCost }: { tab: ReportTab; anchor?: string; onAddCost: (preset?: CostPreset) => void }) {
+  const { on, data } = useInflow()
+  // Nothing recorded at all: one line on what to do, not a page of zeros (audit C-04).
+  const nothingYet = data.records.length === 0 && data.costs.length === 0
   // A link to a section (#/reports/insights/act) lands on it once the report is drawn: the next frame, not a guessed delay.
   useEffect(() => {
     if (!anchor) return
@@ -81,15 +84,16 @@ export function Reports({ tab, anchor = '', onAddCost }: { tab: ReportTab; ancho
         {shown === 'insights' && <SectionIndex />}
       </nav>
       <div key={current.id} className={`${styles.screen} ${styles.screenIn}`}>
-        {shown === 'tax' ? <TaxReport />
+        {nothingYet ? <EmptyReport />
+          : shown === 'tax' ? <TaxReport />
           : shown === 'print' ? <ReportBuilder />
-            : shown === 'pnl' ? <PnlReport onAddCost={onAddCost} />
+            : shown === 'pnl' ? <PnlReport onAddCost={() => onAddCost()} />
               : shown === 'cashflow' ? <CashFlowReport />
                 : shown === 'insights' ? <ReviewReport />
-                  : shown === 'deals' ? <DealsReport />
+                  : shown === 'deals' ? <DealsReport onAddCost={on('costs') ? onAddCost : undefined} />
                     : <EarningsReport initial={DIM[shown]} />}
       </div>
-      {on('tax') && shown === 'tax' && <p className={styles.hint}>* Tax is optional; switch it off in Settings → Features to see only the money flow.</p>}
+      {on('tax') && shown === 'tax' && !nothingYet && <p className={styles.hint}>Tax is optional: switch it off in Settings → Features to see only the money flow.</p>}
     </>
   )
 }
@@ -105,7 +109,7 @@ function useDrill() {
 }
 
 function PnlReport({ onAddCost }: { onAddCost: () => void }) {
-  const { data, today, period } = useInflow()
+  const { books: data, today, period } = useInflow()
   const { range } = usePeriodData()
   // Each cost line opens its own categories, right where it is (rent, software… under operating costs).
   const [open, setOpen] = useState<Set<string>>(new Set())
@@ -134,7 +138,7 @@ function PnlReport({ onAddCost }: { onAddCost: () => void }) {
     <>
       <div className={styles.cards3}>
         <div className={styles.stat}><div className={styles.statLabel}>Revenue</div><div className={styles.statValue}>{lei(rev)}</div></div>
-        <div className={styles.stat}><div className={styles.statLabel}>Gross margin</div><div className={styles.statValue}>{lei(t('gross'))}</div><div className={styles.statNote}>{rev ? percent(t('gross') / rev) : '—'} of revenue</div></div>
+        <div className={styles.stat}><div className={styles.statLabel}>After the work’s costs</div><div className={styles.statValue}>{lei(t('gross'))}</div><div className={styles.statNote}>{rev ? percent(t('gross') / rev) : '—'} of revenue</div></div>
         <div className={styles.stat}><div className={styles.statLabel}>Costs</div><div className={styles.statValue}>{lei(costTotal)}</div><div className={styles.statNote}>incl. tax paid</div></div>
         <div className={styles.stat}><div className={styles.statLabel}>Net profit</div><div className={`${styles.statValue} ${t('net') < 0 ? styles.down : ''}`}>{lei(t('net'))}</div><div className={styles.statNote}>{rev ? percent(t('net') / rev) : '—'} margin</div></div>
         {be && (
@@ -167,15 +171,16 @@ function PnlReport({ onAddCost }: { onAddCost: () => void }) {
             <thead><tr><th></th><th>{columns.length > 1 ? 'Total' : columns[0]?.label}</th><th>%</th>{columns.length > 1 && columns.map((c) => <th key={c.from}>{c.label}</th>)}</tr></thead>
             <tbody>
               {pnl.lines.filter((l) => l.kind !== 'detail' || open.has(l.key.split(':')[0])).map((l) => {
-                const hasParts = l.kind === 'cost' && pnl.lines.some((d) => d.kind === 'detail' && d.key.startsWith(`${l.key}:`))
+                // Cost lines open into their categories; revenue into its refunds, when there are any.
+                const hasParts = (l.kind === 'cost' || l.kind === 'revenue') && pnl.lines.some((d) => d.kind === 'detail' && d.key.startsWith(`${l.key}:`))
                 return (
                 <tr key={l.key} className={l.kind === 'subtotal' || l.kind === 'revenue' ? styles.sub : l.kind === 'detail' ? styles.detail : undefined}>
                   <td title={l.label}>
                     {hasParts
                       ? <button type="button" className={styles.lineToggle} aria-expanded={open.has(l.key)} onClick={() => toggle(l.key)}>
-                          − {l.label} <span className={styles.twistyArrow} aria-hidden>▶</span>
+                          {l.kind === 'cost' ? '− ' : ''}{l.label} <span className={styles.twistyArrow} aria-hidden>▶</span>
                         </button>
-                      : l.kind === 'cost' ? `− ${l.label}` : l.label}
+                      : l.kind === 'cost' ? `− ${l.label}` : l.kind === 'recovery' ? `+ ${l.label}` : l.label}
                   </td>
                   <td className={`${columns.length > 1 ? styles.totalCol : ''} ${l.total < 0 ? styles.neg : ''}`}>{fmt(l.total)}</td>
                   <td>{rev && l.kind !== 'detail' ? percent(l.total / rev) : ''}</td>
@@ -203,7 +208,7 @@ function fmt(v: number) {
 }
 
 function CashFlowReport() {
-  const { data, settings } = useInflow()
+  const { books: data, settings } = useInflow()
   const { range } = usePeriodData()
   const columns = useMemo(() => monthColumns(range), [range])
   const cf = useMemo(() => buildCashFlow(data.records, data.costs, columns, settings.openingCash, settings.openingCashDate), [data, columns, settings.openingCash, settings.openingCashDate])
@@ -241,20 +246,17 @@ function CashFlowReport() {
 }
 
 function TaxReport() {
-  const { data, settings, today } = useInflow()
+  const { books: data, settings, today } = useInflow()
   const { range, summary } = usePeriodData()
   const drill = useDrill()
   const year = yearOf(range.to > today ? today : range.to)
   const costs = useMemo(() => (settings.features.costs ? data.costs : []), [settings.features.costs, data.costs])
   const p = useMemo(() => projectYear(settings.tax, data.records, year, today, 0, costs), [settings.tax, data.records, year, today, costs])
-  const ytdWithheld = sum(data.records.filter((r) => r.status === 'received' && yearOf(r.date) === year), (r) => r.taxWithheld)
-  const ytdReserved = sum(data.records.filter((r) => r.status === 'received' && yearOf(r.date) === year), (r) => r.taxReserve ?? 0)
-  const yearGross = taxableGross(data.records, year)
+  // Owed so far at the effective rate, less what's withheld and already set aside (`taxPosition`, shared).
+  const pos = useMemo(() => taxPosition(settings.tax, data.records, year, today, costs), [settings.tax, data.records, year, today, costs])
+  const { withheld: ytdWithheld, reserved: ytdReserved, owed: owedSoFar, gap } = pos
   // What the deductible expenses take off: the same income estimated with none.
   const costSaving = Math.max(0, Math.round(estimateYear({ ...settings.tax, annualExpenses: 0 }, year, p.projected).total - p.estimate.total))
-  // What the year so far would owe at the effective rate, less what's withheld and already set aside.
-  const owedSoFar = Math.round(yearGross * p.rate)
-  const gap = Math.round(owedSoFar - ytdWithheld - ytdReserved)
   const turnover = sum(data.records.filter((r) => r.status === 'received' && yearOf(r.date) === year && r.taxability !== 'non_taxable'))
   const vatShare = turnover / p.estimate.rules.vatThresholdRon
   const how = p.method === 'expected' ? 'your expected annual income' : p.method === 'actual' ? 'the year\'s actual income' : 'the year so far, annualised'
@@ -342,18 +344,30 @@ function TaxReport() {
 
       <section className={styles.panel}>
         <div className={styles.panelHead}>
-          <h2 className={styles.panelTitle}>VAT threshold · {year}</h2>
-          <span className={styles.panelSub}>{settings.tax.vatRegistered ? 'VAT-registered' : 'small-business exemption'}</span>
+          <h2 className={styles.panelTitle}>VAT threshold watch · {year}</h2>
+          <span className={styles.panelSub}>{settings.tax.vatRegistered ? 'VAT-registered: not supported' : 'small-business exemption'}</span>
         </div>
         <div className={styles.progress} role="progressbar" aria-label="Share of the VAT threshold" aria-valuenow={Math.round(vatShare * 100)} aria-valuemin={0} aria-valuemax={100}>
           <div className={styles.progressFill} style={{ width: `${Math.min(100, vatShare * 100)}%`, background: vatShare > 0.85 ? 'var(--color-warning)' : undefined }} />
         </div>
         <p className={styles.hint} style={{ marginTop: 'var(--space-xs)' }}>
-          {lei(turnover)} of {lei(p.estimate.rules.vatThresholdRon)} ({percent(vatShare)}). Above the threshold you must register for VAT (art. 316).
-          Counts all income not marked non-taxable; the legal turnover test has its own exclusions.
+          {lei(turnover)} of {lei(p.estimate.rules.vatThresholdRon)} ({percent(vatShare)}): a running count, to see the threshold coming. It is not VAT
+          accounting, and it doesn't decide whether you must register (art. 310, 316): the legal turnover test has its own inclusions and
+          exclusions, so check with your accountant as it gets close. Counts all income not marked non-taxable.
         </p>
       </section>
     </>
   )
 }
 
+
+/** Every report before anything is recorded: what it will show, and the one step that fills it. */
+function EmptyReport() {
+  return (
+    <section className={styles.panel} aria-label="Nothing to report yet">
+      <p className={styles.emptyNote}>Nothing to report yet.</p>
+      <p className={styles.hint} style={{ textAlign: 'center' }}>Reports fill in from your payments: who paid, what each kind of work kept, profit and tax.</p>
+      <div style={{ textAlign: 'center' }}><a className={styles.chip} href="#/add/income">Add your first payment</a></div>
+    </section>
+  )
+}
