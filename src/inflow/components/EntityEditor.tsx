@@ -121,7 +121,7 @@ export function EntityEditor({ kind, entity, open, onClose, onSaved, onDelete }:
           )
         })()}
         <div className={styles.formActions}>
-          <div>{draft.id && onDelete && <Button size="sm" variant="ghost" onClick={() => onDelete(draft)}>Delete</Button>}</div>
+          <div>{draft.id && onDelete && <Button size="sm" className={styles.hit} variant="ghost" onClick={() => onDelete(draft)}>Delete</Button>}</div>
           <div>
             <Button variant="secondary" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={busy || !draft.name.trim()}>Save</Button>

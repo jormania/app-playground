@@ -13,7 +13,7 @@ import { earned, received, recovered, summarise } from '../lib/analytics'
 import { earnings } from '../lib/earnings'
 import { buildPnl, monthColumns } from '../lib/finance'
 import { withRefunds } from '../lib/refunds'
-import { CACHE_KEY, copyToNotion, memoryCopyLog, NotionRepo } from './notion'
+import { CACHE_KEY, copyToNotion, CopyUncertain, memoryCopyLog, NotionRepo, PENDING } from './notion'
 import { paced, retryable, withRetry, type Call } from './notionCall'
 
 /** A clock the code under test can only move by sleeping. */
@@ -44,7 +44,7 @@ function asRead(props: Record<string, any>): Record<string, any> {
 }
 
 /** Enough of Notion for InFlow: five databases on one page, paged queries, pages created and archived. */
-function fakeNotion(opts: { every429?: number; dropCreateAt?: number; failAt?: number } = {}) {
+function fakeNotion(opts: { every429?: number; dropCreateAt?: number; failAt?: number; noSchemaEdits?: boolean } = {}) {
   const dbs: Record<string, Map<string, Record<string, any>>> = { income: new Map(), clients: new Map(), sources: new Map(), venues: new Map(), costs: new Map() }
   let n = 0
   let calls = 0
@@ -61,11 +61,14 @@ function fakeNotion(opts: { every429?: number; dropCreateAt?: number; failAt?: n
       if (path === 'databases/income' && method === 'GET') return { properties: INCOME_SCHEMA, parent: { type: 'page_id', page_id: 'page' } }
       // The other databases' schemas aren't modelled: an empty schema means every column is sent.
       if (path.startsWith('databases/') && method === 'GET') return { properties: {} }
-      if (path.startsWith('databases/') && method === 'PATCH') return {}
+      if (path.startsWith('databases/') && method === 'PATCH') { if (opts.noSchemaEdits) throw status(403); return {} }
       if (path.startsWith('blocks/page/children')) return { results: [{ type: 'child_database', id: 'costs', child_database: { title: 'InFlow — Costs' } }], has_more: false }
       const q = path.match(/^databases\/(\w+)\/query$/)
       if (q) {
-        const all = [...dbs[q[1]].entries()].filter(([, p]) => !p.archived)
+        // The one filter InFlow sends: a row by its "InFlow ID".
+        const want = body?.filter?.property === 'InFlow ID' ? body.filter.rich_text.equals : null
+        const text = (p: Record<string, any>) => (p.properties['InFlow ID']?.rich_text ?? []).map((x: any) => x.text.content).join('')
+        const all = [...dbs[q[1]].entries()].filter(([, p]) => !p.archived && (want === null || text(p) === want))
         const from = Number(body?.start_cursor ?? 0)
         const page = all.slice(from, from + 100).map(([id, p]) => ({ id, properties: asRead(p.properties) }))
         return { results: page, has_more: from + 100 < all.length, next_cursor: String(from + 100) }
@@ -184,6 +187,54 @@ describe('copying to Notion: resumable, never twice (audit A-03)', () => {
     const { repo } = repoOn(f)
     await expect(copyToNotion(repo, mine)).rejects.toThrow('Failed to fetch')
     expect(f.rows('clients') + f.rows('sources') + f.rows('venues')).toBe(5)
+  })
+
+  it('D3: run again after a lost answer, the row is found by its InFlow ID, not made twice', async () => {
+    // A payment's create is accepted by Notion, then the connection drops before the answer.
+    const entities = mine.clients.length + mine.sources.length + mine.venues.length
+    const f = fakeNotion({ dropCreateAt: entities + mine.costs.length + 3 })
+    const log = memoryCopyLog()
+    const { repo } = repoOn(f)
+    await expect(copyToNotion(repo, mine, undefined, log)).rejects.toThrow('Failed to fetch')
+    expect(Object.values(log.entries).filter((v) => v === PENDING)).toHaveLength(1)
+    const again = await copyToNotion(repo, mine, undefined, log)
+    expect(again.recovered).toBe(1)
+    expect(f.rows('income')).toBe(mine.records.length + mine.refunds.length)
+    expect(f.rows('costs')).toBe(mine.costs.length)
+    expect(Object.values(log.entries)).not.toContain(PENDING)
+    // And a third run: nothing at all.
+    const third = await copyToNotion(repo, mine, undefined, log)
+    expect([third.copied, f.rows('income')]).toEqual([0, mine.records.length + mine.refunds.length])
+  })
+
+  it('D3: every copied row carries its device id in "InFlow ID"', async () => {
+    const f = fakeNotion()
+    const { repo } = repoOn(f)
+    await copyToNotion(repo, mine)
+    const ids = (db: string) => [...f.dbs[db].values()].map((p) => (p.properties['InFlow ID']?.rich_text ?? []).map((x: any) => x.text.content).join(''))
+    expect(new Set(ids('income'))).toEqual(new Set([...mine.records.map((r) => r.id), ...mine.refunds.map((x) => x.id)]))
+    expect(ids('clients').every((x) => x.length > 0)).toBe(true)
+  })
+
+  it('D3: without permission to add the column, a row that may already be there is not created blind', async () => {
+    const entities = mine.clients.length + mine.sources.length + mine.venues.length
+    const f = fakeNotion({ dropCreateAt: entities + 2, noSchemaEdits: true })
+    const log = memoryCopyLog()
+    const { repo } = repoOn(f)
+    await expect(copyToNotion(repo, mine, undefined, log)).rejects.toThrow('Failed to fetch')
+    const before = f.rows('costs')
+    const err = await copyToNotion(repo, mine, undefined, log).catch((e) => e)
+    expect(err).toBeInstanceOf(CopyUncertain)
+    expect(String(err.message)).toMatch(/InFlow ID/)
+    expect(f.rows('costs')).toBe(before)
+  })
+
+  it('D3: a database with rows from before (no InFlow ID) is left as it is; only the uncertain row is looked up', async () => {
+    const f = fakeNotion()
+    f.dbs.income.set('older', { properties: { Description: { title: [{ text: { content: 'Made in Notion by hand' } }] } } })
+    const { repo } = repoOn(f)
+    await copyToNotion(repo, { ...mine, records: mine.records.slice(0, 3), costs: [], refunds: [] })
+    expect(f.rows('income')).toBe(4)
   })
 })
 

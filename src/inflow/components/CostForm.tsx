@@ -246,8 +246,8 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate, preset }: CostFor
           }} />
           <div className={styles.formActions}>
             <div>
-              {!isNew && <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(true)}>Delete</Button>}
-              {!isNew && onDuplicate && <Button size="sm" variant="ghost" onClick={() => onDuplicate(cost!)}>Copy</Button>}
+              {!isNew && <Button size="sm" className={styles.hit} variant="ghost" onClick={() => setConfirmDelete(true)}>Delete</Button>}
+              {!isNew && onDuplicate && <Button size="sm" className={styles.hit} variant="ghost" onClick={() => onDuplicate(cost!)}>Copy</Button>}
             </div>
             <div>
               <Button variant="secondary" onClick={onClose}>Cancel</Button>

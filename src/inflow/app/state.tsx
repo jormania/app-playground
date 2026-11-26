@@ -10,7 +10,7 @@ import { useToastStack, type ToastInput } from '../../ds'
 import { buildDemo, demoOpening, hasDemo, withoutDemo } from '../data/demo'
 import type { CostRecord, FeatureKey, IncomeRecord, InflowData, Refund, Settings, Venue, Workspace } from '../domain/types'
 import { sameTerms, stampTerms, termsOf } from '../lib/deals'
-import { refundError, refundsOf, withRefunds } from '../lib/refunds'
+import { paymentEditError, refundError, refundsOf, withRefunds } from '../lib/refunds'
 import { todayString, type PeriodChoice } from '../lib/period'
 import { copyToNotion, NotionRepo, type CopyResult } from '../store/notion'
 import { DATA_CHANNEL, DEMO_KEY, DeviceRepo, EMPTY, TAB_ID, normalise, type DataChange, type Entity, type EntityKind, type Repo, listKey } from '../store/repo'
@@ -250,8 +250,12 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
   const saveRecordWith = useCallback(async (input: IncomeRecord, keep: boolean) => {
     try {
       const d = dataRef.current
+      const stored = input.id ? d.records.find((x) => x.id === input.id) : undefined
+      // A payment with refunds keeps what they depend on (D1, D2): refused here, whatever screen asked.
+      const why = paymentEditError(stored, input, d.refunds)
+      if (why) { toast({ message: why, tone: 'danger', duration: 8000 }); return null }
       // Each payment carries its venue's deal as it stood then (see `stampTerms`).
-      const r = stampTerms(input, input.id ? d.records.find((x) => x.id === input.id) : undefined, d.venues, { keep })
+      const r = stampTerms(input, stored, d.venues, { keep })
       const saved = await repo.saveRecord(r)
       apply((d) => {
         const exists = d.records.some((x) => x.id === r.id && r.id)
@@ -259,7 +263,7 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
       })
       return saved
     } catch (e) { fail(e, 'Saving'); return null }
-  }, [repo, apply, fail])
+  }, [repo, apply, fail, toast])
 
   const saveRecord = useCallback((r: IncomeRecord) => saveRecordWith(r, false), [saveRecordWith])
 

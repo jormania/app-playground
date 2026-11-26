@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { buildDemo, DEMO_SETTINGS_TAX } from '../data/demo'
 import type { CostRecord, IncomeRecord, TaxProfile } from '../domain/types'
 import { taxPosition } from '../tax/estimate'
-import { availableToSpend, paysThisYear } from './available'
+import { availableToSpend, paysThisYear, shownAvailable } from './available'
 import { balanceAt } from './finance'
 import { addDays } from './dates'
 import { withRefunds } from './refunds'
@@ -111,5 +111,25 @@ describe('tax paid during the year, by profile', () => {
     // Under a PFA the same payment is last year's: cash went down, this year's tax didn't.
     const pfa = availableToSpend(rs, [cost('t', '2026-05-20', 400, { group: 'tax', category: 'income_tax' })], { tax: { ...DEMO_SETTINGS_TAX, id: 'pfa_real' }, openingCash: 0, openingCashDate: '' }, today, on)
     expect(pfa.taxPaidForLastYear).toBe(400)
+  })
+})
+
+describe('the breakdown adds up exactly as shown (Release 1, D6)', () => {
+  const s = { tax: { ...DEMO_SETTINGS_TAX, id: 'custom' as const, customRate: 0.1, expectedAnnualIncome: 0 }, openingCash: 0, openingCashDate: '' }
+  const cases: [IncomeRecord[], CostRecord[]][] = [
+    [[pay('a', '2026-03-01', 2.6)], [cost('c', '2026-03-02', 1.4)]],
+    [[pay('a', '2026-03-01', 1000.5), pay('b', '2026-03-02', 0.5)], [cost('c', '2026-03-03', 0.5), cost('d', '2026-12-01', 0.5, { status: 'due' })]],
+    [[pay('a', '2026-03-01', 333.33), pay('b', '2026-03-02', 333.33, { taxWithheld: 33.33 })], [cost('c', '2026-03-03', 99.99)]],
+  ]
+  it('the shown headline is the sum of the shown lines, and within a few lei of the exact figure', () => {
+    for (const [rs, cs] of cases) {
+      const a = availableToSpend(rs, cs, s, today, on)
+      const v = shownAvailable(a)
+      expect(v.available).toBe(v.startCash + v.received - v.costsPaid - v.taxOwed - v.costsDue)
+      for (const k of ['received', 'costsPaid', 'taxOwed', 'costsDue'] as const) expect(Number.isInteger(v[k])).toBe(true)
+      expect(Math.abs(v.available - a.available)).toBeLessThan(2.5)
+    }
+    const first = shownAvailable(availableToSpend(...cases[0], s, today, { trackTax: false, trackCosts: true }))
+    expect(first).toMatchObject({ received: 3, costsPaid: 1, available: 2 })
   })
 })

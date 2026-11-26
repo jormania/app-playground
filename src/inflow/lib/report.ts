@@ -17,7 +17,7 @@ import { earnings } from './earnings'
 import { addDays, daysBetween, monthLabel, shortDate, yearOf } from './dates'
 import { delta, lei, money, percent } from './money'
 import { buckets, inRange } from './period'
-import { projectYear, taxPosition } from '../tax/estimate'
+import { gapLabel, projectYear, REFUNDS_EXCEED_NOTE, taxPosition } from '../tax/estimate'
 import { insights } from './insights'
 import { applyFeedback, type Feedback } from '../app/insightFeedback'
 import { movers, reviewHighlights } from './review'
@@ -308,8 +308,8 @@ ${p.estimate.lines.map((l) => `<tr><td>${esc(l.label)}${l.rate !== null && l.bas
 <tr class="total"><td>Estimated total</td><td>${lei(p.estimate.total)}</td></tr><tr><td>Effective rate</td><td>${percent(p.rate, 1)}</td></tr></tbody></table>
 ${(() => {
     // The same "still to set aside" as the app's Tax report.
-    const { owed, withheld, reserved, gap } = taxPosition(ctx.tax, data.records, year, ctx.today, ctx.trackCosts ? data.costs : [])
-    return `<table><tbody><tr><td>Owed on ${year} income so far, at that rate</td><td>${lei(owed)}</td></tr><tr><td>Withheld or paid this year</td><td>− ${lei(withheld)}</td></tr><tr><td>Already set aside this year</td><td>− ${lei(reserved)}</td></tr><tr class="total"><td>${gap > 0 ? 'Still to set aside' : 'Ahead of the reserve by'}</td><td>${lei(Math.abs(gap))}</td></tr></tbody></table>`
+    const { owed, withheld, reserved, gap, refundsExceedIncome } = taxPosition(ctx.tax, data.records, year, ctx.today, ctx.trackCosts ? data.costs : [])
+    return `<table><tbody><tr><td>Owed on ${year} income so far, at that rate</td><td>${lei(owed)}</td></tr><tr><td>Withheld or paid this year</td><td>− ${lei(withheld)}</td></tr><tr><td>Already set aside this year</td><td>− ${lei(reserved)}</td></tr><tr class="total"><td>${gapLabel(gap)}</td><td>${lei(Math.abs(gap))}</td></tr></tbody></table>${refundsExceedIncome ? `<p class="muted">${esc(REFUNDS_EXCEED_NOTE)}</p>` : ''}`
   })()}
 <p class="muted">${p.estimate.notes.map(esc).join(' ')}</p></section>`)
   }

@@ -5,8 +5,8 @@
  * settings that shape the numbers (tax profile, target). The Notion token is
  * never written into it — a backup gets emailed and dropped into Drive.
  */
-import type { CostRecord, IncomeRecord, InflowData, Settings } from '../domain/types'
-import { ACTIVITY, CATEGORY, COST_CATEGORY, COST_GROUP_SHORT, STATUS, TAX_HANDLING, TAXABILITY, VAT } from '../domain/vocabulary'
+import type { CostRecord, IncomeRecord, InflowData, Refund, Settings } from '../domain/types'
+import { ACTIVITY, CATEGORY, COST_CATEGORY, COST_GROUP_SHORT, CURRENCIES, STATUS, TAX_HANDLING, TAXABILITY, VAT } from '../domain/vocabulary'
 
 export const BACKUP_APP = 'inflow'
 export const BACKUP_VERSION = 1
@@ -45,6 +45,22 @@ export function readBackup(text: string): Backup {
   d.refunds = d.refunds ?? []
   const bad = (d.records as IncomeRecord[]).find((r) => !r || typeof r.id !== 'string' || typeof r.amountRon !== 'number' || !/^\d{4}-\d{2}-\d{2}/.test(r.date))
   if (bad) throw new BackupError('A record in the backup is missing its amount or date; it may be damaged.')
+  // Refunds are checked as closely as payments, and must point at a payment in this backup (D7).
+  // A damaged one rejects the whole file: nothing is restored, rather than a refund dropped unseen.
+  const payments = new Set((d.records as IncomeRecord[]).map((r) => r.id))
+  const n = (x: unknown) => typeof x === 'number' && Number.isFinite(x)
+  const refundList = d.refunds as (Refund | null)[]
+  const badAt = refundList.findIndex((f) => !f || typeof f.id !== 'string' || !f.id || typeof f.paymentId !== 'string'
+    || !payments.has(f.paymentId) || !/^\d{4}-\d{2}-\d{2}$/.test(String(f.date)) || !n(f.amount) || !(f.amount > 0)
+    || !(CURRENCIES as string[]).includes(String(f.currency)) || !n(f.fxRate) || !(f.fxRate > 0) || !n(f.amountRon) || !(f.amountRon > 0)
+    || (f.notes !== undefined && typeof f.notes !== 'string'))
+  if (badAt !== -1) {
+    const badRefund = refundList[badAt]
+    throw new BackupError(badRefund && typeof badRefund === 'object' && typeof badRefund.paymentId === 'string' && !payments.has(badRefund.paymentId)
+      ? 'A refund in the backup belongs to a payment that isn\'t in it; the backup may be damaged. Nothing was restored.'
+      : 'A refund in the backup is missing its amount, date, currency or payment; the backup may be damaged. Nothing was restored.')
+  }
+  for (const f of d.refunds as Refund[]) f.notes = f.notes ?? ''
   return raw as Backup
 }
 

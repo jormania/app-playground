@@ -10,7 +10,7 @@ import { useInflow } from '../app/state'
 import type { IncomeRecord, Refund } from '../domain/types'
 import { lastRate } from '../lib/guards'
 import { fetchRonRate, lei, money, round2 } from '../lib/money'
-import { refundable, refundError, refundsOf } from '../lib/refunds'
+import { defaultRefund, refundable, refundError, refundsOf } from '../lib/refunds'
 import { shortDate } from '../lib/dates'
 import { DateShortcuts, parseAmount, TextInput } from './fields'
 import styles from '../styles/ui.module.css'
@@ -53,7 +53,8 @@ export function Refunds({ paymentId, hidden = false }: { paymentId: string; hidd
 
 function RefundForm({ payment, left, onClose }: { payment: IncomeRecord; left: number; onClose: () => void }) {
   const { data, today, saveRefund } = useInflow()
-  const [amount, setAmount] = useState(String(left))
+  const start = defaultRefund(payment, data.refunds)
+  const [amount, setAmount] = useState(String(start.amount))
   const [date, setDate] = useState(today < payment.date ? payment.date : today)
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -76,6 +77,12 @@ function RefundForm({ payment, left, onClose }: { payment: IncomeRecord; left: n
           {payment.description}: {money(payment.amount, payment.currency)} received on {shortDate(payment.date, 0)}. The payment stays as it was; the refund
           is counted on its own date, in income, cash and tax for that period.
         </p>
+        {start.withheld > 0 && (
+          <p className={styles.hint} data-testid="refund-withheld">
+            {money(payment.amount, payment.currency)} gross, {money(start.cashReceived, payment.currency)} arrived after {money(start.withheld, payment.currency)} of tax
+            withheld by the payer, so the refund starts at what arrived. The withheld tax stays recorded as paid: a refund doesn't reverse it.
+          </p>
+        )}
         <TextInput label={`Amount paid back (${payment.currency})`} value={amount} onChange={setAmount} inputMode="decimal" autoFocus
           hint={`Up to ${money(left, payment.currency)}.`} />
         <TextInput label="Date paid back" type="date" value={date} onChange={setDate}

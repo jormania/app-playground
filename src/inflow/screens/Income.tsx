@@ -108,7 +108,7 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
       <div className={styles.toolbar}>
         <input className={styles.search} type="search" placeholder="Search payments, clients, venues…" value={filter.query}
           onChange={(e) => set({ query: e.target.value })} aria-label="Search income" />
-        <Button size="sm" variant={showFilters ? 'primary' : 'secondary'} onClick={() => setShowFilters((s) => !s)}>Filters{active.length ? ` (${active.length})` : ''}</Button>
+        <Button size="sm" className={styles.hit} variant={showFilters ? 'primary' : 'secondary'} onClick={() => setShowFilters((s) => !s)}>Filters{active.length ? ` (${active.length})` : ''}</Button>
       </div>
       <div className={styles.chips}>
         {active.map(([k, label]) => (

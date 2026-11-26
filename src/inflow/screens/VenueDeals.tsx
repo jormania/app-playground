@@ -12,7 +12,7 @@ import { useInflow } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
 import { SegmentedControl } from '../../ds'
 import { parseAmount, TextInput } from '../components/fields'
-import { breakEvenPeople, dealTotals, describeTerms, defaultAlternative, feeCoveredAt, keptPerPerson, sameDayRepeats, scenario, venueDeals, type Terms, type VenueDeal } from '../lib/deals'
+import { breakEvenPeople, dealTotals, describeTerms, refundsWithoutSessions, defaultAlternative, feeCoveredAt, keptPerPerson, sameDayRepeats, scenario, venueDeals, type Terms, type VenueDeal } from '../lib/deals'
 import { lei, percent } from '../lib/money'
 import { WiderPeriod } from './Insights'
 import type { CostPreset } from '../components/CostForm'
@@ -31,6 +31,13 @@ export function DealsReport({ onAddCost }: { onAddCost?: (preset: CostPreset) =>
       .sort((a, b) => b.takePerSession - a.takePerSession),
     [data.venues, data.records, range],
   )
+  // Money paid back this period on sessions before it: named, never ranked as a deal (D8).
+  const earlierRefunds = useMemo(() => refundsWithoutSessions(data.venues, data.records, range), [data.venues, data.records, range])
+  const refundNote = earlierRefunds.length > 0 && (
+    <p className={styles.hint} data-testid="earlier-refunds">
+      Also this period: {earlierRefunds.map((x) => `${lei(x.refunded)} refunded at ${x.venue.name}`).join(', ')}, for sessions in an earlier period. Taken off revenue in Profit; not a session here.
+    </p>
+  )
   const withoutDeal = data.venues.filter((v) => v.deal === 'none' && data.records.some((r) => r.venueId === v.id && r.status === 'received' && r.date >= range.from && r.date <= range.to)).length
 
   if (!deals.length) {
@@ -40,6 +47,7 @@ export function DealsReport({ onAddCost }: { onAddCost?: (preset: CostPreset) =>
           <>
             <p className={styles.emptyNote}>No sessions at a venue with a deal in this period.</p>
             <div style={{ textAlign: 'center' }}><WiderPeriod what="" /></div>
+            {refundNote}
           </>
         ) : (
           <>
@@ -67,6 +75,7 @@ export function DealsReport({ onAddCost }: { onAddCost?: (preset: CostPreset) =>
           <div><span className={styles.statLabel}>Sessions</span><b>{t.sessions}</b></div>
         </div>
         <p className={styles.hint} style={{ marginBottom: 0 }}>{deals.length} {deals.length === 1 ? 'venue' : 'venues'} · {range.label}{withoutDeal ? ` · ${withoutDeal} with no venue cost not listed` : ''}</p>
+        {refundNote}
       </section>
 
       <section className={styles.panel} aria-label="Venues">
@@ -100,7 +109,7 @@ function VenueRow({ d, best, onAddCost }: { d: VenueDeal; best: number; onAddCos
         <span className={d.takePerSession < 0 ? styles.moverDown : styles.moverUp} style={{ width: `${(Math.abs(d.takePerSession) / best) * 100}%` }} />
       </div>
       <dl className={styles.dealFigures}>
-        <div><dt>Revenue</dt><dd>{lei(d.revenue)}</dd></div>
+        <div><dt>Revenue</dt><dd>{lei(d.revenue)}{d.refunded > 0 && <span className={styles.dealRefunded}> after {lei(d.refunded)} refunded</span>}</dd></div>
         <div><dt>To venue</dt><dd>{lei(d.venueCost)}</dd></div>
         <div><dt>You kept</dt><dd className={d.takeHome < 0 ? styles.down : undefined}>{lei(d.takeHome)}</dd></div>
       </dl>

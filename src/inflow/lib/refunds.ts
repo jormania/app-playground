@@ -109,3 +109,43 @@ export function withRefunds(data: InflowData): InflowData {
   const extra = adjustments(data.records, data.refunds ?? [])
   return extra.length ? { ...data, records: [...data.records, ...extra] } : data
 }
+
+/**
+ * Why an edit to a payment with refunds can't be saved, or null (Release 1, D1/D2). A refund is
+ * tied to the payment as it was refunded: so, once there is one,
+ *
+ *   - the payment stays Received (as Expected, its refunds would drop out of every figure);
+ *   - its currency stays (refunds are in that currency);
+ *   - its amount can't fall below what has been refunded;
+ *   - its date can't move after its first refund.
+ *
+ * Checked in the provider on every save, whichever screen it comes from; the form says so first.
+ * Nothing is deleted or detached: the person deletes the refunds first if the payment was wrong.
+ */
+export function paymentEditError(before: IncomeRecord | undefined, after: IncomeRecord, refunds: Refund[]): string | null {
+  if (!before) return null
+  const fs = refundsOf(before.id, refunds)
+  if (!fs.length) return null
+  const n = fs.length === 1 ? 'a refund' : `${fs.length} refunds`
+  if (after.status !== 'received') return `This payment has ${n}, so it stays received. Delete the ${fs.length === 1 ? 'refund' : 'refunds'} first if it never arrived.`
+  if (after.currency !== before.currency) return `This payment has ${n} in ${before.currency}, so its currency can't change.`
+  const done = refundedOf(before.id, refunds).amount
+  if (after.amount < done - 0.005) return `This payment has ${n} totalling ${done} ${before.currency}; its amount can't be less than that.`
+  const first = fs[0].date
+  if (after.date > first) return `This payment was refunded on ${first}; it can't be dated after that.`
+  return null
+}
+
+/**
+ * What a refund form starts at (Release 1, D4). Without tax withheld, all that is left to refund.
+ * With tax withheld, what actually arrived (the amount less the withheld tax, in the payment's
+ * currency), less what was already refunded: a refund pays back money received, and the withheld
+ * tax is not reversed by it. The person can still enter anything up to what is left.
+ */
+export function defaultRefund(payment: IncomeRecord, refunds: Refund[]): { amount: number; cashReceived: number; withheld: number; left: number } {
+  const left = refundable(payment, refunds)
+  const withheld = payment.taxWithheld > 0 && payment.fxRate > 0 ? round2(payment.taxWithheld / payment.fxRate) : 0
+  const cashReceived = round2(Math.max(0, payment.amount - withheld))
+  const amount = withheld > 0 ? round2(Math.max(0, Math.min(left, cashReceived - refundedOf(payment.id, refunds).amount))) : left
+  return { amount, cashReceived, withheld, left }
+}

@@ -258,3 +258,26 @@ export function recurringCostsMissing(costs: CostRecord[], today: string): CostR
     .filter((c) => Number(c.date.slice(8, 10)) <= Number(today.slice(8, 10)))
     .sort((a, b) => b.amountRon - a.amountRon)
 }
+
+export type ReimbursedState = 'partial' | 'full'
+
+/**
+ * How much of each cost has come back, from the received reimbursements that name it (Release 1):
+ * "Reimbursed" only once they cover it, "Partly reimbursed" before that. Several reimbursements
+ * add up; refunds of a reimbursement (adjustment rows, which keep the link) take it back off.
+ * Read from the books, so pass `withRefunds(data).records`.
+ */
+export function reimbursedCosts(costs: CostRecord[], records: IncomeRecord[]): Map<string, { recovered: number; state: ReimbursedState }> {
+  const back = new Map<string, number>()
+  for (const r of records) {
+    if (r.status !== 'received' || !r.repaysCostId) continue
+    back.set(r.repaysCostId, (back.get(r.repaysCostId) ?? 0) + r.amountRon)
+  }
+  const out = new Map<string, { recovered: number; state: ReimbursedState }>()
+  for (const c of costs) {
+    const got = round2(back.get(c.id) ?? 0)
+    if (got <= 0) continue
+    out.set(c.id, { recovered: got, state: got >= c.amountRon - 0.5 ? 'full' : 'partial' })
+  }
+  return out
+}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CostRecord, IncomeRecord } from '../domain/types'
 import { buildDemo } from '../data/demo'
-import { balanceAt, breakEven, buildCashFlow, buildPnl, deductibleCosts, monthColumns } from './finance'
+import { balanceAt, breakEven, buildCashFlow, buildPnl, deductibleCosts, monthColumns, reimbursedCosts } from './finance'
 
 const inc = (p: Partial<IncomeRecord>): IncomeRecord => ({
   id: Math.random().toString(36), description: '', amount: 0, currency: 'RON', fxRate: 1, amountRon: 0, date: '2026-03-10',
@@ -114,5 +114,23 @@ describe('recurring costs not yet recorded this month', () => {
     expect(recurringCostsMissing([october], '2026-11-03').map((c) => c.id)).toEqual(['oct'])
     expect(recurringCostsMissing([october, { ...base, id: 'nov', date: '2026-11-02' }], '2026-11-25')).toEqual([])
     expect(recurringCostsMissing([{ ...october, recurring: false }], '2026-11-25')).toEqual([])
+  })
+})
+
+describe('reimbursed, partly or in full (Release 1)', () => {
+  const demo = buildDemo('2026-11-25')
+  const c = { ...demo.costs[0], id: 'c', amount: 300, amountRon: 300, currency: 'RON' as const, fxRate: 1, status: 'paid' as const, demo: undefined }
+  const back = (id: string, amountRon: number, x: Partial<IncomeRecord> = {}): IncomeRecord =>
+    ({ ...demo.records[0], id, amountRon, amount: amountRon, status: 'received', category: 'reimbursement', repaysCostId: 'c', demo: undefined, ...x } as IncomeRecord)
+  it('nothing linked: no status', () => {
+    expect(reimbursedCosts([c], []).get('c')).toBeUndefined()
+  })
+  it('part of it back: partly; the rest later, several reimbursements adding up: in full', () => {
+    expect(reimbursedCosts([c], [back('a', 100)]).get('c')).toEqual({ recovered: 100, state: 'partial' })
+    expect(reimbursedCosts([c], [back('a', 100), back('b', 200)]).get('c')).toEqual({ recovered: 300, state: 'full' })
+  })
+  it('an expected reimbursement counts for nothing yet; a refund of one takes it back off', () => {
+    expect(reimbursedCosts([c], [back('a', 300, { status: 'expected' })]).get('c')).toBeUndefined()
+    expect(reimbursedCosts([c], [back('a', 300), back('refund:f', -300, { refundOf: 'a' })]).get('c')).toBeUndefined()
   })
 })

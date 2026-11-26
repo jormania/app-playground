@@ -3,7 +3,7 @@
  * a look, where it came from, and what's still to come. Profit, tax detail and
  * unusual payments live in Reports and Income.
  */
-import { availableToSpend } from '../lib/available'
+import { availableToSpend, shownAvailable } from '../lib/available'
 import { useMemo, useState } from 'react'
 import { ArrowDownRight, ArrowUpRight, CalendarClock, CalendarPlus, Check, Copy, DoorOpen, HardDriveDownload, Plus, Info, Lightbulb, PieChart, Receipt, Sparkles, TrendingUp } from 'lucide-react'
 import { SegmentedControl } from '../../ds'
@@ -333,7 +333,7 @@ function SimpleStartNotice() {
         <span className={styles.hlIcon + ' ' + styles.hl_neutral} aria-hidden><Sparkles size={18} /></span>
         <div>
           <b>You're on a simple start</b>
-          <span>Income, where it comes from, insights and expected payments. Costs, tax, venue deals, currencies and printing are off until you want them.</span>
+          <span>Income, where it comes from, insights and printable reports. Expected payments, costs, tax, venue deals, foreign currencies and refunds are off until you want them.</span>
         </div>
       </div>
       <div className={styles.buttonRow}>
@@ -353,6 +353,8 @@ function AvailablePanel({ onAddCost }: { onAddCost?: () => void }) {
   const { books, settings, today, on } = useInflow()
   const a = useMemo(() => availableToSpend(books.records, books.costs, settings, today, { trackTax: on('tax'), trackCosts: on('costs') }),
     [books.records, books.costs, settings, today, on])
+  // Whole lei, the headline the sum of the lines shown (D6).
+  const v = shownAvailable(a)
   const line = (label: string, value: number, sign: '' | '+' | '−', note?: string) => (
     <div className={`${styles.row} ${styles.line}`}>
       <span>{label}{note && <span className={styles.availNote}>{note}</span>}</span>
@@ -365,26 +367,27 @@ function AvailablePanel({ onAddCost }: { onAddCost?: () => void }) {
         <summary>
           <span className={styles.availHead}>
             <span className={styles.statLabel}>Estimated available to spend</span>
-            <span className={styles.availValue} data-testid="available">{a.available < 0 ? '−' : ''}{lei(Math.abs(a.available))}</span>
+            <span className={styles.availValue} data-testid="available">{v.available < 0 ? '−' : ''}{lei(Math.abs(v.available))}</span>
           </span>
           <span className={styles.statNote}>
-            {a.hasOpening ? 'Cash on hand' : 'This year’s money'} after {[a.trackTax && 'tax still owed', a.trackCosts && 'costs due'].filter(Boolean).join(' and ') || 'what you paid'}. An estimate; see how.
+            {a.hasOpening ? 'Cash on hand' : 'This year’s money'} after {[a.trackTax && 'this year’s tax still owed', a.trackCosts && 'costs due'].filter(Boolean).join(' and ') || 'what you paid'}.
+            {a.trackTax && ' Not counted: tax still unpaid from last year.'} An estimate, not a bank balance; see how.
           </span>
         </summary>
         <div className={styles.lineList}>
-          {a.hasOpening && line(`Cash on ${shortDate(a.from, 0)}`, a.startCash, '')}
-          {line(`Received since ${shortDate(a.from, 0)}`, a.received, a.hasOpening ? '+' : '', a.withheldLeftOut > 0 ? `${lei(a.withheldLeftOut)} withheld by payers never arrived, so it isn’t here` : 'payments and cost recovery, less refunds')}
-          {a.trackCosts && line('Costs paid', a.costsPaid, '−', 'everything paid, depreciation aside')}
-          {a.trackTax && line('Tax still owed on this year’s income', a.taxOwed, '−',
+          {a.hasOpening && line(`Cash on ${shortDate(a.from, 0)}`, v.startCash, '')}
+          {line(`Received since ${shortDate(a.from, 0)}`, v.received, a.hasOpening ? '+' : '', a.withheldLeftOut > 0 ? `${lei(a.withheldLeftOut)} withheld by payers never arrived, so it isn’t here` : 'payments and cost recovery, less refunds')}
+          {a.trackCosts && line('Costs paid', v.costsPaid, '−', 'everything paid, depreciation aside')}
+          {a.trackTax && line('Tax still owed on this year’s income', v.taxOwed, '−',
             [a.taxPaidForThisYear > 0 && `after ${lei(a.taxPaidForThisYear)} already paid for this year`,
               a.taxPaidForLastYear > 0 && `${lei(a.taxPaidForLastYear)} paid this year counts as last year’s tax`,
               'what you set aside stays set aside: it isn’t counted as available'].filter(Boolean).join('; '))}
-          {a.trackCosts && line(`Costs due by ${shortDate(a.dueBy, 0)}`, a.costsDue, '−')}
-          <div className={`${styles.row} ${styles.line} ${styles.availTotal}`}><span>Estimated available to spend</span><span className="num">{a.available < 0 ? '− ' : ''}{lei(Math.abs(a.available))}</span></div>
+          {a.trackCosts && line(`Costs due by ${shortDate(a.dueBy, 0)}`, v.costsDue, '−')}
+          <div className={`${styles.row} ${styles.line} ${styles.availTotal}`}><span>Estimated available to spend</span><span className="num">{v.available < 0 ? '− ' : ''}{lei(Math.abs(v.available))}</span></div>
         </div>
         <p className={styles.hint}>
           Expected payments are left out until they arrive.{!a.hasOpening && ' Set your cash on hand (Reports → Cash flow) to start from what is actually in the bank.'}
-          {a.trackTax && ' Tax still unpaid from last year isn’t included.'} An estimate from what is recorded, not advice.
+          {a.trackTax && ' Tax still unpaid from last year isn’t included: if you owe some, it comes out of this too.'} An estimate from what is recorded, not advice; the tax part is only as good as the tax estimate behind it.
         </p>
       </details>
       {onAddCost && (

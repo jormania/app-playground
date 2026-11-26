@@ -19,8 +19,9 @@ import { fetchRonRate, lei, money, round2, toRon } from '../lib/money'
 import { suggestClassification, suggestedWithholding } from '../tax/classify'
 import { suggestReserve } from '../tax/estimate'
 import { describeTerms as dealTerms, sameTerms, termsOf } from '../lib/deals'
-import { refundsOf } from '../lib/refunds'
+import { paymentEditError, refundsOf } from '../lib/refunds'
 import { Refunds } from './Refunds'
+import { ReceiveActions } from './ReceiveActions'
 import { reminderIcs } from '../lib/ics'
 import { addDays } from '../lib/dates'
 import { download } from '../store/backup'
@@ -321,6 +322,9 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
       repaysCostId: draft.category === 'reimbursement' && draft.repaysCostId ? draft.repaysCostId : null,
       demo: record?.demo,
     }
+    // A payment with refunds keeps what they depend on (D1, D2); the provider checks it again.
+    const locked = paymentEditError(record ?? undefined, r, data.refunds)
+    if (locked) { setError(locked); return }
     const impossible = incomeErrors(r)
     if (impossible) { setError(impossible); return }
     // A second press with nothing changed means "yes, I meant it".
@@ -394,7 +398,8 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
           {showCurrency ? (
             <div className={styles.amountRow}>
               <TextInput label="Amount" value={draft.amount} onChange={(v) => set({ amount: v })} inputMode="decimal" placeholder="0" autoFocus={isNew} name="amount" />
-              <SelectInput label="Currency" value={draft.currency} onChange={(v) => set({ currency: v as Currency, fxRate: v === 'RON' ? '1' : draft.fxRate })}>
+              <SelectInput label="Currency" value={draft.currency} onChange={(v) => set({ currency: v as Currency, fxRate: v === 'RON' ? '1' : draft.fxRate })}
+                disabled={refundCount > 0} hint={refundCount > 0 ? 'Refunded in this currency: it stays.' : undefined}>
                 {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </SelectInput>
             </div>
@@ -437,13 +442,18 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
             <TextInput label="Date" type="date" value={draft.date} onChange={(v) => set({ date: v })} name="date"
               hint={<DateShortcuts today={today} value={draft.date} onPick={(d) => set({ date: d })} />} />
             {showStatus ? (
-              <SelectInput label="Status" value={draft.status} onChange={(v) => setStatus(v as Draft['status'])}
-                hint={h(draft.status === 'expected' ? 'Not paid yet: shown under Expected, counted nowhere until received.' : 'Expected: money promised but not in yet.')}>
+              <SelectInput label="Status" value={draft.status} onChange={(v) => setStatus(v as Draft['status'])} disabled={refundCount > 0}
+                hint={refundCount > 0 ? 'Has refunds, so it stays received. Delete them first if it never arrived.'
+                  : h(draft.status === 'expected' ? 'Not paid yet: shown under Expected, counted nowhere until received.' : 'Expected: money promised but not in yet.')}>
                 <option value="received">Received</option>
                 <option value="expected">Expected</option>
               </SelectInput>
             ) : <span />}
           </div>
+          {record?.status === 'expected' && draft.status === 'expected' && showStatus && (
+            // Part of it arrived: the same rule as Part… on the Overview and Income (lib/receive.ts).
+            <div className={styles.partRow}><span className={styles.hint}>Only part of it arrived?</span><ReceiveActions r={record} only="part" onDone={onClose} /></div>
+          )}
           {!detailsOpen && (
             <button type="button" className={styles.disclosure} onClick={() => openDetails(true)} aria-expanded={false}>
               <span>
@@ -575,8 +585,8 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
           <Refunds paymentId={record?.id ?? ''} hidden={draft.status !== 'received'} />
           <div className={styles.formActions}>
             <div>
-              {!isNew && <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(true)}>Delete</Button>}
-              {!isNew && onDuplicate && <Button size="sm" variant="ghost" onClick={() => onDuplicate(record!)}>Copy</Button>}
+              {!isNew && <Button size="sm" className={styles.hit} variant="ghost" onClick={() => setConfirmDelete(true)}>Delete</Button>}
+              {!isNew && onDuplicate && <Button size="sm" className={styles.hit} variant="ghost" onClick={() => onDuplicate(record!)}>Copy</Button>}
             </div>
             <div>
               <Button variant="secondary" onClick={onClose}>Cancel</Button>

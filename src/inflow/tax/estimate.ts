@@ -175,7 +175,8 @@ export const MAX_RATE = 0.45
 const MIN_ELAPSED_DAYS = 60
 
 export function projectYear(profile: TaxProfile, records: IncomeRecord[], year: number, today: string, extra = 0, costs: CostRecord[] = []): Projection {
-  const ytd = round2(taxableGross(records, year) + extra)
+  // Refunds can take a year's recorded taxable income below zero; the estimate starts at zero (D5).
+  const ytd = Math.max(0, round2(taxableGross(records, year) + extra))
   let projected: number
   let method: Projection['method']
   const todayYear = yearOf(today)
@@ -269,6 +270,12 @@ export function costTaxEffect(profile: TaxProfile, records: IncomeRecord[], cost
   return { saving: Math.max(0, round2(without - withIt)), note: null }
 }
 
+/** What the gap reads as: never "ahead" by nothing. */
+export const gapLabel = (gap: number): string => (gap > 0 ? 'Still to set aside' : gap < 0 ? 'Ahead of your reserve by' : 'Nothing more to set aside')
+
+/** Said beside the estimate when refunds exceed the year's recorded income (D5). */
+export const REFUNDS_EXCEED_NOTE = "Refunds this year exceed the taxable income recorded, so the estimate counts this year's taxable income as 0. How a refund larger than the year's income is treated is a question for your accountant."
+
 /**
  * Where this year's tax stands, so far: what the year's income to date owes at the year's
  * effective rate, what payers withheld, what is stored as set aside, and the gap ("still to set
@@ -282,13 +289,19 @@ export interface TaxPosition {
   withheld: number
   reserved: number
   gap: number
+  /** The year's taxable income as recorded, refunds included: below zero when they exceed it. */
+  rawTaxable: number
+  /** Refunds exceed the year's recorded taxable income: the estimate treats it as zero (D5). */
+  refundsExceedIncome: boolean
 }
 
 export function taxPosition(profile: TaxProfile, records: IncomeRecord[], year: number, today: string, costs: CostRecord[] = []): TaxPosition {
   const p = projectYear(profile, records, year, today, 0, costs)
   const yr = records.filter((r) => r.status === 'received' && yearOf(r.date) === year && r.date <= today)
-  const owed = Math.round(taxableGross(records, year, today) * p.rate)
+  const rawTaxable = taxableGross(records, year, today)
+  // Never a negative tax: a refund larger than the year's income is not a credit here (D5).
+  const owed = Math.round(Math.max(0, rawTaxable) * p.rate)
   const withheld = round2(yr.reduce((s, r) => s + (r.taxWithheld || 0), 0))
   const reserved = round2(yr.reduce((s, r) => s + (r.taxReserve ?? 0), 0))
-  return { year, rate: p.rate, owed, withheld, reserved, gap: Math.round(owed - withheld - reserved) }
+  return { year, rate: p.rate, owed, withheld, reserved, gap: Math.round(owed - withheld - reserved), rawTaxable, refundsExceedIncome: rawTaxable < 0 }
 }

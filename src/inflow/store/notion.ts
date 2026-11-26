@@ -64,7 +64,9 @@ const wChk = (b: boolean) => ({ checkbox: !!b })
 export function termsFromText(s: string): DealTerms | null | undefined {
   if (!s.trim()) return undefined
   try {
-    const t = JSON.parse(s)
+    // Tolerate braces escaped by a Markdown-minded tool (\{…\}): otherwise the snapshot would be
+    // dropped silently and the payment counted under the venue's current deal.
+    const t = JSON.parse(s.trim().replace(/\\([{}])/g, '$1'))
     if (!t || typeof t !== 'object') return undefined
     if (t.deal === null) return null
     if (!(Object.keys(DEAL) as string[]).includes(t.deal)) return undefined
@@ -300,6 +302,22 @@ export function venueToProps(v: Venue): Props {
 }
 
 // ── the repo ────────────────────────────────────────────────────────────────
+/**
+ * A copied row carries the id it had on the device, in this text column, on every InFlow
+ * database: a copy that lost Notion's answer can then find the row instead of making it twice.
+ */
+export const INFLOW_ID = 'InFlow ID'
+
+/** Options a save takes from the copy to Notion; ordinary saves pass none. */
+export interface SaveOptions {
+  /** The row's device id, written to "InFlow ID". */
+  inflowId?: string
+}
+
+export type CopyKind = EntityKind | 'record' | 'cost' | 'refund'
+
+const withInflowId = (props: Props, opts: SaveOptions): Props => (opts.inflowId ? { ...props, [INFLOW_ID]: wText(opts.inflowId) } : props)
+
 function upsert<T extends { id: string }>(list: T[], item: T): T[] {
   return list.some((x) => x.id === item.id) ? list.map((x) => (x.id === item.id ? item : x)) : [...list, item]
 }
@@ -415,7 +433,8 @@ export class NotionRepo implements Repo {
   private async ensureText(dbId: string, names: string[]): Promise<boolean> {
     await this.fit(dbId, {})
     const known = await this.columns.get(dbId)!
-    if (!known) return true
+    // Schema unreadable (or read as empty): `fit` then sends every column, these included.
+    if (!known || known.size === 0) return true
     const missing = names.filter((n) => !known.has(n))
     if (!missing.length) return true
     try {
@@ -425,6 +444,35 @@ export class NotionRepo implements Repo {
     } catch {
       return false
     }
+  }
+
+  /** The database a copied row of this kind lives in. */
+  private async dbFor(kind: CopyKind): Promise<string | null> {
+    const dbs = await this.databases()
+    return kind === 'record' || kind === 'refund' ? dbs.income : kind === 'cost' ? dbs.costs
+      : kind === 'client' ? dbs.clients : kind === 'source' ? dbs.sources : dbs.venues
+  }
+
+  /**
+   * Makes sure every InFlow database has its "InFlow ID" column, so a copy can tell whether a row
+   * already reached Notion (D3). False when one couldn't be added (no permission to change it).
+   */
+  async prepareInflowIds(): Promise<boolean> {
+    const dbs = await this.databases()
+    let ok = true
+    for (const db of [dbs.income, dbs.clients, dbs.sources, dbs.venues, dbs.costs]) {
+      if (db && !(await this.ensureText(db, [INFLOW_ID]))) ok = false
+    }
+    return ok
+  }
+
+  /** The Notion page holding the device row with this InFlow ID, if one was already copied. */
+  async findCopied(kind: CopyKind, inflowId: string): Promise<string | null> {
+    const db = await this.dbFor(kind)
+    if (!db) return null
+    const res = await this.call(`databases/${db}/query`, 'POST', { page_size: 1, filter: { property: INFLOW_ID, rich_text: { equals: inflowId } } })
+    const hit = (res.results ?? [])[0]
+    return hit ? String(hit.id).replace(/-/g, '') : null
   }
 
   async load(): Promise<InflowData> {
@@ -454,14 +502,14 @@ export class NotionRepo implements Repo {
     return normalise(await this.cache.get<InflowData>(CACHE_KEY))
   }
 
-  async saveRecord(r: IncomeRecord): Promise<IncomeRecord> {
+  async saveRecord(r: IncomeRecord, opts: SaveOptions = {}): Promise<IncomeRecord> {
     refuseDemo(r, [r.id, r.clientId, r.sourceId, r.venueId])
     const dbs = await this.databases()
     // The venue-deal snapshot needs its column; without it the payment still saves (see "Venue terms").
     if (r.dealTerms !== undefined) await this.ensureText(dbs.income, ['Venue terms'])
     // A reimbursement's link to its cost; without the column the payment still saves, unlinked.
     if (r.repaysCostId) await this.ensureText(dbs.income, ['Repays cost'])
-    const properties = await this.fit(dbs.income, recordToProps(r))
+    const properties = await this.fit(dbs.income, withInflowId(recordToProps(r), opts))
     const page = r.id
       ? await this.call(`pages/${r.id}`, 'PATCH', { properties })
       : await this.call('pages', 'POST', { parent: { database_id: dbs.income }, properties })
@@ -479,13 +527,13 @@ export class NotionRepo implements Repo {
   }
 
   /** `payment` is the refunded payment as loaded, for the row's description and links. */
-  async saveRefund(f: Refund, payment?: IncomeRecord): Promise<Refund> {
+  async saveRefund(f: Refund, payment?: IncomeRecord, opts: SaveOptions = {}): Promise<Refund> {
     refuseDemo(f, [f.id, f.paymentId])
     const dbs = await this.databases()
     if (!(await this.ensureText(dbs.income, ['Refund of']))) {
       throw new Error('Your Income database in Notion has no "Refund of" column, and InFlow could not add it. Add a text property named "Refund of", then try again.')
     }
-    const properties = await this.fit(dbs.income, refundToProps(f, payment))
+    const properties = await this.fit(dbs.income, withInflowId(refundToProps(f, payment), opts))
     const page = f.id
       ? await this.call(`pages/${f.id}`, 'PATCH', { properties })
       : await this.call('pages', 'POST', { parent: { database_id: dbs.income }, properties })
@@ -500,11 +548,11 @@ export class NotionRepo implements Repo {
     await this.remember((d) => ({ ...d, refunds: d.refunds.filter((f) => f.id !== id) }))
   }
 
-  async saveCost(c: CostRecord): Promise<CostRecord> {
+  async saveCost(c: CostRecord, opts: SaveOptions = {}): Promise<CostRecord> {
     refuseDemo(c, [c.id, c.clientId, c.venueId])
     const dbs = await this.databases()
     if (!dbs.costs) throw new Error('No "InFlow — Costs" database next to Income in Notion. Duplicate it from the Starter Template.')
-    const properties = await this.fit(dbs.costs, costToProps(c))
+    const properties = await this.fit(dbs.costs, withInflowId(costToProps(c), opts))
     const page = c.id
       ? await this.call(`pages/${c.id}`, 'PATCH', { properties })
       : await this.call('pages', 'POST', { parent: { database_id: dbs.costs }, properties })
@@ -519,11 +567,11 @@ export class NotionRepo implements Repo {
     await this.remember((d) => ({ ...d, costs: d.costs.filter((c) => c.id !== id) }))
   }
 
-  async saveEntity<T extends Entity>(kind: EntityKind, e: T): Promise<T> {
+  async saveEntity<T extends Entity>(kind: EntityKind, e: T, opts: SaveOptions = {}): Promise<T> {
     refuseDemo(e, [e.id])
     const dbs = await this.databases()
     const db = kind === 'client' ? dbs.clients : kind === 'source' ? dbs.sources : dbs.venues
-    const properties = await this.fit(db, TO_PROPS[kind](e))
+    const properties = await this.fit(db, withInflowId(TO_PROPS[kind](e), opts))
     const page = e.id
       ? await this.call(`pages/${e.id}`, 'PATCH', { properties })
       : await this.call('pages', 'POST', { parent: { database_id: db }, properties })
@@ -557,6 +605,9 @@ export interface CopyLog {
   put(key: string, notionId: string): void
 }
 
+/** In the copy log: sent to Notion, answer not yet seen. Never a Notion id. */
+export const PENDING = 'pending'
+
 export function memoryCopyLog(seed: Record<string, string> = {}): CopyLog & { entries: Record<string, string> } {
   const entries = { ...seed }
   return { entries, get: (k) => entries[k], put: (k, v) => { entries[k] = v } }
@@ -567,13 +618,31 @@ export interface CopyResult {
   copied: number
   /** Rows already in Notion from an earlier run, left alone. */
   skipped: number
+  /** Of `skipped`: rows an earlier run sent without seeing Notion's answer, found in Notion by their InFlow ID. */
+  recovered: number
 }
+
+/** What a repo offers the copy to check for rows already sent (NotionRepo; see D3 in INFLOW.md). */
+interface CopyChecks {
+  prepareInflowIds(): Promise<boolean>
+  findCopied(kind: CopyKind, inflowId: string): Promise<string | null>
+}
+const checksOf = (repo: Repo): CopyChecks | null =>
+  'findCopied' in repo && 'prepareInflowIds' in repo ? (repo as unknown as CopyChecks) : null
+
+/** Thrown when a row may already be in Notion and can't be checked: copying it again could duplicate it. */
+export class CopyUncertain extends Error {}
 
 /**
  * Copy what was entered on this device into Notion: entities first, so the records can point at
  * their Notion ids, then costs, payments (a reimbursement pointing at its copied cost) and refunds.
  * Demo rows are never copied.
- * One row at a time, each logged as soon as Notion has it (see `CopyLog`).
+ *
+ * One row at a time. Each is logged as pending before it is sent and with its Notion id once Notion
+ * answers, and carries its device id in "InFlow ID". So a run that stops partway resumes where it
+ * stopped, and a row whose answer was lost (sent, accepted, but the connection dropped) is looked up
+ * by its InFlow ID on the next run rather than created again (D3). Where that column can't be added,
+ * a pending row is not created blind: the copy stops with a way to recover.
  */
 export async function copyToNotion(repo: Repo, data: InflowData, onProgress?: (done: number, total: number) => void, log: CopyLog = memoryCopyLog()): Promise<CopyResult> {
   const records = data.records.filter((r) => !r.demo)
@@ -583,41 +652,51 @@ export async function copyToNotion(repo: Repo, data: InflowData, onProgress?: (d
   const kinds: [EntityKind, Entity[]][] = [['client', data.clients], ['source', data.sources], ['venue', data.venues]]
   const entities = kinds.flatMap(([k, list]) => list.filter((e) => !e.demo || used.has(e.id)).map((e) => [k, e] as const))
   const total = entities.length + records.length + refunds.length + costs.length
+  const checks = checksOf(repo)
+  const canCheck = checks ? await checks.prepareInflowIds() : false
   let done = 0
   let copied = 0
   let skipped = 0
-  /** Writes one row unless the log has it; returns its Notion id. */
-  const once = async (key: string, write: () => Promise<string>): Promise<string> => {
-    let id = log.get(key)
-    if (id) skipped++
-    else {
-      id = await write()
-      log.put(key, id)
-      copied++
+  let recovered = 0
+  /** Writes one row unless it is already in Notion; returns its Notion id. */
+  const once = async (kind: CopyKind, sourceId: string, label: string, write: (opts: SaveOptions) => Promise<string>): Promise<string> => {
+    const key = `${kind}:${sourceId}`
+    const seen = log.get(key)
+    if (seen && seen !== PENDING) { skipped++; onProgress?.(++done, total); return seen }
+    if (seen === PENDING) {
+      if (!checks || !canCheck) {
+        throw new CopyUncertain(`"${label}" may already be in Notion: the last copy sent it but never saw Notion's answer. InFlow can't check without an "InFlow ID" column, and couldn't add one. Add a text property named "InFlow ID" to each InFlow database in Notion (or share them with edit access), then copy again. Or look for "${label}" in Notion yourself first.`)
+      }
+      const found = await checks.findCopied(kind, sourceId)
+      if (found) { log.put(key, found); skipped++; recovered++; onProgress?.(++done, total); return found }
     }
+    log.put(key, PENDING)
+    const id = await write(canCheck ? { inflowId: sourceId } : {})
+    log.put(key, id)
+    copied++
     onProgress?.(++done, total)
     return id
   }
   const idMap = new Map<string, string>()
   for (const [kind, e] of entities) {
-    idMap.set(e.id, await once(`${kind}:${e.id}`, async () => (await repo.saveEntity(kind, { ...e, id: '', demo: undefined })).id))
+    idMap.set(e.id, await once(kind, e.id, e.name, async (o) => (await repo.saveEntity(kind, { ...e, id: '', demo: undefined }, o)).id))
   }
   const map = (id: string | null) => (id ? idMap.get(id) ?? null : null)
   // Costs before payments, so a reimbursement's link to its cost points at the cost in Notion.
   const costIds = new Map<string, string>()
   for (const c of costs) {
-    costIds.set(c.id, await once(`cost:${c.id}`, async () => (await repo.saveCost({ ...c, id: '', clientId: map(c.clientId), venueId: map(c.venueId), demo: undefined })).id))
+    costIds.set(c.id, await once('cost', c.id, c.description, async (o) => (await repo.saveCost({ ...c, id: '', clientId: map(c.clientId), venueId: map(c.venueId), demo: undefined }, o)).id))
   }
   const recordIds = new Map<string, IncomeRecord>()
   for (const r of records) {
     const copy = { ...r, id: '', clientId: map(r.clientId), sourceId: map(r.sourceId), venueId: map(r.venueId), repaysCostId: r.repaysCostId ? costIds.get(r.repaysCostId) ?? null : r.repaysCostId, demo: undefined }
-    const id = await once(`record:${r.id}`, async () => (await repo.saveRecord(copy)).id)
+    const id = await once('record', r.id, r.description, async (o) => (await repo.saveRecord(copy, o)).id)
     recordIds.set(r.id, { ...copy, id })
   }
   for (const f of refunds) {
     const p = recordIds.get(f.paymentId)
     if (!p) { onProgress?.(++done, total); continue }
-    await once(`refund:${f.id}`, async () => (await repo.saveRefund({ ...f, id: '', paymentId: p.id, demo: undefined }, p)).id)
+    await once('refund', f.id, `Refund: ${p.description}`, async (o) => (await repo.saveRefund({ ...f, id: '', paymentId: p.id, demo: undefined }, p, o)).id)
   }
-  return { copied, skipped }
+  return { copied, skipped, recovered }
 }

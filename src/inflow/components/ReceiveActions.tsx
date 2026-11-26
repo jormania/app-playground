@@ -13,20 +13,26 @@ import { money } from '../lib/money'
 import { DateShortcuts, parseAmount, TextInput } from './fields'
 import styles from '../styles/ui.module.css'
 
-export function ReceiveActions({ r }: { r: IncomeRecord }) {
+/**
+ * `only="part"`: just the Part… action, for the payment form, which marks all of it received
+ * through its own Status field. `onDone` runs once a part is saved (the form closes).
+ */
+export function ReceiveActions({ r, only, onDone }: { r: IncomeRecord; only?: 'part'; onDone?: () => void }) {
   const receive = useReceive()
   const [busy, setBusy] = useState(false)
   const [asking, setAsking] = useState(false)
   const run = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn() } finally { setBusy(false) } }
   return (
     <>
-      <button type="button" className={styles.chip} disabled={busy} onClick={() => void run(() => receive(r))} aria-label={`Mark ${r.description} received`}>
-        <Check size={12} aria-hidden /> Received
-      </button>
+      {only !== 'part' && (
+        <button type="button" className={styles.chip} disabled={busy} onClick={() => void run(() => receive(r))} aria-label={`Mark ${r.description} received`}>
+          <Check size={12} aria-hidden /> Received
+        </button>
+      )}
       <button type="button" className={styles.chip} disabled={busy} onClick={() => setAsking(true)} aria-label={`Part of ${r.description} received`}>
         Part…
       </button>
-      {asking && <PartReceived r={r} onClose={() => setAsking(false)} onReceive={(amount, date) => run(async () => { if (await receive(r, { amount, date })) setAsking(false) })} />}
+      {asking && <PartReceived r={r} onClose={() => setAsking(false)} onReceive={(amount, date) => run(async () => { if (await receive(r, { amount, date })) { setAsking(false); onDone?.() } })} />}
     </>
   )
 }
@@ -45,7 +51,8 @@ function PartReceived({ r, onClose, onReceive }: { r: IncomeRecord; onClose: () 
   }
   return (
     <Modal open onClose={onClose} title="Part received">
-      <form className={styles.form} onSubmit={(e) => { e.preventDefault(); submit() }}>
+      {/* Also opened from inside the payment form: React events cross the modal's portal, so this submit stops here. */}
+      <form className={styles.form} onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); submit() }}>
         <p className={styles.hint} style={{ marginTop: 0 }}>{r.description}: {money(r.amount, r.currency)} expected. The rest stays expected.</p>
         <TextInput label={`Amount received (${r.currency})`} value={amount} onChange={setAmount} inputMode="decimal" placeholder="0" autoFocus
           hint={Number.isFinite(n) && n > 0 && n < r.amount ? `${money(r.amount - n, r.currency)} will still be expected.` : undefined} />

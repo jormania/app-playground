@@ -1,12 +1,12 @@
 /**
- * The welcome tour: eight short steps, shown the first time InFlow opens.
+ * The welcome tour: nine short steps, shown the first time InFlow opens.
  * At most three short points each; the five main features carry their switch.
  * The checkbox on every step decides whether it comes back next time; it
  * starts ticked on first run, and Settings can always bring the tour back.
  * Steps that introduce an optional feature carry its switch.
  */
 import { useState } from 'react'
-import { CalendarClock, Check, Database, DoorOpen, Flame, Receipt, Scale, Undo2, Waves } from 'lucide-react'
+import { CalendarClock, Check, Database, DoorOpen, Flame, Printer, Receipt, Scale, Undo2, Waves } from 'lucide-react'
 import type { FeatureKey } from '../domain/types'
 import { Button, Modal, SegmentedControl } from '../../ds'
 import { useInflow } from '../app/state'
@@ -17,8 +17,8 @@ interface Step {
   title: string
   /** Two or three short points, read at a glance. */
   points: string[]
-  /** A feature this step introduces, switchable right here. */
-  feature?: { key: FeatureKey; label: string }
+  /** The features this step introduces, each switchable right here. */
+  features?: { key: FeatureKey; label: string }[]
 }
 
 const STEPS: Step[] = [
@@ -31,37 +31,43 @@ const STEPS: Step[] = [
     icon: Flame,
     title: 'Where the money is good',
     points: ['Clients & work, ranked by what you kept', 'Pain points: only what costs money or needs a decision', '👍 or 👎 to tune them'],
-    feature: { key: 'insights', label: 'Insights' },
+    features: [{ key: 'insights', label: 'Insights' }],
   },
   {
     icon: CalendarClock,
     title: 'Money on its way',
     points: ['Log a payment before it arrives', 'Overdue ones flagged, with a reminder to send', 'Recurring clients suggested for next month'],
-    feature: { key: 'expected', label: 'Expected payments' },
+    features: [{ key: 'expected', label: 'Expected payments' }],
   },
   {
     icon: DoorOpen,
     title: 'Fixed fee or a share?',
     points: ['What each room leaves you a session', 'How many people cover the fee', 'What if: other terms, same sessions'],
-    feature: { key: 'deals', label: 'Venue deals' },
+    features: [{ key: 'deals', label: 'Venue deals' }],
   },
   {
     icon: Scale,
     title: 'Costs and profit',
     points: ['Record what you spend', 'Profit, cash flow and break-even for any period'],
-    feature: { key: 'costs', label: 'Costs and profit' },
+    features: [{ key: 'costs', label: 'Costs and profit' }],
+  },
+  {
+    icon: Printer,
+    title: 'Print it, in any currency',
+    points: ['A month, a year or a client statement, as PDF', 'A pack for your accountant', 'Euros, dollars and more, at the day’s rate'],
+    features: [{ key: 'printable', label: 'Printable reports' }, { key: 'currencies', label: 'Foreign currencies' }],
   },
   {
     icon: Undo2,
     title: 'When money goes back',
     points: ['Refund part or all of a payment', 'Counted in the month it went back', 'Rare for most: off until you need it'],
-    feature: { key: 'refunds', label: 'Refunds' },
+    features: [{ key: 'refunds', label: 'Refunds' }],
   },
   {
     icon: Receipt,
     title: 'Tax, if you want it',
     points: ['What to set aside, under Romanian rules', 'Tax withheld by payers included', 'Not for VAT-registered businesses', 'A suggestion; you decide'],
-    feature: { key: 'tax', label: 'Tax suggestions' },
+    features: [{ key: 'tax', label: 'Tax suggestions' }],
   },
   {
     icon: Database,
@@ -99,13 +105,13 @@ export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) 
         <ul className={styles.tourPoints}>
           {s.points.map((p) => <li key={p}><Check size={14} aria-hidden />{p}</li>)}
         </ul>
-        {s.feature && (
-          <label className={styles.tourCheck}>
-            <input type="checkbox" checked={settings.features[s.feature.key]}
-              onChange={(e) => updateSettings({ features: { [s.feature!.key]: e.target.checked }, simpleStartNotice: false })} />
-            {s.feature.label}
+        {s.features?.map((f) => (
+          <label key={f.key} className={styles.tourCheck}>
+            <input type="checkbox" checked={settings.features[f.key]}
+              onChange={(e) => updateSettings({ features: { [f.key]: e.target.checked }, simpleStartNotice: false })} />
+            {f.label}
           </label>
-        )}
+        ))}
         {/* The last step's choice sits in the step, so the buttons below never move. */}
         {last && workspace === 'demo' && (
           <div className={styles.tourChoice}>

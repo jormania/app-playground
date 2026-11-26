@@ -4,16 +4,16 @@
  * venue's later deal never reaches back.
  */
 import { describe, expect, it } from 'vitest'
-import { buildDemo } from '../data/demo'
+import { buildDemo, DEMO_SETTINGS_TAX } from '../data/demo'
 import type { IncomeRecord, InflowData, Refund, Venue } from '../domain/types'
 import { recordsCsv } from '../store/backup'
 import { normalise, SCHEMA } from '../store/repo'
-import { taxableGross } from '../tax/estimate'
+import { gapLabel, taxableGross, taxPosition } from '../tax/estimate'
 import { breakdown, received, summarise } from './analytics'
-import { stampTerms, termsOf, venueDeal } from './deals'
+import { refundsWithoutSessions, stampTerms, termsOf, venueDeal, venueDeals } from './deals'
 import { earnings } from './earnings'
 import { buildCashFlow, buildPnl, monthColumns } from './finance'
-import { adjustments, refundable, refundError, refundState, withRefunds } from './refunds'
+import { adjustments, defaultRefund, paymentEditError, refundable, refundError, refundState, withRefunds } from './refunds'
 
 const demo = buildDemo('2026-11-25')
 const room: Venue = { ...demo.venues[0], id: 'v1', name: 'Loft', deal: 'share', feePerSession: 0, sharePct: 0.3, monthlyFee: 0, demo: undefined }
@@ -149,5 +149,93 @@ describe('venue deal snapshots', () => {
     // Run again on migrated data: nothing changes, even after the venue's deal does.
     const again = normalise({ ...m, venues: [{ ...fixed, feePerSession: 900 }] })
     expect(again.records[0].dealTerms).toEqual(termsOf(fixed))
+  })
+})
+
+describe('a payment with refunds keeps what they depend on (Release 1, D1/D2)', () => {
+  const p = pay('p', '2026-03-10', 1000)
+  const fs = [refund('f1', 'p', '2026-04-05', 300), refund('f2', 'p', '2026-05-01', 200)]
+  it('an unrefunded payment edits freely', () => {
+    expect(paymentEditError(p, { ...p, amount: 10, currency: 'EUR', status: 'expected', date: '2027-01-01' }, [])).toBeNull()
+  })
+  it('a refunded one edits freely within its refunds', () => {
+    expect(paymentEditError(p, { ...p, amount: 500, description: 'new', date: '2026-04-05' }, fs)).toBeNull()
+  })
+  it('refuses an amount below what was refunded (several refunds summed)', () => {
+    expect(paymentEditError(p, { ...p, amount: 499.99 }, fs)).toMatch(/totalling 500 RON/)
+  })
+  it('refuses a currency change', () => {
+    expect(paymentEditError(p, { ...p, currency: 'EUR' }, fs)).toMatch(/currency can't change/)
+  })
+  it('refuses a date after the first refund', () => {
+    expect(paymentEditError(p, { ...p, date: '2026-04-06' }, fs)).toMatch(/refunded on 2026-04-05/)
+  })
+  it('refuses Expected (its refunds would vanish from every figure)', () => {
+    expect(paymentEditError(p, { ...p, status: 'expected' }, fs)).toMatch(/stays received/)
+  })
+})
+
+describe('the refund form starts at what arrived (Release 1, D4)', () => {
+  it('no withholding: all that is left', () => {
+    expect(defaultRefund(pay('p', '2026-03-10', 1000), [])).toMatchObject({ amount: 1000, withheld: 0, left: 1000 })
+  })
+  it('10% withheld: the 900 that arrived, not the gross 1,000; the limit stays the gross', () => {
+    expect(defaultRefund(pay('p', '2026-03-10', 1000, { taxWithheld: 100 }), [])).toMatchObject({ amount: 900, cashReceived: 900, withheld: 100, left: 1000 })
+  })
+  it('foreign currency: withheld lei converted at the payment’s rate', () => {
+    expect(defaultRefund(pay('p', '2026-03-10', 200, { currency: 'EUR', fxRate: 5, amountRon: 1000, taxWithheld: 100 }), [])).toMatchObject({ amount: 180, withheld: 20 })
+  })
+  it('after a first refund: what arrived less what went back already', () => {
+    expect(defaultRefund(pay('p', '2026-03-10', 1000, { taxWithheld: 100 }), [refund('f', 'p', '2026-04-01', 400)])).toMatchObject({ amount: 500, left: 600 })
+  })
+  it('fully withheld: nothing arrived, so it starts at 0', () => {
+    expect(defaultRefund(pay('p', '2026-03-10', 1000, { taxWithheld: 1000 }), []).amount).toBe(0)
+  })
+})
+
+describe('refunds larger than the year’s income (Release 1, D5)', () => {
+  const custom = { ...DEMO_SETTINGS_TAX, id: 'custom' as const, customRate: 0.1, expectedAnnualIncome: 0 }
+  const pos = (records: IncomeRecord[], refunds: Refund[], year = 2026) => taxPosition(custom, withRefunds({ ...base, records, refunds }).records, year, '2026-11-25')
+  it('a full refund in a year with no other income: nothing owed, no credit, and said so', () => {
+    const p = pos([pay('dec', '2025-12-20', 1000)], [refund('f', 'dec', '2026-01-10', 1000)])
+    expect([p.rawTaxable, p.owed, p.gap, p.refundsExceedIncome, gapLabel(p.gap)]).toEqual([-1000, 0, 0, true, 'Nothing more to set aside'])
+  })
+  it('a refund partly exceeding this year’s income: floored at 0, the refund itself untouched', () => {
+    const d = withRefunds({ ...base, records: [pay('dec', '2025-12-20', 1000), pay('jan', '2026-01-15', 300)], refunds: [refund('f', 'dec', '2026-02-01', 800)] })
+    expect(d.records.find((r) => r.refundOf)!.amountRon).toBe(-800)
+    expect(taxableGross(d.records, 2026)).toBe(-500)
+    expect(taxPosition(custom, d.records, 2026, '2026-11-25')).toMatchObject({ owed: 0, refundsExceedIncome: true })
+  })
+  it('several refunds, and one with tax withheld on the original: the withheld tax still counts, never negative tax', () => {
+    const p = pos([pay('a', '2025-11-01', 1000, { taxWithheld: 100 }), pay('b', '2026-03-01', 500)], [refund('f1', 'a', '2026-01-10', 400), refund('f2', 'a', '2026-02-10', 400)])
+    expect(p).toMatchObject({ owed: 0, withheld: 0, refundsExceedIncome: true })
+  })
+  it('the refund’s own year moves, the original year doesn’t; a normal year is unchanged', () => {
+    expect(pos([pay('dec', '2025-12-20', 1000)], [refund('f', 'dec', '2026-01-10', 1000)], 2025)).toMatchObject({ rawTaxable: 1000, refundsExceedIncome: false })
+    const normal = pos([pay('a', '2026-02-01', 5000)], [refund('f', 'a', '2026-03-01', 1000)])
+    expect(normal).toMatchObject({ rawTaxable: 4000, refundsExceedIncome: false })
+    expect(normal.owed).toBeGreaterThan(0)
+  })
+})
+
+describe('venue deals show sessions, and refunds beside them (Release 1, D8)', () => {
+  const fixed: Venue = { ...room, deal: 'fixed', feePerSession: 100, sharePct: 0 }
+  const rs = [pay('p1', '2026-03-10', 1000), pay('p2', '2026-03-20', 500)]
+  const deal = (refunds: Refund[], range: { from: string; to: string }) => venueDeal(fixed, withRefunds({ ...base, venues: [fixed], records: rs, refunds }).records, range)
+  it('ordinary sessions: unchanged', () => {
+    expect(deal([], march)).toMatchObject({ revenue: 1500, venueCost: 200, sessionCount: 2, refunded: 0 })
+  })
+  it('a partial refund in the same period: revenue net of it, sessions and venue cost as they were', () => {
+    const d = deal([refund('f', 'p1', '2026-03-25', 300)], march)
+    expect(d).toMatchObject({ revenue: 1200, venueCost: 200, sessionCount: 2, refunded: 300, takeHome: 1000 })
+    expect(d.sessions).toHaveLength(2)
+  })
+  it('a full refund: still a session that happened, the money gone', () => {
+    expect(deal([refund('f', 'p1', '2026-03-25', 1000)], march)).toMatchObject({ revenue: 500, sessionCount: 2, refunded: 1000 })
+  })
+  it('a refund-only period: no deal row, named apart', () => {
+    const data = withRefunds({ ...base, venues: [fixed], records: rs, refunds: [refund('f', 'p1', '2026-04-05', 300)] })
+    expect(venueDeals([fixed], data.records, april)).toEqual([])
+    expect(refundsWithoutSessions([fixed], data.records, april)).toEqual([{ venue: fixed, refunded: 300 }])
   })
 })

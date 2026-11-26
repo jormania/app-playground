@@ -1357,3 +1357,24 @@ button.line::after { inset: -8px 0; }
 
 /* A panel's own actions, under its content (Overview: Add a cost). */
 .panelActions { display: flex; gap: var(--space-xs); flex-wrap: wrap; margin-top: var(--space-sm); }
+
+/* Venue deals: a venue's refunds in the period, beside its revenue (D8). */
+.dealRefunded { display: block; font-size: var(--text-xs); font-weight: normal; color: var(--color-muted); }
+
+/*
+ * Touch targets for the shared design-system controls (Release 1, C-02), scoped to InFlow: this
+ * sheet only loads on InFlow's page, and the DS components stay as they are for the other apps.
+ * Segmented options are found by their ARIA roles; small buttons carry `.hit`. An invisible
+ * extension of the hit area, so nothing on screen moves or grows.
+ */
+[role='radiogroup'] > [role='radio'] { position: relative; }
+[role='radiogroup'] > [role='radio']::after { content: ''; position: absolute; inset: -9px 0; }
+.hit { position: relative; }
+.hit::after { content: ''; position: absolute; inset: -6px -2px; }
+.vote { position: relative; }
+.vote::after { content: ''; position: absolute; inset: -6px -2px; }
+.subTab { position: relative; }
+.subTab::after { content: ''; position: absolute; inset: -9px 0; }
+
+/* Payment form: part of an expected payment received, from the form (Release 1). */
+.partRow { display: flex; align-items: center; gap: var(--space-xs); flex-wrap: wrap; }

@@ -14,15 +14,16 @@ export type Entity = Client | Source | Venue
 export interface Repo {
   readonly kind: 'device' | 'notion'
   load(): Promise<InflowData>
-  saveRecord(r: IncomeRecord): Promise<IncomeRecord>
+  /** `opts.inflowId`: the copy to Notion's device id for the row (NotionRepo only). */
+  saveRecord(r: IncomeRecord, opts?: { inflowId?: string }): Promise<IncomeRecord>
   /** `refundIds`: the payment's refunds, removed with it. */
   deleteRecord(id: string, refundIds?: string[]): Promise<void>
-  saveCost(c: CostRecord): Promise<CostRecord>
+  saveCost(c: CostRecord, opts?: { inflowId?: string }): Promise<CostRecord>
   deleteCost(id: string): Promise<void>
-  saveEntity<T extends Entity>(kind: EntityKind, e: T): Promise<T>
+  saveEntity<T extends Entity>(kind: EntityKind, e: T, opts?: { inflowId?: string }): Promise<T>
   deleteEntity(kind: EntityKind, id: string): Promise<void>
   /** `payment`: the payment refunded, as loaded (Notion names the row after it). */
-  saveRefund(f: Refund, payment?: IncomeRecord): Promise<Refund>
+  saveRefund(f: Refund, payment?: IncomeRecord, opts?: { inflowId?: string }): Promise<Refund>
   deleteRefund(id: string): Promise<void>
 }
 

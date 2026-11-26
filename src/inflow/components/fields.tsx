@@ -7,17 +7,19 @@ interface Base {
   hint?: ReactNode
 }
 
-export function SelectInput({ label, right, hint, value, onChange, children, name }: Base & {
+export function SelectInput({ label, right, hint, value, onChange, children, name, disabled }: Base & {
   value: string
   onChange: (v: string) => void
   children: ReactNode
   name?: string
+  /** Locked, with the hint saying why. */
+  disabled?: boolean
 }) {
   const id = useId()
   return (
     <div className={styles.fieldPlain}>
       <label htmlFor={id} className={styles.fieldLabel}><span>{label}</span>{right}</label>
-      <select id={id} name={name} value={value} onChange={(e) => onChange(e.target.value)}>{children}</select>
+      <select id={id} name={name} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}>{children}</select>
       {hint && <p className={styles.hint}>{hint}</p>}
     </div>
   )

@@ -112,8 +112,6 @@ export interface DealSession {
   sessions: number
   venueCost: number
   takeHome: number
-  /** A refund against an earlier session here: negative revenue, no venue cost. */
-  refund?: boolean
 }
 
 export interface VenueDeal {
@@ -135,21 +133,27 @@ export interface VenueDeal {
   breakEvenAttendees: number | null
   losing: DealSession[]
   lost: number
+  /** Paid back in the period on payments here (positive); already taken off `revenue`. Never a session. */
+  refunded: number
   /** Payments here counted under a deal the venue no longer has (each keeps the one it was made under). */
   underEarlierDeal: number
 }
 
 export function venueDeal(venue: Venue, records: IncomeRecord[], r: { from: string; to: string }): VenueDeal {
-  const rs = sessionsAt(records, venue.id, r)
+  const all = sessionsAt(records, venue.id, r)
+  // Sessions are payments; a refund in the period is not a session (D8). It still comes off the
+  // venue's revenue, as it comes off revenue in Profit, and is shown on its own line.
+  const rs = all.filter((x) => !x.refundOf)
+  const refunded = round2(-all.filter((x) => x.refundOf).reduce((a, x) => a + x.amountRon, 0))
   const months = new Map<string, number>()
-  for (const x of rs) if (costApplies(x)) months.set(x.date.slice(0, 7), (months.get(x.date.slice(0, 7)) ?? 0) + (x.sessions ?? 1))
+  for (const x of rs) months.set(x.date.slice(0, 7), (months.get(x.date.slice(0, 7)) ?? 0) + (x.sessions ?? 1))
   const sessions = rs.map((x): DealSession => {
     const n = x.sessions ?? 1
-    const cost = costApplies(x) ? venueCostOf(x.amountRon, termsFor(x, venue), months.get(x.date.slice(0, 7)) ?? 1, n) : 0
-    return { id: x.id, date: x.date, description: x.description, revenue: x.amountRon, attendees: x.attendees, sessions: n, venueCost: cost, takeHome: round2(x.amountRon - cost), refund: !!x.refundOf }
+    const cost = venueCostOf(x.amountRon, termsFor(x, venue), months.get(x.date.slice(0, 7)) ?? 1, n)
+    return { id: x.id, date: x.date, description: x.description, revenue: x.amountRon, attendees: x.attendees, sessions: n, venueCost: cost, takeHome: round2(x.amountRon - cost) }
   }).sort((a, b) => a.date.localeCompare(b.date))
   const sum = (f: (s: DealSession) => number) => round2(sessions.reduce((a, s) => a + f(s), 0))
-  const revenue = sum((s) => s.revenue)
+  const revenue = round2(sum((s) => s.revenue) - refunded)
   const venueCost = sum((s) => s.venueCost)
   const sessionCount = sessions.reduce((a, s) => a + s.sessions, 0)
   const counted = sessions.filter((s) => s.attendees && s.attendees > 0)
@@ -157,9 +161,9 @@ export function venueDeal(venue: Venue, records: IncomeRecord[], r: { from: stri
   const heads = counted.reduce((a, s) => a + (s.attendees ?? 0) * s.sessions, 0)
   const revenuePerHead = heads ? round2(counted.reduce((a, s) => a + s.revenue, 0) / heads) : null
   const keepPerHead = revenuePerHead === null ? null : revenuePerHead * (1 - (venue.deal === 'hybrid' ? venue.sharePct : 0))
-  const losing = sessions.filter((s) => s.takeHome < 0 && !s.refund)
+  const losing = sessions.filter((s) => s.takeHome < 0)
   return {
-    venue, sessions, sessionCount, revenue, venueCost,
+    venue, sessions, sessionCount, revenue, venueCost, refunded,
     takeHome: round2(revenue - venueCost),
     takePerSession: sessionCount ? round2((revenue - venueCost) / sessionCount) : 0,
     effectiveShare: revenue > 0 ? venueCost / revenue : null,
@@ -179,6 +183,14 @@ export function venueDeals(venues: Venue[], records: IncomeRecord[], r: { from: 
     .map((v) => venueDeal(v, records, r))
     .filter((d) => d.sessions.length > 0)
     .sort((a, b) => b.takeHome - a.takeHome)
+}
+
+/**
+ * Venues with refunds in the range but no session in it: money paid back for sessions in an
+ * earlier period. Not a deal to rank (D8); the screen names them so the refund isn't lost from view.
+ */
+export function refundsWithoutSessions(venues: Venue[], records: IncomeRecord[], r: { from: string; to: string }): { venue: Venue; refunded: number }[] {
+  return venues.map((v) => venueDeal(v, records, r)).filter((d) => d.sessions.length === 0 && d.refunded > 0).map((d) => ({ venue: d.venue, refunded: d.refunded }))
 }
 
 /** A sensible "what if" to compare against: the other kind of deal at today's equivalent price. */
@@ -214,7 +226,7 @@ export interface Scenario {
  * retained. Pure — the venue and its records are never changed.
  */
 export function scenario(d: VenueDeal, alt: Terms): Scenario {
-  const hypothetical = round2(d.sessions.reduce((s, x) => s + x.revenue - (x.refund ? 0 : venueCostOf(x.revenue, alt, 1, x.sessions)), 0))
+  const hypothetical = round2(d.sessions.reduce((s, x) => s + x.revenue - venueCostOf(x.revenue, alt, 1, x.sessions), 0) - d.refunded)
   const current = d.takeHome
   const difference = round2(hypothetical - current)
   return { current, hypothetical, difference, differencePct: current > 0 ? difference / current : null }
@@ -241,8 +253,7 @@ export function feeCoveredAt(d: VenueDeal): { revenue: number; people: number | 
  * count as two sessions, and two fees. The number of such extra payments.
  */
 export function sameDayRepeats(d: VenueDeal): number {
-  const real = d.sessions.filter((x) => !x.refund)
-  return real.length - new Set(real.map((x) => x.date)).size
+  return d.sessions.length - new Set(d.sessions.map((x) => x.date)).size
 }
 
 /** What one more person at a session leaves you under these terms. */

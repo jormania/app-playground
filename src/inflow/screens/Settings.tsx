@@ -26,6 +26,7 @@ import { readJson, writeJson } from '../../shared/storage'
 import type { ReactNode } from 'react'
 import { useHint } from '../app/hints'
 import { fold } from '../lib/clients'
+import { RELEASE } from '../app/release'
 import styles from '../styles/ui.module.css'
 
 /**
@@ -204,7 +205,7 @@ export function Settings() {
                   {settings.notionToken && settings.incomeDbId && deviceHasOwnData && (
                     <div className={`${styles.banner} ${styles.bannerInfo}`}>
                       <span>This device has payments you entered before connecting.</span>
-                      <Button size="sm" variant="secondary" disabled={!!copying} onClick={() => setConfirm('copy')}>{copying ?? 'Copy them to Notion'}</Button>
+                      <Button size="sm" className={styles.hit} variant="secondary" disabled={!!copying} onClick={() => setConfirm('copy')}>{copying ?? 'Copy them to Notion'}</Button>
                     </div>
                   )}
                 </>
@@ -237,7 +238,7 @@ export function Settings() {
         <div className={styles.masterSwitch}>
           <SettingsToggle label="Everything" hint={allOn ? 'Every feature is on.' : noneOn ? 'Every optional feature is off.' : `${onCount} of ${FEATURES.length} on.`}
             checked={allOn} onChange={(e) => updateSettings({ features: e.target.checked ? ALL_FEATURES : NO_FEATURES, simpleStartNotice: false })} />
-          {!isSimple && <Button size="sm" variant="secondary" onClick={() => updateSettings({ features: SIMPLE_FEATURES })}>Back to simple start</Button>}
+          {!isSimple && <Button size="sm" className={styles.hit} variant="secondary" onClick={() => updateSettings({ features: SIMPLE_FEATURES })}>Back to simple start</Button>}
         </div>
         {insightFb.hiddenCount > 0 && on('insights') && (
           <p className={styles.hint} style={{ margin: '0 0 var(--space-sm)' }}>
@@ -405,6 +406,8 @@ export function Settings() {
         </p>
       )}
 
+      <p className={styles.hint} style={{ textAlign: 'center' }} data-testid="release">InFlow release {RELEASE}</p>
+
       <ConfirmModal isOpen={confirm === 'clear'} title="Clear demo data?" variant="danger" confirmText="Clear"
         message="Removes the demo practice from this device and shows your own data. You can bring it back any time from here."
         onCancel={() => setConfirm(null)} onConfirm={() => { setConfirm(null); void clearDemo() }} />
@@ -415,13 +418,13 @@ export function Settings() {
         message={pendingBackup ? `Replaces what's on this device with ${pendingBackup.data.records.length} payments from ${pendingBackup.exportedAt.slice(0, 10)}, and switches to device mode.` : ''}
         onCancel={() => { setConfirm(null); setPendingBackup(null) }} onConfirm={() => { setConfirm(null); if (pendingBackup) void restore(pendingBackup); setPendingBackup(null) }} />
       <ConfirmModal isOpen={confirm === 'copy'} title="Copy device payments to Notion?" confirmText="Copy"
-        message="Creates your own payments, refunds and costs, and the clients, sources and venues they use, in Notion, one at a time. If it stops (offline, Notion busy), run it again: what is already there is skipped, never copied twice."
+        message="Creates your own payments, refunds and costs, and the clients, sources and venues they use, in Notion, one at a time, each marked with its InFlow ID. If it stops (offline, Notion busy), run it again: what got there is skipped, and a row whose answer was lost is looked up by its InFlow ID instead of being made again."
         onCancel={() => setConfirm(null)}
         onConfirm={() => {
           setConfirm(null)
           setCopying('Copying…')
           void copyDeviceToNotion((d, t) => setCopying(`Copying ${d}/${t}…`))
-            .then(({ copied, skipped }) => toast({ message: copied ? `Copied ${copied} ${copied === 1 ? 'item' : 'items'} to Notion${skipped ? ` (${skipped} already there)` : ''}` : 'Everything was already in Notion', tone: 'success' }))
+            .then(({ copied, skipped, recovered }) => toast({ message: `${copied ? `Copied ${copied} ${copied === 1 ? 'item' : 'items'} to Notion` : 'Everything was already in Notion'}${skipped ? ` (${skipped} already there${recovered ? `, ${recovered} found by InFlow ID` : ''})` : ''}`, tone: 'success' }))
             .catch((e) => toast({ message: `Copy stopped: ${(e as Error).message}. Run it again to carry on from there.`, tone: 'danger', duration: 12000 }))
             .finally(() => setCopying(null))
         }} />

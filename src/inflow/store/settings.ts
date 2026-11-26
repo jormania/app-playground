@@ -14,8 +14,8 @@ export const THEME_KEY = 'inflow:theme'
 
 export const ALL_FEATURES: Features = { tax: true, costs: true, deals: true, insights: true, expected: true, currencies: true, printable: true, refunds: true }
 export const NO_FEATURES: Features = { tax: false, costs: false, deals: false, insights: false, expected: false, currencies: false, printable: false, refunds: false }
-/** Where a new user starts: income, where it comes from, insights, expected payments. The rest is a switch away. */
-export const SIMPLE_FEATURES: Features = { ...NO_FEATURES, insights: true, expected: true }
+/** Where a new user starts: income and where it comes from, insights, and printable reports. The rest is a switch away. */
+export const SIMPLE_FEATURES: Features = { ...NO_FEATURES, insights: true, printable: true }
 
 /** Features that only make sense with another one on (none today; kept for the next one). */
 export const FEATURE_NEEDS: Partial<Record<FeatureKey, FeatureKey>> = {}

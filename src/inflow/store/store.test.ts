@@ -338,3 +338,23 @@ describe('refunds and venue-deal snapshots in storage', () => {
     expect(refunds[0].paymentId).toMatch(/^p\d+$/)
   })
 })
+
+describe('backups and their refunds (Release 1, D7)', () => {
+  const p = { ...demo.records.find((r) => r.status === 'received')!, id: 'loc_p', demo: undefined }
+  const f = { id: 'loc_f', paymentId: 'loc_p', date: p.date, amount: 10, currency: p.currency, fxRate: p.fxRate, amountRon: 10, notes: '' }
+  const file = (refunds?: unknown) => JSON.stringify({ app: 'inflow', version: 1, exportedAt: 'x', settings: {}, data: { records: [p], clients: [], sources: [], venues: [], costs: [], ...(refunds === undefined ? {} : { refunds }) } })
+  it('a current backup with refunds reads back whole, notes defaulted when missing', () => {
+    const { notes: _n, ...noNotes } = f
+    expect(readBackup(file([f, { ...noNotes, id: 'loc_g' }])).data.refunds).toEqual([f, { ...f, id: 'loc_g' }])
+  })
+  it('a backup from before refunds reads with none', () => {
+    expect(readBackup(file()).data.refunds).toEqual([])
+  })
+  it('rejects a malformed refund, naming nothing it would silently drop', () => {
+    for (const bad of [{}, { ...f, amount: 0 }, { ...f, amount: 'ten' }, { ...f, date: '1 May' }, { ...f, currency: 'XXX' }, { ...f, fxRate: 0 }, { ...f, id: '' }, null]) {
+      expect(() => readBackup(file([f, bad]))).toThrow(/Nothing was restored/)
+    }
+    expect(() => readBackup(file([{ ...f, paymentId: 'gone' }]))).toThrow(/payment that isn't in it/)
+    expect(() => readBackup(file({}))).toThrow(/damaged refunds list/)
+  })
+})

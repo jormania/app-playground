@@ -121,3 +121,26 @@ describe('Notion offline, then back (audit B-09)', () => {
     expect(load).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('the provider refuses edits that would break a refund (D1, D2), from any screen', () => {
+  it('keeps the payment and its refund as they were, and says why', async () => {
+    const store = memoryStore({ [DATA_KEY]: mine })
+    const { result } = setup(store)
+    await waitFor(() => expect(result.current.load).toBe('ready'))
+    const p = result.current.data.records.find((r) => r.status === 'received')!
+    await act(async () => { await result.current.saveRefund({ id: '', paymentId: p.id, date: p.date, amount: Math.round(p.amount * 0.6), currency: p.currency, fxRate: p.fxRate, amountRon: Math.round(p.amountRon * 0.6), notes: '' }) })
+    for (const bad of [{ amount: Math.round(p.amount * 0.5) }, { status: 'expected' as const }, { currency: p.currency === 'EUR' ? 'RON' as const : 'EUR' as const }, { date: '2099-01-01' }]) {
+      let saved: unknown = 'x'
+      await act(async () => { saved = await result.current.saveRecord({ ...p, ...bad }) })
+      expect(saved).toBeNull()
+    }
+    const stored = (await store.get(DATA_KEY)) as InflowData
+    expect(stored.records.find((r) => r.id === p.id)).toMatchObject({ amount: p.amount, status: 'received', currency: p.currency, date: p.date })
+    expect(stored.refunds).toHaveLength(1)
+    expect(result.current.toasts.toasts.some((t) => /refund/.test(t.message))).toBe(true)
+    // Within the limits, it saves.
+    let ok: unknown = null
+    await act(async () => { ok = await result.current.saveRecord({ ...p, description: 'Renamed' }) })
+    expect(ok).not.toBeNull()
+  })
+})

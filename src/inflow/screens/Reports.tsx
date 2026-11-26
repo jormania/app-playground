@@ -20,7 +20,7 @@ import { daysBetween, yearOf } from '../lib/dates'
 import { breakEven, buildCashFlow, buildPnl, monthColumns } from '../lib/finance'
 import { lei, percent, round2 } from '../lib/money'
 import { download, toCsv } from '../store/backup'
-import { estimateYear, projectYear, taxPosition } from '../tax/estimate'
+import { estimateYear, gapLabel, projectYear, REFUNDS_EXCEED_NOTE, taxPosition } from '../tax/estimate'
 import { leaveTrail } from '../app/trail'
 import styles from '../styles/ui.module.css'
 
@@ -333,10 +333,11 @@ function TaxReport() {
           <div className={styles.line}><span>Withheld or paid this year</span><span>− {lei(ytdWithheld)}</span></div>
           <div className={styles.line}><span>Already set aside this year</span><span>− {lei(ytdReserved)}</span></div>
           <div className={`${styles.line} ${styles.lineTotal}`}>
-            <span>{gap > 0 ? 'Still to set aside' : 'Ahead of your reserve by'}</span><span>{lei(Math.abs(gap))}</span>
+            <span>{gapLabel(gap)}</span><span>{lei(Math.abs(gap))}</span>
           </div>
         </div>
         <ul className={styles.notes}>
+          {pos.refundsExceedIncome && <li role="note">{REFUNDS_EXCEED_NOTE}</li>}
           {p.estimate.notes.map((n) => <li key={n}>{n}</li>)}
           <li>An estimate to plan with, not tax advice. Your accountant and the Declarația unică have the final word.</li>
         </ul>

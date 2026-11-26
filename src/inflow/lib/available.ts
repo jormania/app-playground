@@ -92,3 +92,24 @@ export function availableToSpend(
     costsDue, dueBy, available: round2(startCash + received - costsPaid - taxOwed - costsDue), trackTax: opts.trackTax, trackCosts: opts.trackCosts,
   }
 }
+
+/** The breakdown as shown: whole lei, and a total that is the sum of the lines shown (Release 1, D6). */
+export interface AvailableShown {
+  startCash: number
+  received: number
+  costsPaid: number
+  taxOwed: number
+  costsDue: number
+  available: number
+}
+
+/**
+ * Each part rounded to whole lei once, and the headline their sum, so the breakdown always adds
+ * up to the figure above it. The calculation itself keeps its bani (`availableToSpend`); at most
+ * the shown headline differs from the exact one by under a leu per line.
+ */
+export function shownAvailable(a: Available): AvailableShown {
+  const r = (n: number) => Math.round(n)
+  const shown = { startCash: a.hasOpening ? r(a.startCash) : 0, received: r(a.received), costsPaid: a.trackCosts ? r(a.costsPaid) : 0, taxOwed: a.trackTax ? r(a.taxOwed) : 0, costsDue: a.trackCosts ? r(a.costsDue) : 0 }
+  return { ...shown, available: shown.startCash + shown.received - shown.costsPaid - shown.taxOwed - shown.costsDue }
+}

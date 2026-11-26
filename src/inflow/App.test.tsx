@@ -62,7 +62,7 @@ describe('InFlow', () => {
     const { unmount } = render(<App store={store} today={today} />)
     await screen.findByText('Welcome to InFlow')
     await user.click(screen.getByLabelText(/Show this guide next time/))
-    for (let i = 0; i < 7; i++) await user.click(screen.getByRole('button', { name: 'Next', exact: true } as never))
+    for (let i = 0; i < 8; i++) await user.click(screen.getByRole('button', { name: 'Next', exact: true } as never))
     await user.click(screen.getByRole('button', { name: 'Start', exact: true } as never))
     expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).showTour).toBe(true)
     unmount()
@@ -435,6 +435,48 @@ describe('marking expected payments received, from every screen (audit B-02, B-0
     expect(rs.find((r) => r.status === 'received' && r.description === q1.description && r.amount === 3000)).toMatchObject({ date: today })
   })
 
+  it('the form: a foreign-currency expected payment switched to Received takes the day’s rate and a reserve (B-03 form path)', async () => {
+    settings()
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/income')
+    const gbp = (await stored()).find((r) => r.status === 'expected' && r.currency === 'GBP')!
+    expect(gbp.fxRate).not.toBe(6.02)
+    await user.click(await screen.findByRole('button', { name: new RegExp(`^${gbp.description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}, `) }))
+    const dialog = await screen.findByRole('dialog', { name: 'Edit payment' })
+    await user.selectOptions(within(dialog).getByLabelText(/^Status/), 'received')
+    await waitFor(() => expect((within(dialog).getByLabelText(/^Lei per 1 GBP/) as HTMLInputElement).value).toBe('6.02'))
+    await user.click(within(dialog).getByRole('button', { name: /^(Save|Save anyway)$/ }))
+    const again = within(dialog).queryByRole('button', { name: 'Save anyway' })
+    if (again) await user.click(again)
+    await waitFor(async () => expect((await stored()).find((r) => r.id === gbp.id)!.status).toBe('received'))
+    const after = (await stored()).find((r) => r.id === gbp.id)!
+    expect([after.fxRate, after.date]).toEqual([6.02, today])
+    expect(after.amountRon).toBeCloseTo(gbp.amount * 6.02, 2)
+    expect(after.taxReserve).toBeGreaterThan(0)
+  })
+
+  it('the form: part of an expected payment received, through the same rule as Overview and Income', async () => {
+    settings()
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await go('#/income')
+    const q1 = (await stored()).find((r) => r.description === 'Leadership workshop — Q1 booking')!
+    await user.click(await screen.findByRole('button', { name: /^Leadership workshop — Q1 booking, / }))
+    const form = await screen.findByRole('dialog', { name: 'Edit payment' })
+    await user.click(within(form).getByRole('button', { name: /Part of Leadership workshop — Q1 booking received/ }))
+    const part = await screen.findByRole('dialog', { name: 'Part received' })
+    await user.type(within(part).getByLabelText(/Amount received/), '3000')
+    await user.click(within(part).getByRole('button', { name: 'Save' }))
+    await waitFor(async () => expect((await stored()).find((r) => r.id === q1.id)!.amount).toBe(q1.amount - 3000))
+    expect((await stored()).find((r) => r.id === q1.id)).toMatchObject({ status: 'expected', sessions: 0 })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit payment' })).toBeNull())
+  })
+
   it('the form: switching an expected payment to Received sets today, and suggests a reserve', async () => {
     settings()
     localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
@@ -659,6 +701,56 @@ describe('optional parts stay out of the way until wanted', () => {
     render(<App store={store} today={today} />)
     await screen.findByTestId('period-total')
     expect(screen.queryByRole('region', { name: 'Available to spend' })).toBeNull()
+  })
+})
+
+describe('a refunded payment, in its form (Release 1, D1/D2)', () => {
+  it('locks status and currency, and refuses an amount below its refunds or a date after them', async () => {
+    settings({ workspace: 'mine', demoSeeded: true, features: { ...ALL_FEATURES } })
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
+    const p = { ...buildDemo(today).records.find((r) => r.status === 'received' && r.currency === 'RON')!, id: 'loc_p', description: 'Refunded workshop', amount: 1000, amountRon: 1000, date: '2026-03-10', demo: undefined, clientId: null, sourceId: null, venueId: null }
+    await store.set('data', { records: [p], costs: [], clients: [], sources: [], venues: [], refunds: [
+      { id: 'loc_f1', paymentId: 'loc_p', date: '2026-04-01', amount: 300, currency: 'RON', fxRate: 1, amountRon: 300, notes: '' },
+      { id: 'loc_f2', paymentId: 'loc_p', date: '2026-05-01', amount: 300, currency: 'RON', fxRate: 1, amountRon: 300, notes: '' }] })
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await go('#/income')
+    await user.click(await screen.findByRole('button', { name: /^Refunded workshop, / }))
+    const form = await screen.findByRole('dialog', { name: 'Edit payment' })
+    expect((within(form).getByLabelText(/^Status/) as HTMLSelectElement).disabled).toBe(true)
+    expect((within(form).getByLabelText(/^Currency/) as HTMLSelectElement).disabled).toBe(true)
+    const amount = within(form).getByLabelText(/^Amount/)
+    await user.clear(amount)
+    await user.type(amount, '500')
+    await user.click(within(form).getByRole('button', { name: /^(Save|Save anyway)$/ }))
+    expect((await within(form).findByRole('alert')).textContent).toMatch(/totalling 600 RON/)
+    await user.clear(amount)
+    await user.type(amount, '1000')
+    const date = within(form).getByLabelText(/^Date/)
+    await user.clear(date)
+    await user.type(date, '2026-04-15')
+    await user.click(within(form).getByRole('button', { name: /^(Save|Save anyway)$/ }))
+    expect((await within(form).findByRole('alert')).textContent).toMatch(/refunded on 2026-04-01/)
+    const stored = (await store.get<InflowData>('data'))!
+    expect(stored.records[0]).toMatchObject({ amount: 1000, date: '2026-03-10', status: 'received' })
+    expect(stored.refunds).toHaveLength(2)
+  })
+})
+
+describe('the P&L’s refunds line (acceptance review)', () => {
+  it('opens under Revenue and shows the refunds of the period', async () => {
+    settings({ workspace: 'mine', demoSeeded: true, features: { ...ALL_FEATURES } })
+    localStorage.setItem('inflow:period', JSON.stringify({ preset: 'year' }))
+    const p = { ...buildDemo(today).records.find((r) => r.status === 'received' && r.currency === 'RON')!, id: 'loc_p', amount: 1000, amountRon: 1000, date: '2026-03-10', demo: undefined, clientId: null, sourceId: null, venueId: null }
+    await store.set('data', { records: [p], costs: [], clients: [], sources: [], venues: [], refunds: [{ id: 'loc_f', paymentId: 'loc_p', date: '2026-04-01', amount: 250, currency: 'RON', fxRate: 1, amountRon: 250, notes: '' }] })
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await go('#/reports/pnl')
+    const toggle = await screen.findByRole('button', { name: /^Revenue/ })
+    expect(screen.queryByText('of which refunds')).toBeNull()
+    await user.click(toggle)
+    const row = (await screen.findByText('of which refunds')).closest('tr')!
+    expect(row.textContent).toMatch(/250/)
   })
 })
 
@@ -948,13 +1040,28 @@ describe('feature switches', () => {
     expect(screen.queryByRole('button', { name: /Filter/ })).toBeNull()
   })
 
+  it('the guide offers printable reports and foreign currencies, each switchable there', async () => {
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByText('Welcome to InFlow')
+    while (!screen.queryByText('Print it, in any currency')) await user.click(screen.getByRole('button', { name: 'Next', exact: true } as never))
+    const printable = screen.getByRole('checkbox', { name: 'Printable reports' }) as HTMLInputElement
+    const currencies = screen.getByRole('checkbox', { name: 'Foreign currencies' }) as HTMLInputElement
+    expect([printable.checked, currencies.checked]).toEqual([true, false])
+    await user.click(currencies)
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).features.currencies).toBe(true)
+  })
+
   it('a new user starts simple, is told so, and can turn everything on at once', async () => {
     // Nothing stored: a first visit. The tour is closed so the Overview shows.
     const user = userEvent.setup()
     render(<App store={store} today={today} />)
     await user.click(await screen.findByRole('button', { name: 'Skip' }))
     const notice = await screen.findByLabelText('Simple start')
-    expect(within(notice).getByText(/Costs, tax, venue deals/)).toBeTruthy()
+    expect(within(notice).getByText(/Expected payments, costs, tax, venue deals/)).toBeTruthy()
+    // The quick start: income, insights and printable reports, nothing else.
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).features).toEqual({ tax: false, costs: false, deals: false, insights: true, expected: false, currencies: false, printable: true, refunds: false })
+    expect(await reportTabs()).toContain('Print')
     expect(screen.queryByRole('link', { name: /Costs/ })).toBeNull()
     expect(await reportTabs()).not.toContain('Venue deals')
     await go('#/overview')

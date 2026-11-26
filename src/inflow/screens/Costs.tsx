@@ -13,7 +13,7 @@ import type { CostRecord, InflowData } from '../domain/types'
 import { ACTIVITY, COST_CATEGORY, COST_GROUP, COST_GROUP_PLAIN, options } from '../domain/vocabulary'
 import { NO_ENTITY } from '../lib/analytics'
 import { monthLabel, monthShort, parseDate, shortDate, weekdayShort } from '../lib/dates'
-import { recurringCostsMissing } from '../lib/finance'
+import { recurringCostsMissing, reimbursedCosts, type ReimbursedState } from '../lib/finance'
 import { lei, money, round2 } from '../lib/money'
 import { costsCsv, download } from '../store/backup'
 import { Donut } from '../components/Donut'
@@ -89,9 +89,9 @@ function WhereWent({ costs, data, onPick, empty, onWiden }: { costs: CostRecord[
 }
 
 export function Costs({ onOpen, onCopy, filter, setFilter }: { onOpen: (id: string) => void; onCopy?: (id: string) => void; filter: CostFilter; setFilter: (f: CostFilter) => void }) {
-  const { data, today, costsAvailable, setPeriod } = useInflow()
-  // Costs a received reimbursement names as the one it repays.
-  const reimbursed = useMemo(() => new Set(data.records.filter((r) => r.repaysCostId && r.status === 'received').map((r) => r.repaysCostId!)), [data.records])
+  const { data, books, today, costsAvailable, setPeriod } = useInflow()
+  // What came back on each cost, from the reimbursements that name it: in full, or only partly.
+  const reimbursed = useMemo(() => reimbursedCosts(data.costs, books.records), [data.costs, books.records])
   const { range } = usePeriodData()
   const [showFilters, setShowFilters] = useState(false)
   const list = useMemo(() => applyCostFilter(data, filter, range), [data, filter, range])
@@ -149,7 +149,7 @@ export function Costs({ onOpen, onCopy, filter, setFilter }: { onOpen: (id: stri
       <div className={styles.toolbar}>
         <input className={styles.search} type="search" placeholder="Search costs, venues, categories…" value={filter.query}
           onChange={(e) => set({ query: e.target.value })} aria-label="Search costs" />
-        <Button size="sm" variant={showFilters ? 'primary' : 'secondary'} onClick={() => setShowFilters((s) => !s)}>Filters{active.length ? ` (${active.length})` : ''}</Button>
+        <Button size="sm" className={styles.hit} variant={showFilters ? 'primary' : 'secondary'} onClick={() => setShowFilters((s) => !s)}>Filters{active.length ? ` (${active.length})` : ''}</Button>
       </div>
       <div className={styles.chips}>
         {active.map(([k, label]) => (
@@ -208,7 +208,7 @@ export function Costs({ onOpen, onCopy, filter, setFilter }: { onOpen: (id: stri
             <span>{key === 'due' ? 'Due, not paid yet' : monthLabel(`${key}-01`)}</span>
             <span className="num">{key === 'due' ? `${lei(sumRon(cs))} to pay` : lei(sumRon(cs))}</span>
           </div>
-          {cs.map((c) => <CostRow key={c.id} c={c} data={data} today={today} onOpen={onOpen} reimbursed={reimbursed.has(c.id)} />)}
+          {cs.map((c) => <CostRow key={c.id} c={c} data={data} today={today} onOpen={onOpen} reimbursed={reimbursed.get(c.id)} />)}
         </div>
       ))}
       {list.length > 4 && <ListEnd>That's everything: {list.length} costs, {lei(sumRon(paid))} paid.</ListEnd>}
@@ -216,7 +216,7 @@ export function Costs({ onOpen, onCopy, filter, setFilter }: { onOpen: (id: stri
   )
 }
 
-function CostRow({ c, data, today, onOpen, reimbursed }: { c: CostRecord; data: InflowData; today: string; onOpen: (id: string) => void; reimbursed: boolean }) {
+function CostRow({ c, data, today, onOpen, reimbursed }: { c: CostRecord; data: InflowData; today: string; onOpen: (id: string) => void; reimbursed?: { recovered: number; state: ReimbursedState } }) {
   const venue = data.venues.find((v) => v.id === c.venueId)?.name
   const client = data.clients.find((x) => x.id === c.clientId)?.name
   return (
@@ -233,7 +233,7 @@ function CostRow({ c, data, today, onOpen, reimbursed }: { c: CostRecord; data: 
           <span className={`${styles.tag} ${c.group === 'direct' ? styles.tagReview : c.group === 'operating' ? styles.tagNon : ''}`}>{COST_GROUP_PLAIN[c.group]}</span>
           {c.activity && <span className={styles.tag}>{ACTIVITY[c.activity]}</span>}
           {c.recurring && <span className={styles.tag}><Repeat size={10} aria-hidden /> recurring</span>}
-          {reimbursed && <span className={`${styles.tag} ${styles.tagNon}`}>reimbursed</span>}
+          {reimbursed && <span className={`${styles.tag} ${styles.tagNon}`} title={`${lei(reimbursed.recovered)} back of ${lei(c.amountRon)}`}>{reimbursed.state === 'full' ? 'reimbursed' : `partly reimbursed · ${lei(reimbursed.recovered)}`}</span>}
         </span>
       </span>
       <span className={styles.entryAmount}>
