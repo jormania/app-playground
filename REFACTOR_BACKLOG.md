@@ -1874,6 +1874,16 @@ untouched. The item stays open: `clickdeck-pricing`, `clickdeck-studio-search`,
 modes) are still untested — one per run, `notion-upload.js` next since it shares
 `_shared.js`.
 
+**`api/notion-upload.js` done 2026-11-26** — `api/_tests/notion-upload.test.js`, 16
+tests, real `_shared.js` guards, only `fetch` stubbed: 405, origin 403, the 429 on
+the 21st call, 401 without a token, 400 for a missing/short/traversal/array upload
+id, 400 on an empty body, 413 above 8 MiB (across chunks; exactly 8 MiB passes),
+the multipart re-wrap (URL, Bearer, pinned `2025-09-03`, filename decoded, content
+type, bytes joined), default filename and a malformed `x-filename`, status/body
+passthrough, empty body → `{}`, network failure → 502. Handler untouched. Still
+open: `clickdeck-pricing`, `clickdeck-studio-search`, `notion-photo-proxy`, `places`
+and `steam-search` (non-hltb modes) — one per run, `notion-photo-proxy.js` next.
+
 ## R-024 — Delete the 41 spent `claude/*` branches · `refactor` · `open` — **not agent-executable, see below**
 
 **Impact:** none visible. A branch list someone can read.
