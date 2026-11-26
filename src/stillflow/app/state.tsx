@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useToastStack, ToastStack, type ToastTone } from '../../ds'
 import { readJson, readSessionJson, removeJson, writeJson, writeSessionJson } from '../../shared/storage'
 import { BUILT_IN_SERIES } from '../data/series'
+import { STAPLE } from '../domain/vocabulary'
 import {
   DEFAULT_PREFERENCES,
   type Backup, type PracticeEntry, type Preferences, type SeriesDef, type SeriesProgress, type Session,
@@ -46,6 +47,8 @@ interface StateValue extends Snapshot {
   setFilters: (f: Filters) => void
   setSort: (s: SortKey) => void
   toggleFavourite: (id: string) => void
+  /** Rate a session for repeating. Rating it "A staple" also makes it a favourite. */
+  rate: (id: string, rating: number | undefined) => void
   setUserData: (data: UserSessionData) => void
   savePractice: (entry: PracticeEntry) => void
   deletePractice: (id: string) => void
@@ -169,6 +172,14 @@ export function StateProvider({ children, repo: injected, seed = [] }: { childre
 
   const value = useMemo<StateValue>(() => {
     const byId = new Map(snap.sessions.map((s) => [s.id, s]))
+    // A staple is something you'd keep coming back to, so it joins Favourites too.
+    // Only ever adds: lowering a rating later leaves the favourite as you set it.
+    const rate = (id: string, rating: number | undefined) => {
+      const cur = snap.userData[id] ?? { sessionId: id, favourite: false }
+      const favourite = cur.favourite || rating === STAPLE
+      setUserData({ ...cur, rating, favourite })
+      if (favourite && !cur.favourite) toast('A staple, so it’s in your favourites now')
+    }
     return {
       ...snap,
       ready,
@@ -188,13 +199,11 @@ export function StateProvider({ children, repo: injected, seed = [] }: { childre
         const cur = snap.userData[id] ?? { sessionId: id, favourite: false }
         setUserData({ ...cur, favourite: !cur.favourite })
       },
+      rate,
       savePractice: (entry) => {
         setSnap((s) => ({ ...s, history: [entry, ...s.history.filter((h) => h.id !== entry.id)].sort(byNewest) }))
         write(repo.putHistory(entry))
-        if (entry.rating) {
-          const cur = snap.userData[entry.sessionId] ?? { sessionId: entry.sessionId, favourite: false }
-          setUserData({ ...cur, rating: entry.rating })
-        }
+        if (entry.rating) rate(entry.sessionId, entry.rating)
         // Recording the practice answers "Did you finish…?" however it was reached.
         if (pending?.sessionId === entry.sessionId) clearPending()
         // The first record is when the data starts to matter: ask the browser

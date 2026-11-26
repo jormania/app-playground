@@ -16,6 +16,9 @@ export const STYLES = [
  */
 export const REPEAT_LABELS = ['Once was enough', 'Maybe some day', 'Happy to repeat', 'Want to repeat', 'A staple'] as const
 
+/** "A staple": the top of the repeat scale, which also makes the session a favourite. */
+export const STAPLE = REPEAT_LABELS.length
+
 export function repeatLabel(r: number | undefined): string {
   return r && r >= 1 && r <= 5 ? REPEAT_LABELS[r - 1] : 'Not rated'
 }
