@@ -27,6 +27,7 @@ import { readJson, writeJson } from '../../shared/storage'
 import { download, makeBackup } from '../store/backup'
 import { LAST_BACKUP_KEY } from './Settings'
 import { ALL_FEATURES } from '../store/settings'
+import { loadImports } from '../store/imports'
 import type { CostPreset } from '../components/CostForm'
 import styles from '../styles/ui.module.css'
 
@@ -301,12 +302,13 @@ function StartHere({ onAdd, onAddCost, onDemo, hasVenues, deals }: { onAdd?: () 
  * by without a backup (or there has never been one), one line offers it.
  */
 function BackupNudge() {
-  const { data, settings, workspace, today, toast } = useInflow()
+  const { data, settings, workspace, today, toast, importStore } = useInflow()
   const [last, setLast] = useState(() => readJson<string>(LAST_BACKUP_KEY, ''))
   if (workspace !== 'mine' || settings.mode !== 'device' || data.records.length < 5) return null
   if (last && daysBetween(last, today) < 30) return null
-  const save = () => {
-    download(`inflow-backup-${today}.json`, JSON.stringify(makeBackup(data, settings), null, 2), 'application/json')
+  const save = async () => {
+    const imports = await loadImports(importStore.store, importStore.key).catch(() => null)
+    download(`inflow-backup-${today}.json`, JSON.stringify(makeBackup(data, settings, new Date(), imports), null, 2), 'application/json')
     writeJson(LAST_BACKUP_KEY, today)
     setLast(today)
     toast({ message: 'Backup downloaded', tone: 'success' })
@@ -314,7 +316,7 @@ function BackupNudge() {
   return (
     <div className={`${styles.banner} ${styles.bannerInfo}`} role="status">
       <span><HardDriveDownload size={14} aria-hidden /> {last ? `Last backup ${daysBetween(last, today)} days ago.` : 'No backup yet.'} Your data is only in this browser.</span>
-      <button type="button" className={styles.linkButton} onClick={save}>Download backup</button>
+      <button type="button" className={styles.linkButton} onClick={() => void save()}>Download backup</button>
     </div>
   )
 }

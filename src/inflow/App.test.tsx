@@ -1060,7 +1060,7 @@ describe('feature switches', () => {
     const notice = await screen.findByLabelText('Simple start')
     expect(within(notice).getByText(/Expected payments, costs, tax, venue deals/)).toBeTruthy()
     // The quick start: income, insights and printable reports, nothing else.
-    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).features).toEqual({ tax: false, costs: false, deals: false, insights: true, expected: false, currencies: false, printable: true, refunds: false })
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).features).toEqual({ tax: false, costs: false, deals: false, insights: true, expected: false, currencies: false, printable: true, refunds: false, import: false })
     expect(await reportTabs()).toContain('Print')
     expect(screen.queryByRole('link', { name: /Costs/ })).toBeNull()
     expect(await reportTabs()).not.toContain('Venue deals')
@@ -1071,7 +1071,7 @@ describe('feature switches', () => {
     // The master switch turns them all off, and back to simple.
     await go('#/settings')
     await user.click(screen.getByRole('checkbox', { name: /^Everything/ }))
-    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).features).toEqual({ tax: false, costs: false, deals: false, insights: false, expected: false, currencies: false, printable: false, refunds: false })
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).features).toEqual({ tax: false, costs: false, deals: false, insights: false, expected: false, currencies: false, printable: false, refunds: false, import: false })
     await user.click(screen.getByRole('button', { name: 'Back to simple start' }))
     expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).features.insights).toBe(true)
   })
@@ -1163,5 +1163,109 @@ describe('feature switches', () => {
     await user.click(screen.getByRole('checkbox', { name: /Costs, P&L and cash flow/ }))
     expect(screen.queryByRole('link', { name: /Costs/ })).toBeNull()
     expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).features.costs).toBe(false)
+  })
+})
+
+describe('Import from Revolut (Release 2, experimental)', () => {
+  const CSV = [
+    'Type,Product,Started Date,Completed Date,Description,Amount,Fee,Currency,State,Balance',
+    'TRANSFER,Current,2026-11-02 09:15:01,2026-11-02 09:15:44,Payment from Northwind SRL,1200.00,0.00,RON,COMPLETED,5200.00',
+    'CARD_PAYMENT,Current,2026-11-04 12:00:00,2026-11-05 08:00:00,"Zoom, Inc.",-75.50,0.00,RON,COMPLETED,5124.50',
+    'CARD_PAYMENT,Current,2026-11-06 12:00:00,2026-11-06 12:00:00,Corner Bakery,-18.00,0.00,RON,COMPLETED,5106.50',
+    'TRANSFER,Current,2026-11-07 10:00:00,,To Ion Ionescu,-300.00,1.50,RON,PENDING,4806.50',
+    'broken,row',
+  ].join('\n')
+  const mine: InflowData = { records: [], costs: [], clients: [], sources: [], venues: [], refunds: [] }
+
+  it('is off by default, never switched on by "Everything", and labelled experimental', async () => {
+    settings()
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await go('#/settings')
+    const toggle = await screen.findByRole('checkbox', { name: /Import from Revolut \(experimental\)/ })
+    expect((toggle as HTMLInputElement).checked).toBe(false)
+    await user.click(screen.getByRole('checkbox', { name: /^Everything/ }))
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).features.import).toBe(false)
+    await go('#/import')
+    expect(screen.queryByText('Import from Revolut', { selector: 'h2' })).toBeNull()
+  })
+
+  it('reads a file, shows what it found, imports what you decide, and undoes it', async () => {
+    settings({ workspace: 'mine', demoSeeded: true, features: { ...ALL_FEATURES, import: true } })
+    await store.set('data', mine)
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await go('#/income')
+    await user.click(await screen.findByRole('link', { name: 'Import from Revolut' }))
+    expect(await screen.findByText(/Experimental\./)).toBeTruthy()
+    const file = new File([CSV], 'statement.csv', { type: 'text/csv' })
+    await user.upload(screen.getByLabelText('Statement file'), file)
+    // Summary first; nothing imported.
+    expect(await screen.findByText('statement.csv')).toBeTruthy()
+    expect(screen.getByText(/1 row was not read/)).toBeTruthy()
+    expect(screen.getByText(/Line 6:/)).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Review transactions' }))
+    // Bakery: personal. Zoom: business cost, in bulk.
+    await user.click(screen.getByRole('checkbox', { name: /Select Zoom/ }))
+    await user.click(screen.getByRole('button', { name: 'Business cost' }))
+    await user.click(screen.getByRole('button', { name: /Corner Bakery/ }))
+    const dialog = await screen.findByRole('dialog')
+    await user.selectOptions(within(dialog).getByLabelText('This is'), 'personal')
+    await user.click(within(dialog).getByLabelText(/Next time, treat “Corner Bakery” the same way/))
+    await user.click(within(dialog).getByRole('button', { name: 'Done' }))
+    await user.click(screen.getByRole('button', { name: /^Continue: 3 ready/ }))
+    expect(await screen.findByText(/1 new payment: 1,200(\.00)? lei income/)).toBeTruthy()
+    expect(screen.getByText(/1 new cost: 75\.50? lei/)).toBeTruthy()
+    expect(screen.getByText(/1 pending, declined or reversed: never imported/)).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Import' }))
+    expect(await screen.findByText('Imported')).toBeTruthy()
+    await waitFor(async () => {
+      const d = (await store.get('data')) as InflowData
+      expect(d.records.map((r) => r.amount)).toEqual([1200])
+      expect(d.costs.map((c) => c.amount)).toEqual([75.5])
+    })
+    // The rule was kept; the history lists the import.
+    const im = (await store.get('import:device')) as { rules: { value: string; kind: string }[]; batches: unknown[] }
+    expect(im.rules).toEqual([expect.objectContaining({ value: 'Corner Bakery', kind: 'personal' })])
+    // Undo, after confirming what it does.
+    await user.click(screen.getByRole('button', { name: /Undo this import/ }))
+    const confirm = await screen.findByRole('dialog')
+    expect(within(confirm).getByText(/2 entries it added will be deleted/)).toBeTruthy()
+    await user.click(within(confirm).getByRole('button', { name: 'Undo import' }))
+    await waitFor(async () => {
+      const d = (await store.get('data')) as InflowData
+      expect([d.records.length, d.costs.length]).toEqual([0, 0])
+    })
+    expect(await screen.findByText('Import undone')).toBeTruthy()
+  })
+
+  it('an unfamiliar file is never read on a guess: it asks which column is which, then reads as told', async () => {
+    settings({ workspace: 'mine', demoSeeded: true, features: { ...ALL_FEATURES, import: true } })
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await go('#/import')
+    const csv = 'When,What,How much,Ccy\n2026-04-01,Payment from Ana Ilie,300.00,RON\n'
+    await user.upload(await screen.findByLabelText('Statement file'), new File([csv], 'export.csv', { type: 'text/csv' }))
+    expect(await screen.findByText(/can't tell for certain what this file's columns are/)).toBeTruthy()
+    expect(screen.getByText(/Not recognised: When, What, How much, Ccy/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Review transactions' })).toBeNull()
+    await user.selectOptions(screen.getByLabelText('Date'), 'When')
+    await user.selectOptions(screen.getByLabelText('Amount (signed: money out negative)'), 'How much')
+    await user.selectOptions(screen.getByLabelText('Currency'), 'Ccy')
+    await user.selectOptions(screen.getByLabelText('Description'), 'What')
+    await user.click(screen.getByRole('button', { name: 'Read with these columns' }))
+    expect(await screen.findByRole('button', { name: 'Review transactions' })).toBeTruthy()
+    expect(screen.getByText(/Read with the columns you chose/)).toBeTruthy()
+  })
+
+  it('asks the date order when the file can\'t show it', async () => {
+    settings({ workspace: 'mine', demoSeeded: true, features: { ...ALL_FEATURES, import: true } })
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await go('#/import')
+    const csv = 'Date,Description,Amount,Currency\n03/04/2026,Payment from Ana Ilie,300.00,RON\n'
+    await user.upload(await screen.findByLabelText('Statement file'), new File([csv], 'export.csv', { type: 'text/csv' }))
+    await user.selectOptions(await screen.findByLabelText('Dates in this file are written'), 'mdy')
+    expect(await screen.findByRole('button', { name: 'Review transactions' })).toBeTruthy()
   })
 })

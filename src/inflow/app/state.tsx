@@ -16,6 +16,7 @@ import { copyToNotion, NotionRepo, type CopyResult } from '../store/notion'
 import { DATA_CHANNEL, DEMO_KEY, DeviceRepo, EMPTY, TAB_ID, normalise, type DataChange, type Entity, type EntityKind, type Repo, listKey } from '../store/repo'
 import { featureOn, loadSettings, mergeSettings, notionReady, saveSettings, type SettingsPatch } from '../store/settings'
 import type { Backup } from '../store/backup'
+import { importKey } from '../store/imports'
 
 const PERIOD_KEY = 'inflow:period'
 /** Device id → Notion id of every row already copied, per Income database (`copyToNotion`). */
@@ -63,12 +64,13 @@ interface InflowState {
   filter: IncomeFilter
   setFilter: (f: IncomeFilter) => void
   saveRecord: (r: IncomeRecord) => Promise<IncomeRecord | null>
-  deleteRecord: (r: IncomeRecord) => Promise<void>
+  /** `quiet`: no toast with Undo (a batch undo reports once for all). True when deleted. */
+  deleteRecord: (r: IncomeRecord, opts?: { quiet?: boolean }) => Promise<boolean>
   /** Refund part or all of a received payment; refused (with a message) beyond what is left. */
   saveRefund: (f: Refund) => Promise<Refund | null>
-  deleteRefund: (f: Refund) => Promise<void>
+  deleteRefund: (f: Refund, opts?: { quiet?: boolean }) => Promise<boolean>
   saveCost: (c: CostRecord) => Promise<CostRecord | null>
-  deleteCost: (c: CostRecord) => Promise<void>
+  deleteCost: (c: CostRecord, opts?: { quiet?: boolean }) => Promise<boolean>
   /** False in Notion mode when no Costs database sits next to Income. */
   costsAvailable: boolean
   saveEntity: <T extends Entity>(kind: EntityKind, e: T) => Promise<T | null>
@@ -87,6 +89,8 @@ interface InflowState {
   copyDeviceToNotion: (onProgress?: (done: number, total: number) => void) => Promise<CopyResult>
   /** Your own data on this device (not the demo) has something in it. */
   deviceHasOwnData: boolean
+  /** Where this workspace's import history, rules and ledger live (Release 2, experimental): one per data set. */
+  importStore: { store: KeyValueStore; key: string }
   toast: (t: ToastInput | string) => void
   toasts: ReturnType<typeof useToastStack>
 }
@@ -284,19 +288,22 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
     try { return await saveRefundRaw(f) } catch (e) { fail(e, 'Saving the refund'); return null }
   }, [saveRefundRaw, toast, fail])
 
-  const deleteRefund = useCallback(async (f: Refund) => {
+  const deleteRefund = useCallback(async (f: Refund, opts: { quiet?: boolean } = {}) => {
     try {
       await repo.deleteRefund(f.id)
       apply((d) => ({ ...d, refunds: d.refunds.filter((x) => x.id !== f.id) }))
+      if (opts.quiet) return true
       toast({ message: 'Refund deleted', actionLabel: 'Undo', onAction: () => { void saveRefund(repo.kind === 'notion' ? { ...f, id: '' } : f) } })
-    } catch (e) { fail(e, 'Deleting the refund') }
+      return true
+    } catch (e) { fail(e, 'Deleting the refund'); return false }
   }, [repo, apply, toast, fail, saveRefund])
 
-  const deleteRecord = useCallback(async (r: IncomeRecord) => {
+  const deleteRecord = useCallback(async (r: IncomeRecord, opts: { quiet?: boolean } = {}) => {
     const refunds = refundsOf(r.id, dataRef.current.refunds)
     try {
       await repo.deleteRecord(r.id, refunds.map((f) => f.id))
       apply((d) => ({ ...d, records: d.records.filter((x) => x.id !== r.id), refunds: d.refunds.filter((f) => f.paymentId !== r.id) }))
+      if (opts.quiet) return true
       toast({
         message: refunds.length ? `Payment and its ${refunds.length === 1 ? 'refund' : `${refunds.length} refunds`} deleted` : 'Payment deleted',
         actionLabel: 'Undo',
@@ -310,7 +317,8 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
           })()
         },
       })
-    } catch (e) { fail(e, 'Deleting') }
+      return true
+    } catch (e) { fail(e, 'Deleting'); return false }
   }, [repo, apply, fail, toast, saveRecordWith, saveRefundRaw])
 
   const saveCost = useCallback(async (c: CostRecord) => {
@@ -324,16 +332,18 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
     } catch (e) { fail(e, 'Saving'); return null }
   }, [repo, apply, fail])
 
-  const deleteCost = useCallback(async (c: CostRecord) => {
+  const deleteCost = useCallback(async (c: CostRecord, opts: { quiet?: boolean } = {}) => {
     try {
       await repo.deleteCost(c.id)
       apply((d) => ({ ...d, costs: d.costs.filter((x) => x.id !== c.id) }))
+      if (opts.quiet) return true
       toast({
         message: 'Cost deleted',
         actionLabel: 'Undo',
         onAction: () => { void saveCost(repo.kind === 'notion' ? { ...c, id: '' } : c) },
       })
-    } catch (e) { fail(e, 'Deleting') }
+      return true
+    } catch (e) { fail(e, 'Deleting'); return false }
   }, [repo, apply, fail, toast, saveCost])
 
   const saveEntity = useCallback(async <T extends Entity>(kind: EntityKind, e: T): Promise<T | null> => {
@@ -410,10 +420,12 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
    */
   const restore = useCallback(async (b: Backup) => {
     const data = normalise(b.data)
-    const before = { data: await device.load(), settings: settingsRef.current }
+    const before = { data: await device.load(), settings: settingsRef.current, imports: await store.get(importKey('device')) }
     try {
       await store.set(PRE_RESTORE_KEY, before.data)
       await device.replaceAll(data)
+      // The import history comes back with the data it describes; a backup without one leaves yours.
+      if (b.imports) await store.set(importKey('device'), b.imports)
     } catch (e) {
       // replaceAll is one write: if it failed, the stored data is still the old data.
       await device.load().then(setDeviceData).catch(() => {})
@@ -431,6 +443,7 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
         void (async () => {
           try {
             await device.replaceAll(before.data)
+            if (b.imports) await (before.imports === undefined ? store.del(importKey('device')) : store.set(importKey('device'), before.imports))
             setDeviceData(before.data)
             updateSettings({ ...before.settings })
             if (repoRef.current === device) setData(before.data)
@@ -466,10 +479,16 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
 
   const books = useMemo(() => withRefunds(data), [data])
 
+  // Import history belongs to the data it was imported into: the demo, this device, or one Notion workspace.
+  const importStore = useMemo(() => ({
+    store,
+    key: importKey(workspace === 'demo' ? 'demo' : useNotion ? `notion:${settings.incomeDbId}` : 'device'),
+  }), [store, workspace, useNotion, settings.incomeDbId])
+
   const value: InflowState = {
     today, settings: shownSettings, updateSettings, on, data, books, load, error, offlineCopy, reload, period, setPeriod,
     filter, setFilter, saveRecord, deleteRecord, saveRefund, deleteRefund, saveCost, deleteCost, costsAvailable, saveEntity, deleteEntity, workspace, setWorkspace, clearDemo, loadDemo, resetDemo, restore,
-    copyDeviceToNotion, deviceHasOwnData, toast, toasts,
+    copyDeviceToNotion, deviceHasOwnData, importStore, toast, toasts,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

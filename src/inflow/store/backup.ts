@@ -6,6 +6,7 @@
  * never written into it — a backup gets emailed and dropped into Drive.
  */
 import type { CostRecord, IncomeRecord, InflowData, Refund, Settings } from '../domain/types'
+import { normaliseImports, type ImportState } from './imports'
 import { ACTIVITY, CATEGORY, COST_CATEGORY, COST_GROUP_SHORT, CURRENCIES, STATUS, TAX_HANDLING, TAXABILITY, VAT } from '../domain/vocabulary'
 
 export const BACKUP_APP = 'inflow'
@@ -17,11 +18,16 @@ export interface Backup {
   exportedAt: string
   settings: Omit<Settings, 'notionToken'>
   data: InflowData
+  /** Import history, rules and ledger (Release 2, experimental). Absent in older backups. */
+  imports?: ImportState
 }
 
-export function makeBackup(data: InflowData, settings: Settings, now = new Date()): Backup {
+export function makeBackup(data: InflowData, settings: Settings, now = new Date(), imports?: ImportState | null): Backup {
   const { notionToken: _token, ...safe } = settings
-  return { app: BACKUP_APP, version: BACKUP_VERSION, exportedAt: now.toISOString(), settings: safe, data }
+  const b: Backup = { app: BACKUP_APP, version: BACKUP_VERSION, exportedAt: now.toISOString(), settings: safe, data }
+  // Only when there is something: a backup without imports reads exactly as before.
+  if (imports && (imports.batches.length || imports.rules.length || imports.ownNames.length || Object.keys(imports.ledger).length)) b.imports = imports
+  return b
 }
 
 export class BackupError extends Error {}
@@ -61,6 +67,8 @@ export function readBackup(text: string): Backup {
       : 'A refund in the backup is missing its amount, date, currency or payment; the backup may be damaged. Nothing was restored.')
   }
   for (const f of d.refunds as Refund[]) f.notes = f.notes ?? ''
+  // Import history is a convenience: a damaged one is read as far as it goes, never a reason to refuse the backup.
+  if (raw.imports !== undefined) raw.imports = normaliseImports(raw.imports)
   return raw as Backup
 }
 

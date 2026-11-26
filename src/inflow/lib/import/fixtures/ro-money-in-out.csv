@@ -1,0 +1,6 @@
+Data;Descriere;Referinta;Intrari;Iesiri;Moneda;Sold
+03.11.2026;"Plată de la Ștefănescu Ioana; atelier copii";REF 2026/77;"1.250,00";;RON;"4.250,00"
+05.11.2026;Librăria Cărturești;;;"89,90";RON;"4.160,10"
+14.11.2026;Comision administrare cont;;;"9,00";RON;"4.151,10"
+20.11.2026;"Rambursare de la Furnizorul Țesături SRL";RET-12;"45,50";;RON;"4.196,60"
+21.11.2026;Încasare card POS Demo;POS-889;"318,40";0,00;RON;"4.515,00"

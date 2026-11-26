@@ -1378,3 +1378,7 @@ button.line::after { inset: -8px 0; }
 
 /* Payment form: part of an expected payment received, from the form (Release 1). */
 .partRow { display: flex; align-items: center; gap: var(--space-xs); flex-wrap: wrap; }
+
+/* Import from Revolut (Release 2, experimental): a checkbox beside each transaction, a 44 px target. */
+.importRow { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: start; }
+.importRow > input { width: 20px; height: 20px; margin: 14px 12px; accent-color: var(--color-accent); }

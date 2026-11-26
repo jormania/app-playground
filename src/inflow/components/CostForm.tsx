@@ -10,7 +10,7 @@ import { Button, ConfirmModal, Modal, SettingsToggle } from '../../ds'
 import { readJson, writeJson } from '../../shared/storage'
 import { useInflow } from '../app/state'
 import type { Category, CostCategory, CostGroup, CostRecord, Currency } from '../domain/types'
-import { ACTIVITY, CATEGORIES_BY_GROUP, COST_CATEGORY, COST_GROUP, COST_GROUP_HINT, CURRENCIES, options } from '../domain/vocabulary'
+import { ACTIVITY, CATEGORIES_BY_GROUP, COST_CATEGORY, COST_GROUP, COST_GROUP_HINT, CURRENCIES, deductibleByDefault, options } from '../domain/vocabulary'
 import { fetchRonRate, lei, money, round2, toRon } from '../lib/money'
 import { addMonths } from '../lib/dates'
 import { DateShortcuts, parseAmount, parseRate, SelectInput, TextArea, TextInput } from './fields'
@@ -40,7 +40,6 @@ interface Draft {
   notes: string
 }
 
-const deductibleByDefault = (g: CostGroup) => g !== 'investment' && g !== 'financing' && g !== 'tax'
 
 function fromCost(c: CostRecord, today?: string): Draft {
   return {

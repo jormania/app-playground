@@ -109,6 +109,7 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
         <input className={styles.search} type="search" placeholder="Search payments, clients, venues…" value={filter.query}
           onChange={(e) => set({ query: e.target.value })} aria-label="Search income" />
         <Button size="sm" className={styles.hit} variant={showFilters ? 'primary' : 'secondary'} onClick={() => setShowFilters((s) => !s)}>Filters{active.length ? ` (${active.length})` : ''}</Button>
+        {on('import') && <a href="#/import" className={styles.linkButton} title="Experimental">Import from Revolut</a>}
       </div>
       <div className={styles.chips}>
         {active.map(([k, label]) => (

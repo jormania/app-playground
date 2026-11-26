@@ -103,6 +103,8 @@ export interface IncomeRecord {
    * reimbursed. It changes no figure: the cost stays a cost, the money back stays cost recovery.
    */
   repaysCostId?: string | null
+  /** Set when the payment came from, or was matched to, a bank statement import (`lib/import`). */
+  importMeta?: ImportMeta | null
   /**
    * Derived, never stored: set on the adjustment rows `lib/refunds.ts` makes from refunds, to
    * the id of the payment refunded. A stored payment never has it.
@@ -137,6 +139,8 @@ export interface Refund {
   fxRate: number
   amountRon: number
   notes: string
+  /** Set when the refund came from a bank statement import (`lib/import`). */
+  importMeta?: ImportMeta | null
   demo?: boolean
 }
 
@@ -159,7 +163,24 @@ export interface CostRecord {
   /** Counts as a deductible expense for the tax estimate (PFA sistem real, SRL). */
   deductible: boolean
   notes: string
+  /** Set when the cost came from, or was matched to, a bank statement import (`lib/import`). */
+  importMeta?: ImportMeta | null
   demo?: boolean
+}
+
+/**
+ * Where an imported (or import-matched) row came from: enough to recognise the same bank
+ * transaction again and to undo its batch, nothing more (Release 2, experimental).
+ */
+export interface ImportMeta {
+  /** The bank transaction's fingerprint (see `lib/import/revolut.ts`). */
+  key: string
+  /** The import batch that created or matched the row. */
+  batch: string
+  /** The name the bank gave the other party, as written there. */
+  counterparty: string
+  /** True when the row existed before and the import only matched it. */
+  matched?: boolean
 }
 
 export interface Client {
@@ -249,7 +270,7 @@ export interface TaxProfile {
   expensesFromCosts: boolean
 }
 
-export type FeatureKey = 'tax' | 'costs' | 'deals' | 'insights' | 'expected' | 'currencies' | 'printable' | 'refunds'
+export type FeatureKey = 'tax' | 'costs' | 'deals' | 'insights' | 'expected' | 'currencies' | 'printable' | 'refunds' | 'import'
 
 export type Features = Record<FeatureKey, boolean>
 

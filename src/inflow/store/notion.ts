@@ -14,7 +14,7 @@
 import type { KeyValueStore } from '../../shared/kvStore'
 import { notionProxy } from '../../shared/notionClient'
 import { parseNotionId } from '../../shared/notionId'
-import type { Category, Client, CostRecord, Currency, DealTerms, IncomeRecord, InflowData, Refund, Source, Venue } from '../domain/types'
+import type { Category, Client, CostRecord, Currency, DealTerms, ImportMeta, IncomeRecord, InflowData, Refund, Source, Venue } from '../domain/types'
 import {
   CATEGORY, CLIENT_COUNTRY, COST_CATEGORY, DEAL, COST_GROUP_SHORT, COST_STATUS, CLIENT_KIND, CURRENCIES, SOURCE_TAX_DEFAULT, SOURCE_TYPE, STATUS,
   TAX_HANDLING, TAXABILITY, VAT, VENUE_TYPE, fromLabel,
@@ -75,6 +75,25 @@ export function termsFromText(s: string): DealTerms | null | undefined {
   } catch { return undefined }
 }
 
+/** Where an imported row came from (Release 2, experimental), as JSON text in the "Import" column. */
+export function importFromText(s: string): ImportMeta | undefined {
+  if (!s.trim()) return undefined
+  try {
+    const m = JSON.parse(s.trim().replace(/\\([{}])/g, '$1'))
+    if (!m || typeof m !== 'object' || typeof m.key !== 'string' || !m.key || typeof m.batch !== 'string') return undefined
+    return { key: m.key, batch: m.batch, counterparty: typeof m.counterparty === 'string' ? m.counterparty : '', ...(m.matched === true ? { matched: true } : {}) }
+  } catch { return undefined }
+}
+
+export const importToText = (m: ImportMeta | null | undefined): string =>
+  m ? JSON.stringify({ key: m.key, batch: m.batch, counterparty: m.counterparty, ...(m.matched ? { matched: true } : {}) }) : ''
+
+/** A row read from Notion carries `importMeta` only when its Import column holds one. */
+const withImport = <T extends object>(x: T, p: Props): T => {
+  const m = importFromText(text(p['Import']))
+  return m ? { ...x, importMeta: m } : x
+}
+
 export const termsToText = (t: DealTerms | null | undefined): string =>
   t === undefined ? '' : t === null ? '{"deal":null}' : JSON.stringify({ deal: t.deal, feePerSession: t.feePerSession, sharePct: t.sharePct, monthlyFee: t.monthlyFee })
 
@@ -88,7 +107,7 @@ export function refundFromPage(page: { id: string; properties: Props }): Refund 
   const currency = (CURRENCIES as string[]).includes(currencyName ?? '') ? (currencyName as Currency) : 'RON'
   const amount = Math.abs(num(p['Amount']) ?? 0)
   const fxRate = num(p['FX rate']) ?? (currency === 'RON' ? 1 : 0)
-  return {
+  return withImport({
     id: page.id.replace(/-/g, ''),
     paymentId: text(p['Refund of']).replace(/-/g, '').trim(),
     date: date(p['Date']),
@@ -97,7 +116,7 @@ export function refundFromPage(page: { id: string; properties: Props }): Refund 
     fxRate,
     amountRon: Math.abs(num(p['Amount RON']) ?? round2(amount * fxRate)),
     notes: text(p['Notes']),
-  }
+  } as Refund, p)
 }
 
 /** A refund row: positive amounts, as entered; the Status says what it is. */
@@ -115,6 +134,7 @@ export function refundToProps(f: Refund, payment: Pick<IncomeRecord, 'descriptio
     'Source': wRel(payment?.sourceId ?? null),
     'Venue': wRel(payment?.venueId ?? null),
     'Notes': wText(f.notes),
+    'Import': wText(importToText(f.importMeta)),
   }
 }
 
@@ -155,6 +175,7 @@ export function recordFromPage(page: { id: string; properties: Props }): IncomeR
     taxRules: text(p['Tax rules']),
     dealTerms: termsFromText(text(p['Venue terms'])),
     ...(text(p['Repays cost']).trim() ? { repaysCostId: text(p['Repays cost']).replace(/-/g, '').trim() } : {}),
+    ...(importFromText(text(p['Import'])) ? { importMeta: importFromText(text(p['Import'])) } : {}),
   }
 }
 
@@ -186,6 +207,7 @@ export function recordToProps(r: IncomeRecord): Props {
     'Tax rules': wText(r.taxRules),
     'Venue terms': wText(termsToText(r.dealTerms)),
     'Repays cost': wText(r.repaysCostId ?? ''),
+    'Import': wText(importToText(r.importMeta)),
   }
 }
 
@@ -213,6 +235,7 @@ export function costFromPage(page: { id: string; properties: Props }): CostRecor
     recurring: chk(p['Recurring']),
     deductible: chk(p['Deductible']),
     notes: text(p['Notes']),
+    ...(importFromText(text(p['Import'])) ? { importMeta: importFromText(text(p['Import'])) } : {}),
   }
 }
 
@@ -233,6 +256,7 @@ export function costToProps(c: CostRecord): Props {
     'Recurring': wChk(c.recurring),
     'Deductible': wChk(c.deductible),
     'Notes': wText(c.notes),
+    'Import': wText(importToText(c.importMeta)),
   }
 }
 
@@ -430,6 +454,16 @@ export class NotionRepo implements Repo {
    * Adds text columns a database lacks (a database duplicated before they existed). Returns
    * whether they are there now: a token without permission to change the schema can't add them.
    */
+  /**
+   * An imported row must keep its import key, or the next import would add it again: without the
+   * column (and no way to add it) the save is refused rather than made unmarked.
+   */
+  private async needImportColumn(dbId: string, name: string): Promise<void> {
+    if (!(await this.ensureText(dbId, ['Import']))) {
+      throw new Error(`Your ${name} database in Notion has no "Import" column, and InFlow could not add it. Add a text property named "Import", then import again.`)
+    }
+  }
+
   private async ensureText(dbId: string, names: string[]): Promise<boolean> {
     await this.fit(dbId, {})
     const known = await this.columns.get(dbId)!
@@ -509,6 +543,7 @@ export class NotionRepo implements Repo {
     if (r.dealTerms !== undefined) await this.ensureText(dbs.income, ['Venue terms'])
     // A reimbursement's link to its cost; without the column the payment still saves, unlinked.
     if (r.repaysCostId) await this.ensureText(dbs.income, ['Repays cost'])
+    if (r.importMeta) await this.needImportColumn(dbs.income, 'Income')
     const properties = await this.fit(dbs.income, withInflowId(recordToProps(r), opts))
     const page = r.id
       ? await this.call(`pages/${r.id}`, 'PATCH', { properties })
@@ -533,6 +568,7 @@ export class NotionRepo implements Repo {
     if (!(await this.ensureText(dbs.income, ['Refund of']))) {
       throw new Error('Your Income database in Notion has no "Refund of" column, and InFlow could not add it. Add a text property named "Refund of", then try again.')
     }
+    if (f.importMeta) await this.needImportColumn(dbs.income, 'Income')
     const properties = await this.fit(dbs.income, withInflowId(refundToProps(f, payment), opts))
     const page = f.id
       ? await this.call(`pages/${f.id}`, 'PATCH', { properties })
@@ -552,6 +588,7 @@ export class NotionRepo implements Repo {
     refuseDemo(c, [c.id, c.clientId, c.venueId])
     const dbs = await this.databases()
     if (!dbs.costs) throw new Error('No "InFlow — Costs" database next to Income in Notion. Duplicate it from the Starter Template.')
+    if (c.importMeta) await this.needImportColumn(dbs.costs, 'Costs')
     const properties = await this.fit(dbs.costs, withInflowId(costToProps(c), opts))
     const page = c.id
       ? await this.call(`pages/${c.id}`, 'PATCH', { properties })

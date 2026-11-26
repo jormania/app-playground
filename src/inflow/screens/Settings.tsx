@@ -21,7 +21,9 @@ import { BackupError, costsCsv, download, makeBackup, readBackup, recordsCsv } f
 import { NotionRepo } from '../store/notion'
 import type { Entity, EntityKind } from '../store/repo'
 import { RULESETS } from '../tax/rules'
-import { ALL_FEATURES, NO_FEATURES, SIMPLE_FEATURES } from '../store/settings'
+import { ALL_FEATURES, EXPERIMENTAL, NO_FEATURES, SIMPLE_FEATURES } from '../store/settings'
+import { loadImports } from '../store/imports'
+import { ImportSettings } from './ImportSettings'
 import { readJson, writeJson } from '../../shared/storage'
 import type { ReactNode } from 'react'
 import { useHint } from '../app/hints'
@@ -58,6 +60,9 @@ export const FEATURES: { key: FeatureKey; label: string; hint: string; on: strin
   { key: 'refunds', label: 'Refunds', hint: 'Money paid back to a client, against the payment it came from.',
     on: ['“Refund…” on a received payment, in part or in full', 'Counted when the money goes back: income, cash and tax', 'The payment itself never changes'],
     off: 'The Refund action goes. Refunds already recorded still count and stay listed: money paid back is never hidden from the totals.' },
+  { key: 'import', label: 'Import from Revolut (experimental)', hint: 'Read a Revolut statement (CSV), review each transaction, and add the ones that are income or costs.',
+    on: ['Experimental: check what it suggests before importing', 'Read on this device; the file is never uploaded', 'Spots what is already in InFlow, so nothing is added twice', 'Remembers how you classified a counterparty', 'A whole import can be undone'],
+    off: 'The Import button goes. What was imported stays, like anything else you entered.' },
 ]
 
 
@@ -95,15 +100,17 @@ export const LAST_BACKUP_KEY = 'inflow:last-backup'
 export const STARTER_STEPS = ['Duplicate “InFlow — Starter Template” in Notion', 'Share it with your integration', 'Paste its Income database link below']
 
 export function Settings() {
-  const { settings, updateSettings, data, toast, today, workspace, setWorkspace, clearDemo, loadDemo, resetDemo, restore, copyDeviceToNotion, deviceHasOwnData, reload, on } = useInflow()
+  const { settings, updateSettings, data, toast, today, workspace, setWorkspace, clearDemo, loadDemo, resetDemo, restore, copyDeviceToNotion, deviceHasOwnData, reload, on, importStore } = useInflow()
   const h = useHint()
   const [token, setToken] = useState(settings.notionToken)
   const [dbLink, setDbLink] = useState(settings.incomeDbId)
   const [testing, setTesting] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<null | 'clear' | 'reset' | 'restore' | 'copy'>(null)
   const insightFb = useInsightFeedback()
-  const onCount = FEATURES.filter((f) => settings.features[f.key]).length
-  const allOn = onCount === FEATURES.length
+  // "Everything" is every stable feature; an experimental one is never switched on in bulk.
+  const stable = FEATURES.filter((f) => !EXPERIMENTAL.includes(f.key))
+  const onCount = stable.filter((f) => settings.features[f.key]).length
+  const allOn = onCount === stable.length
   const noneOn = onCount === 0
   const isSimple = FEATURES.every((f) => settings.features[f.key] === SIMPLE_FEATURES[f.key])
   const [lastBackup, setLastBackup] = useState(() => readJson<string>(LAST_BACKUP_KEY, ''))
@@ -229,15 +236,15 @@ export function Settings() {
         </div>
       </Section>
 
-      <Section id="features" title="Features" sub={`${onCount} of ${FEATURES.length} on`}>
+      <Section id="features" title="Features" sub={`${onCount} of ${stable.length} on`}>
         <ul className={styles.featurePoints} style={{ marginTop: 0 }}>
           <li><Check size={13} aria-hidden />New here? You start simple: income, where it comes from, insights, expected payments.</li>
           <li><Check size={13} aria-hidden />Switch on more below, one at a time, or all at once.</li>
           <li><Check size={13} aria-hidden />Off hides a part everywhere; your data stays and comes back when it's on.</li>
         </ul>
         <div className={styles.masterSwitch}>
-          <SettingsToggle label="Everything" hint={allOn ? 'Every feature is on.' : noneOn ? 'Every optional feature is off.' : `${onCount} of ${FEATURES.length} on.`}
-            checked={allOn} onChange={(e) => updateSettings({ features: e.target.checked ? ALL_FEATURES : NO_FEATURES, simpleStartNotice: false })} />
+          <SettingsToggle label="Everything" hint={allOn ? 'Every feature is on.' : noneOn ? 'Every optional feature is off.' : `${onCount} of ${stable.length} on.`}
+            checked={allOn} onChange={(e) => updateSettings({ features: e.target.checked ? { ...ALL_FEATURES, import: settings.features.import } : NO_FEATURES, simpleStartNotice: false })} />
           {!isSimple && <Button size="sm" className={styles.hit} variant="secondary" onClick={() => updateSettings({ features: SIMPLE_FEATURES })}>Back to simple start</Button>}
         </div>
         {insightFb.hiddenCount > 0 && on('insights') && (
@@ -270,6 +277,12 @@ export function Settings() {
               hint={h('Bank and cash together, on the date beside it. Cash flow counts from here.')} />
             <TextInput label="On" type="date" value={settings.openingCashDate} onChange={(v) => updateSettings({ openingCashDate: v })} />
           </div>
+        </Section>
+      )}
+
+      {on('import') && (
+        <Section id="import" title="Import from Revolut" sub="Experimental">
+          <ImportSettings />
         </Section>
       )}
 
@@ -387,7 +400,7 @@ export function Settings() {
             <li><Minus size={13} aria-hidden />Never your Notion token</li>
           </ul>
           <div className={styles.buttonPair}>
-            <Button variant="secondary" onClick={() => { download(`inflow-backup-${today}.json`, JSON.stringify(makeBackup(data, settings), null, 2), 'application/json'); writeJson(LAST_BACKUP_KEY, today); setLastBackup(today) }}>Download backup</Button>
+            <Button variant="secondary" onClick={() => { void loadImports(importStore.store, importStore.key).catch(() => null).then((imports) => { download(`inflow-backup-${today}.json`, JSON.stringify(makeBackup(data, settings, new Date(), imports), null, 2), 'application/json'); writeJson(LAST_BACKUP_KEY, today); setLastBackup(today) }) }}>Download backup</Button>
             <Button variant="secondary" onClick={() => fileRef.current?.click()}>Restore…</Button>
           </div>
           <div className={styles.buttonRow} style={{ marginTop: 'var(--space-sm)' }}>

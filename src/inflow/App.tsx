@@ -19,6 +19,7 @@ import { Income } from './screens/Income'
 import { Overview } from './screens/Overview'
 import { REPORT_TABS, Reports, type ReportTab } from './screens/Reports'
 import { Settings } from './screens/Settings'
+import { Import } from './screens/Import'
 import { THEME_KEY } from './store/settings'
 import { writeJson } from '../shared/storage'
 import type { ThemeChoice } from './domain/types'
@@ -27,9 +28,9 @@ import styles from './styles/ui.module.css'
 /** Dispatched on window to reopen the welcome tour (Settings → Show the tour). */
 export const TOUR_EVENT = 'inflow:tour'
 
-type Screen = 'overview' | 'income' | 'costs' | 'reports' | 'settings'
+type Screen = 'overview' | 'income' | 'costs' | 'reports' | 'settings' | 'import'
 
-const TITLE: Record<Screen, string> = { overview: 'Overview', income: 'Income', costs: 'Costs', reports: 'Reports', settings: 'Settings' }
+const TITLE: Record<Screen, string> = { overview: 'Overview', income: 'Income', costs: 'Costs', reports: 'Reports', settings: 'Settings', import: 'Import' }
 
 interface Route { screen: Screen; report: ReportTab; /** A section to land on, e.g. #/reports/insights/act. */ anchor: string; /** #/add/income or #/add/cost: open the form at once. */ add: 'income' | 'cost' | null }
 
@@ -39,7 +40,7 @@ export function parseRoute(hash: string): Route {
   const add = first === 'add' ? (second === 'cost' ? 'cost' : 'income') : null
   const screen = add ? (add === 'cost' ? 'costs' : 'income') : first
   const sub = add ? '' : second
-  const s: Screen = (['overview', 'income', 'costs', 'reports', 'settings'] as const).includes(screen as Screen) ? (screen as Screen) : 'overview'
+  const s: Screen = (['overview', 'income', 'costs', 'reports', 'settings', 'import'] as const).includes(screen as Screen) ? (screen as Screen) : 'overview'
   const report: ReportTab = (REPORT_TABS as readonly string[]).includes(sub) ? (sub as ReportTab) : 'insights'
   return { screen: s, report, anchor, add }
 }
@@ -129,7 +130,7 @@ function Shell() {
   const copyOfRecord = entry?.kind === 'income' && entry.copyOf ? data.records.find((r) => r.id === entry.copyOf) ?? null : null
   const copyOfCost = entry?.kind === 'cost' && entry.copyOf ? data.costs.find((c) => c.id === entry.copyOf) ?? null : null
   // Costs is optional: with it off, its tab and screen go away.
-  const screen: Screen = route.screen === 'costs' && !settings.features.costs ? 'overview' : route.screen
+  const screen: Screen = (route.screen === 'costs' && !settings.features.costs) || (route.screen === 'import' && !settings.features.import) ? 'overview' : route.screen
   // A home-screen shortcut (#/add/income, #/add/cost) opens its form once, then
   // leaves the list behind it as the address, so Back doesn't reopen it.
   useEffect(() => {
@@ -218,12 +219,13 @@ function Shell() {
             {screen === 'costs' && <Costs onOpen={openCost} onCopy={(id) => copy('cost', id)} filter={costFilter} setFilter={setCostFilter} />}
             {screen === 'reports' && <Reports tab={route.report} anchor={route.anchor} onAddCost={(p) => openCost(null, p)} />}
             {screen === 'settings' && <Settings />}
+            {screen === 'import' && <Import />}
           </div>
         )}
       </main>
 
       {/* No floating button over Start here: its first step is the same action. */}
-      {screen !== 'settings' && !(screen === 'overview' && data.records.length === 0) && (
+      {screen !== 'settings' && screen !== 'import' && !(screen === 'overview' && data.records.length === 0) && (
         <button type="button" className={`${styles.fab} ${compact ? styles.fabCompact : ''}`} onClick={() => (screen === 'costs' ? openCost(null) : open(null))}
           aria-label={screen === 'costs' ? 'Add cost' : 'Add income'}>
           <Plus size={22} aria-hidden /> <span className={styles.fabLabel}>{screen === 'costs' ? 'Add cost' : 'Add income'}</span>
@@ -233,7 +235,7 @@ function Shell() {
       <nav className={styles.tabbar} aria-label="Sections">
         <div className={styles.tabbarInner} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
           {tabs.map(({ screen: s, label, icon: Icon, href }) => (
-            <a key={s} href={href} className={styles.tab} aria-current={screen === s ? 'page' : undefined}
+            <a key={s} href={href} className={styles.tab} aria-current={screen === s || (screen === 'import' && s === 'income') ? 'page' : undefined}
               onClick={(e) => { clearTrail(); if (screen === s && route.screen === s) { e.preventDefault(); window.scrollTo?.({ top: 0, behavior: 'smooth' }) } }}>
               <Icon size={20} aria-hidden />
               {label}

@@ -12,8 +12,11 @@ export const SETTINGS_KEY = 'inflow:settings'
 /** Read by inflow-react.html before first paint. */
 export const THEME_KEY = 'inflow:theme'
 
-export const ALL_FEATURES: Features = { tax: true, costs: true, deals: true, insights: true, expected: true, currencies: true, printable: true, refunds: true }
-export const NO_FEATURES: Features = { tax: false, costs: false, deals: false, insights: false, expected: false, currencies: false, printable: false, refunds: false }
+/** Experimental features: off unless switched on one by one; "Everything" leaves them as they are. */
+export const EXPERIMENTAL: FeatureKey[] = ['import']
+/** Every stable feature on. Experimental ones stay off: they are never switched on in bulk. */
+export const ALL_FEATURES: Features = { tax: true, costs: true, deals: true, insights: true, expected: true, currencies: true, printable: true, refunds: true, import: false }
+export const NO_FEATURES: Features = { tax: false, costs: false, deals: false, insights: false, expected: false, currencies: false, printable: false, refunds: false, import: false }
 /** Where a new user starts: income and where it comes from, insights, and printable reports. The rest is a switch away. */
 export const SIMPLE_FEATURES: Features = { ...NO_FEATURES, insights: true, printable: true }
 
@@ -57,7 +60,7 @@ type Stored = Partial<Settings> & { trackTax?: boolean; trackCosts?: boolean; fe
  * Features added after people already had InFlow: they start off for everyone, introduced when
  * wanted, rather than appearing unannounced as "a feature never set" would.
  */
-const ADDED_LATER: Partial<Features> = { refunds: false }
+const ADDED_LATER: Partial<Features> = { refunds: false, import: false }
 
 /**
  * A new user (nothing stored) starts simple. Someone who has used InFlow keeps

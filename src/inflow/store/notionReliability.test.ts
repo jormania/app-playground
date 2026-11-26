@@ -13,7 +13,13 @@ import { earned, received, recovered, summarise } from '../lib/analytics'
 import { earnings } from '../lib/earnings'
 import { buildPnl, monthColumns } from '../lib/finance'
 import { withRefunds } from '../lib/refunds'
-import { CACHE_KEY, copyToNotion, CopyUncertain, memoryCopyLog, NotionRepo, PENDING } from './notion'
+import { CACHE_KEY, copyToNotion, CopyUncertain, importFromText, importToText, memoryCopyLog, NotionRepo, PENDING } from './notion'
+import { DEMO_SETTINGS_TAX } from '../data/demo'
+import { classify, effective, expandFees } from '../lib/import/classify'
+import { parseCsv } from '../lib/import/csv'
+import { buildPlan } from '../lib/import/plan'
+import { readStatement } from '../lib/import/revolut'
+import { ALL_FEATURES } from './settings'
 import { paced, retryable, withRetry, type Call } from './notionCall'
 
 /** A clock the code under test can only move by sleeping. */
@@ -294,5 +300,55 @@ describe('a reimbursement’s link to its cost survives the copy to Notion', () 
     await copyToNotion(repo, { ...mine, records: [r], costs: [c], refunds: [] })
     const back = await repoOn(f).repo.load()
     expect(back.records[0].repaysCostId).toBe(back.costs[0].id)
+  })
+})
+
+describe('Import from Revolut in Notion (Release 2, experimental)', () => {
+  const CSV = [
+    'Type,Product,Started Date,Completed Date,Description,Amount,Fee,Currency,State,Balance',
+    'TRANSFER,Current,2026-03-02 09:15:01,2026-03-02 09:15:44,Payment from Acme SRL,1200.00,0.00,RON,COMPLETED,5200.00',
+    'CARD_PAYMENT,Current,2026-03-04 12:00:00,2026-03-05 08:00:00,"Zoom, Inc.",-75.50,0.00,RON,COMPLETED,5124.50',
+    'TRANSFER,Current,2026-03-07 10:00:00,2026-03-07 10:00:10,To Sala Lumina,-400.00,2.00,RON,COMPLETED,4722.50',
+  ].join('\n')
+  const empty: InflowData = { records: [], costs: [], clients: [], sources: [], venues: [], refunds: [] }
+
+  async function importInto(repo: NotionRepo, data: InflowData) {
+    const rows = classify(expandFees(readStatement(parseCsv(CSV)).txs), { data, rules: [], ledger: {}, ownNames: [] })
+    const choices = new Map(rows.map((r) => [r.tx.key, effective(r, r.tx.direction === 'out' ? { kind: r.parent ? 'fee' : 'cost' } : undefined)]))
+    const plan = buildPlan({ rows, choices, data, features: ALL_FEATURES, profile: DEMO_SETTINGS_TAX, rates: new Map(), batch: 'b1' })
+    for (const o of plan.ops) {
+      if (o.op === 'createRecord') await repo.saveRecord(o.record)
+      if (o.op === 'createCost') await repo.saveCost(o.cost)
+    }
+    return plan
+  }
+
+  it('the import key goes to the "Import" column and comes back: the same file again is all already in', async () => {
+    const f = fakeNotion()
+    const { repo } = repoOn(f)
+    const plan = await importInto(repo, empty)
+    expect(plan.counts).toMatchObject({ records: 1, costs: 3 })
+    const back = await repoOn(f).repo.load()
+    expect(back.records[0].importMeta).toMatchObject({ batch: 'b1', counterparty: 'Acme SRL' })
+    expect(back.costs.map((c) => c.importMeta?.batch)).toEqual(['b1', 'b1', 'b1'])
+    expect(back.costs.find((c) => c.amount === 2)).toMatchObject({ category: 'bank_fees', group: 'operating' })
+    const again = classify(expandFees(readStatement(parseCsv(CSV)).txs), { data: back, rules: [], ledger: {}, ownNames: [] })
+    expect(again.every((r) => r.match.status === 'exact')).toBe(true)
+  })
+
+  it('without permission to add the "Import" column, an imported row is refused, not saved unmarked', async () => {
+    const f = fakeNotion({ noSchemaEdits: true })
+    const { repo } = repoOn(f)
+    await expect(importInto(repo, empty)).rejects.toThrow(/"Import" column/)
+    expect(f.rows('income')).toBe(0)
+  })
+
+  it('reads an Import column that a Markdown-minded tool escaped, and ignores one that is not InFlow\'s', () => {
+    const meta = { key: 'rv:abc', batch: 'b1', counterparty: 'Acme, "SRL"', matched: true }
+    expect(importFromText(importToText(meta))).toEqual(meta)
+    expect(importFromText(importToText(meta).replace(/[{}]/g, (c) => `\\${c}`))).toEqual(meta)
+    expect(importFromText('see bank')).toBeUndefined()
+    expect(importFromText('{"batch":"b"}')).toBeUndefined()
+    expect(importToText(null)).toBe('')
   })
 })

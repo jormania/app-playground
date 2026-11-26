@@ -14,6 +14,7 @@ import { useInflow } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
 import { earnings, type EarningsBy, type EarningsRow } from '../lib/earnings'
 import { lei } from '../lib/money'
+import { clientMetrics } from '../lib/clientMetrics'
 import { WiderPeriod } from './Insights'
 import styles from '../styles/ui.module.css'
 
@@ -28,6 +29,7 @@ export function EarningsReport({ initial }: { initial?: EarningsBy }) {
   const [by, setBy] = useState<EarningsBy>(() => initial ?? readJson<EarningsBy>(KEY, 'client'))
   const [all, setAll] = useState(false)
   const e = useMemo(() => earnings(data, range, by, { deals: on('deals'), costs: on('costs') }), [data, range, by, on])
+  const m = useMemo(() => clientMetrics(data.records, range), [data.records, range])
   const maxIncome = Math.max(1, ...e.rows.map((r) => r.income))
   const rows = all ? e.rows : e.rows.slice(0, SHOWN)
 
@@ -41,6 +43,16 @@ export function EarningsReport({ initial }: { initial?: EarningsBy }) {
         </div>
         <p className={styles.hint} style={{ margin: 'var(--space-xs) 0 0' }}>{e.totals.sessions} {e.totals.sessions === 1 ? 'session' : 'sessions'} · {range.label}
           {e.totals.costRecovery > 0 && <> · plus {lei(e.totals.costRecovery)} cost recovery (reimbursements: not income, not in kept)</>}</p>
+        {m.paying > 0 && (
+          <p className={styles.hint} style={{ margin: 'var(--space-xs) 0 0' }} aria-label="Clients in this period">
+            {m.paying} paying {m.paying === 1 ? 'client' : 'clients'} · {m.newClients} new · {m.returning} returning · {lei(m.perClient)} a client on average
+          </p>
+        )}
+        {m.noClient > 0 && (
+          <p className={styles.hint} style={{ margin: 'var(--space-xs) 0 0' }}>
+            {m.noClient} {m.noClient === 1 ? 'payment has' : 'payments have'} no client{m.unmatched.length ? `; from imports: ${m.unmatched.slice(0, 5).join(', ')}${m.unmatched.length > 5 ? ` and ${m.unmatched.length - 5} more` : ''}` : ''}.
+          </p>
+        )}
       </section>
 
       <SegmentedControl label="Show" value={by} onChange={(v) => { setBy(v as EarningsBy); writeJson(KEY, v) }}

@@ -200,3 +200,6 @@ export function fromLabel<K extends string>(map: Record<K, string>, label: strin
 export function options<K extends string>(map: Record<K, string>): { value: K; label: string }[] {
   return (Object.keys(map) as K[]).map((value) => ({ value, label: map[value] }))
 }
+
+/** Whether a new cost of this group starts as deductible; the person decides on each (the cost form, the import). */
+export const deductibleByDefault = (g: CostGroup): boolean => g !== 'investment' && g !== 'financing' && g !== 'tax'

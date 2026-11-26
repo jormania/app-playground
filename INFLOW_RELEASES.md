@@ -4,6 +4,27 @@ InFlow is the freelancer income tracker in `src/inflow/` (design and behaviour: 
 A release is a point on `main` worth naming; the number shows at the foot of Settings
 (`src/inflow/app/release.ts`).
 
+## Release 2 — in progress
+
+**Import from Revolut (experimental).** Off unless you switch it on in Settings → Features;
+"Everything" leaves it off. Details in `INFLOW.md`, "Release 2".
+
+- **Read a Revolut statement (CSV)** on your device; the file is never uploaded. See what it
+  holds (dates, currencies, money in and out, rows it couldn't read) before anything is added.
+- **Review each transaction**: income, money back for a cost, a business cost, a bank fee, a
+  refund to a client, a transfer, personal, or left out. Bulk choices for a month at a time.
+- **Nothing twice.** Each transaction has a fingerprint; importing the same or an overlapping
+  file again finds what is already in. Entries you typed by hand are offered to link, never
+  silently duplicated.
+- **Your context, not guesses.** A client is suggested only by their exact name, a venue only by
+  a rule you saved, deductibility only as for a cost you add by hand.
+- **Rules you can see and delete**, made only from choices you confirmed.
+- **Undo a whole import**, with what it will do shown first.
+- **Clients & work** now counts paying clients, new and returning, and income per client.
+
+**Using Notion:** the first import adds an "Import" text column to Income and Costs. Without
+permission to add it, InFlow refuses to import rather than lose track of what came in.
+
 ## Release 1 — 2026-11-26
 
 The first stable release. What came in, what you kept, and what is yours to spend, the same on

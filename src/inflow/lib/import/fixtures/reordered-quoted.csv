@@ -1,0 +1,4 @@
+﻿Currency,Amount,Description,State,Completed Date,Type,Started Date
+EUR,200.00,"Payment from ""Blue Door"" Coaching, Cluj",COMPLETED,2026-08-03 10:00:05,TRANSFER,2026-08-03 10:00:00
+EUR,-12.30,"Bolt, Ride 7 Aug",COMPLETED,2026-08-07 21:00:00,CARD_PAYMENT,2026-08-07 20:41:00
+GBP,75.00,Payment from Hollow Oak Retreats,COMPLETED,2026-08-09 09:00:00,TRANSFER,2026-08-09 08:59:00
