@@ -4,9 +4,10 @@
 source `src/inflow/` · entry `inflow-react.html` · strict TypeScript on `src/ds/`
 
 A light income tracker for freelancers. Open it for twenty seconds and know how much
-came in, from whom, where and for what kind of work, and how it moves. Two things are
-optional and switch off cleanly: **costs** (P&L, cash flow, margins, break-even) and
-**tax** (taxability, withholding, VAT, what to set aside). Not invoicing, bookkeeping or a CRM.
+came in, from whom, where and for what kind of work, and how it moves. Seven parts are
+optional and switch off cleanly (see *Feature switches*), among them **costs** (P&L, cash
+flow, what each client and kind of work kept, break-even) and **tax** (taxability,
+withholding, VAT, what to set aside). Not invoicing, bookkeeping or a CRM.
 
 ## What it does
 
@@ -14,30 +15,35 @@ optional and switch off cleanly: **costs** (P&L, cash flow, margins, break-even)
 |---|---|
 | **Overview** | Four panels (shortened 25 Nov 2026): the period total vs the previous equivalent period with its trend chart and, for a month or a year, target progress; *Worth a look*; *Where it came from* (client · source · venue · activity, with drill-down and client concentration); *Expected*, with one-tap **Received** and **Remind**, plus next month's payment from each recurring client with nothing expected yet (**Expect it** / **Not this time**). Profit, tax detail and unusual payments live in Reports and Income |
 | **Income** | Every payment, expected ones grouped on top with their month; search; filters (client, source, venue, activity, tax, status); CSV |
-| **Costs** *(optional)* | Every cost, unpaid ones on top; filters (kind, venue, client, activity, status); CSV |
+| **Costs** *(optional)* | Every cost, unpaid ones on top; *Usually paid by now* (recurring costs not yet recorded this month); filters (kind, venue, client, activity, status); CSV |
 | **Reports** | **Review**, **Clients & work** (by client, work type, venue or source, ranked by what you kept), **Venue deals** *(deals)*, **Profit** (P&L with break-even, cash flow) *(costs)*, **Tax** *(tax)*, **Print** *(printable)*. The period at the top is the only filter |
-| **Settings** | Device or Notion; demo load/clear; costs on/off and opening cash; tax on/off and profile; monthly target and unusual-payment flags; clients/sources/venues; backup, restore, CSV; theme; the welcome guide |
+| **Settings** | Sections, each folding: *Your data* (device or Notion, demo load/clear/reset); *Appearance & guide* (theme, **Show hints**, the welcome guide); *Features* (seven switches, **Everything**, back to simple start); *Costs and cash flow* (opening cash; your own data only, with costs on); *Tax profile*; *Target and flags* (monthly target, unusual-payment flag); *Clients, sources & venues* (search past 12 entries); *Backup & export* (backup, restore, CSV) |
 
 Periods: this week (Monday-based), this month, last month, this year, custom. One
 selection drives Overview, Income, Costs and Reports; no screen has a range of its own.
 Expected payments and costs still due show in Income and Costs whatever the period.
 
 ### Entering things
-- **Income:** amount + client is enough. Recent clients are chips above the picker; a
-  client's last *received* payment prefills source, venue, activity, currency and
-  description. Any payment can be **copied** (dated today). **Sessions** (default 1: a
+- **Income:** amount + client is enough. The client field is a search box (see *Clients at
+  scale*): with nothing typed it lists recent clients, then businesses. A client's last
+  *received* payment prefills source, venue, activity, currency, description, sessions and
+  hours. Any payment can be **copied** (dated today). **Sessions** (default 1: a
   4-session package is 4, a platform payout its sessions) and optional **Hours** feed the
   per-session and per-hour figures and the venue deals. Foreign currency gets the
   ECB rate for the day from Frankfurter, editable because the BNR rate is what's declared.
 - **Costs:** amount, what it was, kind (direct / operating / depreciation / interest / tax /
   investment / financing) and category. *Repeat a recent cost* offers the five costs paid
   most often in the last six months (rent, Zoom, the accountant) as one-tap copies.
-  Linking a venue, client or activity is optional and only feeds the margins.
+  Linking is optional: a *direct* cost linked to a venue (else a client) comes off the
+  nearest payment there in what Clients & work counts as kept; activity is for sorting and
+  filtering.
 
 ### The welcome guide
-Six steps on first open, including the costs and tax switches. Its checkbox, "Show this
-guide next time I open InFlow", decides whether it returns; Settings can switch it back on
-or show it now.
+Seven steps on first open (`components/Tour.tsx`), at most three short points each. Five of
+them carry their feature's switch: insights, expected payments, venue deals, costs and tax.
+The last step picks between the demo and your own data, then **Start**. Skip, Back and the
+forward button keep the same places on every step. Its checkbox, "Show this guide next time",
+decides whether it returns; Settings can switch it back on or show it now.
 
 ### Reports (simplified 25 Nov 2026)
 Six tabs at most, as links (`#/reports/<route>`), so back and forward work and old links
@@ -49,30 +55,35 @@ period is the only filter, so nothing narrows a report out of sight. On a phone 
 are a three-column grid with no sideways scroll.
 
 **Clients & work** (`lib/earnings.ts`, `screens/Earnings.tsx`) ranks by what you kept:
-income less each payment's venue fee and its share of same-day direct costs. Each row has
+income less each payment's venue fee and the direct costs that belong to it (`recordCosts`:
+each direct cost goes to the nearest payment, within a month, at its venue, else with its
+client). Each row has
 sessions, kept a session and, when every payment has hours, kept an hour; the detail shows
 the lowest and highest session and the parts behind it (venues, or clients when ranking
 venues).
 
 **Review** follows WhereItWent's order (`lib/review.ts`, `screens/Insights.tsx`):
-- *Understand*: "<period> in review", a plain summary paragraph (`reviewSummary`), KPIs,
-  *Copy summary*.
+- *Understand*: "<period> in review", the summary as rows (`reviewHighlights`: came in,
+  you kept, top client, biggest rise, biggest drop, needs a look), and *Copy summary*, which
+  copies the sentence form (`reviewSummary`).
 - *Main movers*: the biggest changes vs the period before, across clients, venues and
   activities (at most three from one), with a client who stopped included. Drawn either side
   of zero: green up, amber down.
-- *Who carries the income*: a share bar by any dimension.
+- *Who carries the income*: a donut by client, venue, activity or source.
 - *Act*: pain points and wins.
 
 A section index under the tabs lights the section in view and scrolls to it. A comparison that
 reaches before the first record says so instead of quoting "+1644%".
 
-Charts follow the dataviz skill: part-to-whole is a tall segmented bar (`ShareBar`, ≤ 5
-named parts plus "Other"), never a donut. `--chart-4`/`--chart-5` were added and the five
-hues validated together, light and dark. Review, Income ("Where it came from") and Costs
-("Where it went") each carry one. Profit has monthly income vs costs bars (`MonthlyPair`).
+Charts follow the dataviz skill's validated palette (`--chart-1…5`, light and dark).
+Part-to-whole is a donut (`components/Donut.tsx`: five named slices plus "Other", tap a slice
+or its key row to narrow the screen) on the Overview and in the Review, Income ("Where it came
+from") and Costs ("Where it went"). *(An earlier version used a segmented bar, `ShareBar`; it
+is still in `components/charts.tsx` but no screen uses it.)* Profit has monthly income vs
+costs bars (`MonthlyPair`).
 
 Navigation: a drill-down from a report leaves a trail (`app/trail.ts`), and Income offers
-"← Back to Review". Month headings on Income and Costs stick while scrolling. Tapping the
+"← Back to <report>" (`components/BackBar.tsx`). Month headings on Income and Costs stick while scrolling. Tapping the
 current tab scrolls to the top. Each screen names itself in the browser tab.
 
 **Venue deals** (`screens/VenueDeals.tsx`, `lib/deals.ts`), simplified 25 Nov 2026 to answer
@@ -85,7 +96,8 @@ one question: which deals make the freelancer the most money.
 - **Summary:** revenue, paid to venues, kept, sessions (`dealTotals`).
 - **One row per venue, best average first:**
   - the deal and its terms, sessions, revenue, paid to the venue, kept, and kept per session
-    (`venueDeal`: each received, non-reimbursement payment at a venue is one session);
+    (`venueDeal`: each received, non-reimbursement payment at a venue counts its `sessions`,
+    1 unless it is a package or a payout; a fixed fee is paid per session);
   - fixed fee: "Fee covered at <fee> of session revenue", plus the head count at the venue's
     recorded price per head when there is one (`feeCoveredAt`);
   - revenue share: "You keep <100 − share>%".
@@ -101,6 +113,9 @@ read `venueDeal` (sessions that lost money at a fixed-fee room).
 
 **Clients & work** (`screens/Earnings.tsx`, `lib/earnings.ts`) replaced the Review's heat map
 on 25 Nov 2026. It answers one question: which clients and kinds of work earn the most.
+*(As first built; since then the toggle has four views, Client / Work / Venue / Source, a row
+shows kept an hour when hours are recorded, and "kept" takes each direct cost from the nearest
+payment, not only the same day. The paragraph at the top of this section is current.)*
 - A summary of income, costs and kept, then one toggle (By client / By work type).
 - A list ranked by total kept. Each row shows sessions, kept a session, and a bar of kept (green)
   against costs (amber). Tap a row for income, venue fees, direct costs, kept, the lowest to
@@ -108,8 +123,8 @@ on 25 Nov 2026. It answers one question: which clients and kinds of work earn th
 - "Kept" is the existing per-payment rule, `recordCosts` in `lib/insights.ts` (`takeHome` is
   built on it): income less the venue's deal cost and the direct costs linked to that venue
   that day, shared across that day's payments.
-- A session is a received, non-reimbursement payment in the selected period. The global
-  period is the only filter.
+- A session is a received, non-reimbursement payment in the selected period (now: the
+  sessions it covers). The global period is the only filter.
 
 **Insights** (`lib/insights.ts`), reworked 25 Nov 2026 for relevance. `practice()` reads the
 records first: regular clients (paid in ≥ 3 separate months in the last year), full months of
@@ -125,7 +140,7 @@ history, whether there is group work. Each rule then fires only where it applies
 | regular-fading | *a recurring arrangement that stopped* (tip, not a pain point): ≥ 3 payments marked recurring, not platform or royalty payouts or content, nothing expected, silent for more than twice its rhythm (≥ 45 days) and at most 180 days. Clients finishing coaching are normal and never flagged |
 | regular-growing | regular clients who paid in ≥ 2 of the earlier 3 months (a new client ramping up is not growth), up ≥ 50% and ≥ 1,000 lei |
 | one-client | ≥ 35% of the last 12 months from one client (never read from a short period) |
-| intro-clients | individual clients only, ≥ 5 new this year, and more than half never came back (a tip: some first sessions never turn into more) |
+| intro-clients | individual clients only, ≥ 5 first paid between 12 and 2 months ago (the title says "this year"), and more than half never came back (a tip: some first sessions never turn into more) |
 | overdue | an expected payment past its date |
 | quiet-month | ≥ 9 complete months, never the running month or a start-up month |
 | tax-review | *(tax)* payments this year marked "review": the estimate leaves them out until decided |
@@ -182,7 +197,7 @@ No paragraphs to read where facts can be laid out.
   rise, biggest drop, needs a look. Each row has an icon tile coloured by how it reads: green good,
   amber bad, blue neutral. The printout's *In short* uses the same rows. The sentence form
   (`reviewSummary`) survives only for *Copy summary*.
-- **The tour** gives two to four ticked points per step.
+- **The tour** gives two to four ticked points per step *(now at most three; see The welcome guide)*.
 - **Settings → Features:** each twisty lists what the feature adds (ticks) and one "Off:" line.
 - **The demo, device mode and backup:** chips or ticks. **Notion setup:** numbered steps.
 - **Report notes:** one fact per line.
@@ -197,9 +212,12 @@ No paragraphs to read where facts can be laid out.
 - **Remind**: an expected payment on the Overview copies a polite reminder. People are greeted
   by first name, businesses with a plain hello.
 - **Shortcuts**: the manifest's shortcuts open forms (`#/add/income`, `#/add/cost`, replaced in
-  history so Back doesn't reopen them). On a keyboard, `N` adds and `/` searches.
+  history so Back doesn't reopen them) and the Review (`#/reports/insights`). On a keyboard,
+  `N` adds and `/` searches.
 - Insight links land on their section (`#/reports/insights/heat`, `#/reports/deals/verdict`).
-  A grid with fewer than two rows or columns says so instead of drawing one.
+  A grid with fewer than two rows or columns says so instead of drawing one. *(Historical: the
+  heat map and verdicts are gone. Insight links now open `#/reports/earnings`,
+  `#/reports/deals`, `#/reports/tax`, `#/costs` or `#/overview`.)*
 
 ### Printable reports
 Four reports, each with when to print it and what it holds (`PRESET_ADVICE`):
@@ -208,6 +226,10 @@ Four reports, each with when to print it and what it holds (`PRESET_ADVICE`):
 - **Client statement**: asks for the client first.
 - **For my accountant**: sources, P&L, tax, every payment with notes.
 
+Optional sections (`SECTION_LABEL` in `lib/report.ts`) include *What you kept, by client &
+work* (the same figures as Clients & work; offered with costs or venue deals on). The P&L
+prints each cost's categories; the tax section ends with "still to set aside", as in the app.
+
 Dates follow the selected period, with one tap to the whole year. Title, sections, rows,
 comparison, currencies and notes wait under *Adjust this report*. `lib/report.ts` renders one
 self-contained HTML document (inline CSS and SVG, every user string escaped). A year's P&L
@@ -215,7 +237,7 @@ uses smaller type so twelve months fit A4.
 
 ## Costs, P&L and cash flow (optional)
 
-`settings.trackCosts`. **Cash basis**: income counts when received, a cost when paid; due
+`settings.features.costs` (an older stored `trackCosts` is migrated on load). **Cash basis**: income counts when received, a cost when paid; due
 costs and expected income stay out until they happen. Structure (`lib/finance.ts`):
 
 ```
@@ -229,10 +251,15 @@ rolls forward from **cash on hand on a date** (Settings), backwards too if that 
 later; without one it starts at zero and says so. Loans received and capital put in are not
 recorded — a deliberate limit of an income tracker.
 
-**Margins** per venue, client or activity = income less the direct and operating costs
-*linked* to it; unlinked overheads are not shared out. A filtered P&L counts only linked
-costs and says so. **Break-even** = average monthly operating + interest costs over the last
-three whole months ÷ the gross-margin rate over the same months.
+**What each client and kind of work kept** (Clients & work, and the print's *What you kept*)
+= income less the venue's deal fee and the direct costs that belong to it: each direct cost
+goes to the nearest payment within a month at its linked venue, else with its linked client;
+unlinked costs and overheads are not shared out. *(Until 25 Nov 2026 this was a separate
+"margins" calculation over linked direct and operating costs; it was removed.)* A printed
+P&L narrowed to one client, venue or activity counts only the costs linked to it, and one
+narrowed to a source counts none; the note says so. **Break-even** = average monthly operating + interest costs over the last
+three whole months ÷ the gross-margin rate over the same months; Profit scales it to the
+selected period (a week, a month, a year, or a custom number of days).
 
 **No balance sheet**, by design: it needs assets, liabilities and equity kept as balances —
 bookkeeping, not income tracking. Cash flow's closing cash is the one balance InFlow keeps.
@@ -242,9 +269,12 @@ With costs on, the tax estimate can read deductible expenses from recorded costs
 
 ## Tax is optional
 
-`settings.trackTax`. Off: no tax cards, panels, tab, form section or report columns.
-On: tax figures carry an **Optional** chip or asterisk; the form's tax section is folded to
-a one-line summary unless the payment needs review.
+`settings.features.tax` (an older stored `trackTax` is migrated on load). Off: no tax
+cards, panels, tab, form section, report columns or tax insights. On: the form's tax section
+is folded to a one-line summary unless the payment needs review, and folds back from its
+heading. *(An "Optional" badge on tax figures was removed on 25 Nov 2026; the printed report
+still marks tax figures with an asterisk and a footnote.)* The cost form shows what a
+deductible cost takes off the year's estimate (`costTaxEffect`).
 
 Taxability, handling and VAT are separate suggestions (`tax/classify.ts`), each with its
 reason and a **Suggested** badge until changed. The estimator (`tax/estimate.ts`,
@@ -296,10 +326,11 @@ still works and says costs can't be saved there. Reads and writes go through
 | InFlow — Costs | Description, Amount, Currency, FX rate, Amount RON, Date, Status (Paid/Due), Group, Category, Venue/Client (relations), Activity, Recurring, Deductible, Notes |
 | InFlow — Clients | Name, Kind, Country, Contact, Notes, Archived |
 | InFlow — Sources | Name, Type, Description, Active, Tax default |
-| InFlow — Venues | Name, Type, Location, Notes, Archived |
+| InFlow — Venues | Name, Type, Location, Notes, Archived, Deal, Fee per session, Share %, Monthly fee |
 
 Select options are a closed vocabulary mirrored in `domain/vocabulary.ts`: add an option
-in Notion first. The Starter Template (`Dev → Starter Templates`) has all five, linked to
+in Notion first. Saves write only the columns a database actually has (`NotionRepo.fit`), so a
+copy made before a column was added keeps saving without it. The Starter Template (`Dev → Starter Templates`) has all five, linked to
 each other. Moving from device to Notion: a one-time copy of the user's own rows, entities
 first so relations point at new ids; demo rows never leave the device.
 
@@ -362,20 +393,23 @@ twisty; every Settings section folds, remembered per device (`inflow:settings-op
 | Key | Off removes |
 |---|---|
 | insights | Overview "Worth a look", the Review's pain points and wins |
-| deals | Venue deals report, deal fields on venues, the head-count field |
-| costs | Costs tab, P&L, cash flow, margins after costs, break-even |
-| tax | tax panels, Tax report, reserves, tax fields in the form and report |
+| deals | Venue deals report, deal fields on venues, the head-count field, venue fees in what Clients & work counts as kept, venue insights |
+| costs | Costs tab, Profit (P&L, cash flow, break-even), direct costs in what Clients & work counts as kept, cost insights, cash and expense settings |
+| tax | tax tiles and panels, Tax report, reserves, tax fields in the form and report, the tax-review insight |
 | expected | Expected status, panel, suggestions from recurring payments and overdue insight |
 | currencies | currency select (lei only; an existing foreign record keeps its currency) |
-| printable | Printable tab |
+| printable | Print tab |
 
 Screens enter with Stillflow's 320 ms rise (`.screenIn`, off under reduced motion); the
 theme is Device / Light / Dark.
 
 ## PWA
-`public/inflow.webmanifest` (scope `/inflow-react.html`, shared Cone of Cold icons),
-`public/inflow-sw.js` (network-first navigations, `/api/` never cached, only `inflow-`
-caches touched), production-only registration.
+`public/inflow.webmanifest` (`id` and scope `/inflow-react.html`, shared Cone of Cold icons,
+three shortcuts), `public/inflow-sw.js` (network-first navigations with a cached fallback,
+stale-while-revalidate for everything else, the `/api/notion` relay never cached, only
+`inflow-` caches touched), registered from `main.tsx` with scope `/inflow-react.html`,
+production only. Exchange rates fetched for a date are kept in localStorage
+(`inflow:fx-rates`).
 
 ## What others build, and what was borrowed
 
@@ -391,6 +425,9 @@ P&L and cash flow from the same records. Not adopted: invoices, time tracking, p
 client portals, bank sync, a balance sheet — each would turn a 20-second app into accounting.
 
 ## Audit, 2026-11-25
+
+*(Historical: the filter bar and pivot it mentions were removed later the same day; see
+"Less and more".)*
 
 A browser script (Playwright, phone 412 px, desktop 1280 px dark, narrow 340 px) exercised
 every use case: tour, every period, every breakdown and drill-down, search and filters, add /
