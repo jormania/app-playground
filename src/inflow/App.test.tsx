@@ -221,7 +221,6 @@ describe('small conveniences', () => {
     await screen.findByTestId('period-total')
     await user.click(screen.getByRole('button', { name: /Add income/ }))
     const dialog = await screen.findByRole('dialog')
-    await user.click(within(dialog).getByRole('button', { name: /^More details/ }))
     await chooseClient(user, within(dialog), 'Radu Stoica')
     const chips = within(within(dialog).getByLabelText('Usual amounts')).getAllByRole('button')
     expect(chips.length).toBeGreaterThan(0)
@@ -253,7 +252,6 @@ describe('small conveniences', () => {
     await screen.findByTestId('period-total')
     await user.click(screen.getByRole('button', { name: /Add income/ }))
     const dialog = await screen.findByRole('dialog')
-    await user.click(within(dialog).getByRole('button', { name: /^More details/ }))
     expect(within(dialog).queryByText(/A 4-session package/)).toBeNull()
     // Live: the per-head figure still shows once people are entered.
     await user.selectOptions(within(dialog).getByLabelText('Venue'), within(dialog).getByRole('option', { name: 'Casa Verde loft' }))
@@ -316,7 +314,6 @@ describe('small conveniences', () => {
     await screen.findByTestId('period-total')
     await user.click(screen.getByRole('button', { name: /Add income/ }))
     const dialog = await screen.findByRole('dialog')
-    await user.click(within(dialog).getByRole('button', { name: /^More details/ }))
     await user.selectOptions(within(dialog).getByLabelText('Venue'), within(dialog).getByRole('option', { name: 'Casa Verde loft' }))
     await user.type(within(dialog).getByLabelText(/People per session/), '10')
     expect(within(dialog).getByText(/10 × 150 lei/)).toBeTruthy()
@@ -564,25 +561,19 @@ describe('estimated available to spend (audit F-01)', () => {
 describe('stage 6: shorter form, more ways in', () => {
   const stored = async () => (await store.get<InflowData>('demo'))!
 
-  it('the payment form asks for amount, client and date; the rest folds away and stays as left (C-01, E-03)', async () => {
-    settings()
+  it('the payment form shows every field at once: amount, client and date first, nothing folded away', async () => {
+    settings({ features: { ...ALL_FEATURES } })
     const user = userEvent.setup()
     render(<App store={store} today={today} />)
     await screen.findByTestId('period-total')
     await user.click(screen.getByRole('button', { name: /Add income/ }))
-    let dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByLabelText(/^Amount/)).toBeTruthy()
+    const dialog = await screen.findByRole('dialog')
+    for (const label of [/^Amount/, /^Date/, /^Description/, /^Sessions/, /^Hours/, /^Source/, /^Venue/, /^Activity/, /^Notes/]) expect(within(dialog).getByLabelText(label)).toBeTruthy()
     expect(within(dialog).getByRole('combobox', { name: 'Client' })).toBeTruthy()
-    expect(within(dialog).getByLabelText(/^Date/)).toBeTruthy()
-    expect(within(dialog).queryByLabelText(/^Sessions/)).toBeNull()
-    expect(within(dialog).queryByLabelText(/^Venue/)).toBeNull()
-    await user.click(within(dialog).getByRole('button', { name: /^More details/ }))
-    expect(within(dialog).getByLabelText(/^Sessions/)).toBeTruthy()
-    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
-    // Opened once, it opens that way next time.
-    await user.click(screen.getByRole('button', { name: /Add income/ }))
-    dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByLabelText(/^Sessions/)).toBeTruthy()
+    expect(within(dialog).queryByRole('button', { name: /More details/ })).toBeNull()
+    // Amount, client and date still come first.
+    const order = [within(dialog).getByLabelText(/^Amount/), within(dialog).getByRole('combobox', { name: 'Client' }), within(dialog).getByLabelText(/^Date/), within(dialog).getByLabelText(/^Description/)]
+    for (let k = 1; k < order.length; k++) expect(order[k - 1].compareDocumentPosition(order[k]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('a cost added from a venue’s row in Venue deals starts at that venue, as room hire (E-04)', async () => {
@@ -642,7 +633,6 @@ describe('stage 6: shorter form, more ways in', () => {
     await user.click(screen.getByRole('button', { name: /Add income/ }))
     const dialog = await screen.findByRole('dialog')
     await user.type(within(dialog).getByLabelText(/^Amount/), '120')
-    await user.click(within(dialog).getByRole('button', { name: /^More details/ }))
     await user.selectOptions(within(dialog).getByLabelText(/^Activity/), 'reimbursement')
     const pick = within(dialog).getByLabelText(/^Repays which cost/) as HTMLSelectElement
     const cost = pick.options[1]
@@ -1208,6 +1198,9 @@ describe('Import from Revolut (Release 2, experimental)', () => {
     // Bakery: personal. Zoom: business cost, in bulk.
     await user.click(screen.getByRole('checkbox', { name: /Select Zoom/ }))
     await user.click(screen.getByRole('button', { name: 'Business cost' }))
+    // Money in from a name that is no client is never taken for income on its own: said here.
+    await user.click(screen.getByRole('checkbox', { name: /Select Northwind/ }))
+    await user.click(screen.getByRole('button', { name: 'Income' }))
     await user.click(screen.getByRole('button', { name: /Corner Bakery/ }))
     const dialog = await screen.findByRole('dialog')
     await user.selectOptions(within(dialog).getByLabelText('This is'), 'personal')
@@ -1254,8 +1247,34 @@ describe('Import from Revolut (Release 2, experimental)', () => {
     await user.selectOptions(screen.getByLabelText('Currency'), 'Ccy')
     await user.selectOptions(screen.getByLabelText('Description'), 'What')
     await user.click(screen.getByRole('button', { name: 'Read with these columns' }))
+    // No state column: whether its rows all went through is asked, not assumed.
+    await user.click(await screen.findByRole('button', { name: 'Every row is completed' }))
     expect(await screen.findByRole('button', { name: 'Review transactions' })).toBeTruthy()
     expect(screen.getByText(/Read with the columns you chose/)).toBeTruthy()
+  })
+
+  it('a statement in a language InFlow has no words for: suggested columns, asked states, remembered next time', async () => {
+    settings({ workspace: 'mine', demoSeeded: true, features: { ...ALL_FEATURES, import: true } })
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await go('#/import')
+    const csv = 'Typ;Datum;Beskrivning;Belopp;Valuta;Status\nKortbetalning;2026-09-02;Café Kanel;-45,00;SEK;SLUTFÖRD\nÖverföring;2026-09-01;Betalning från Nordljus AB;1 200,00;SEK;SLUTFÖRD\n'
+    const upload = async () => user.upload(await screen.findByLabelText('Statement file'), new File([csv], 'kontoutdrag.csv', { type: 'text/csv' }))
+    await upload()
+    // Belopp is not a word InFlow knows: suggested from the content, to check, never applied alone.
+    const amount = await screen.findByLabelText('Amount (signed: money out negative)') as HTMLSelectElement
+    expect(amount.selectedOptions[0].textContent).toBe('Belopp')
+    expect(screen.getAllByText(/Suggested from what the column holds/).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: 'Review transactions' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Read with these columns' }))
+    await user.selectOptions(await screen.findByLabelText('State “SLUTFÖRD” means'), 'COMPLETED')
+    await user.click(screen.getByRole('button', { name: 'Read with these answers' }))
+    expect(await screen.findByRole('button', { name: 'Review transactions' })).toBeTruthy()
+    expect(screen.getByText('2')).toBeTruthy()
+    // The next export of the same layout reads at once, and says why.
+    await upload()
+    expect(await screen.findByText(/Read the way you set it up for files like this/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Review transactions' })).toBeTruthy()
   })
 
   it('asks the date order when the file can\'t show it', async () => {
@@ -1266,6 +1285,7 @@ describe('Import from Revolut (Release 2, experimental)', () => {
     const csv = 'Date,Description,Amount,Currency\n03/04/2026,Payment from Ana Ilie,300.00,RON\n'
     await user.upload(await screen.findByLabelText('Statement file'), new File([csv], 'export.csv', { type: 'text/csv' }))
     await user.selectOptions(await screen.findByLabelText('Dates in this file are written'), 'mdy')
+    await user.click(await screen.findByRole('button', { name: 'Every row is completed' }))
     expect(await screen.findByRole('button', { name: 'Review transactions' })).toBeTruthy()
   })
 })

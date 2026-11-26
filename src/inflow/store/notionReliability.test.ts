@@ -314,7 +314,7 @@ describe('Import from Revolut in Notion (Release 2, experimental)', () => {
 
   async function importInto(repo: NotionRepo, data: InflowData) {
     const rows = classify(expandFees(readStatement(parseCsv(CSV)).txs), { data, rules: [], ledger: {}, ownNames: [] })
-    const choices = new Map(rows.map((r) => [r.tx.key, effective(r, r.tx.direction === 'out' ? { kind: r.parent ? 'fee' : 'cost' } : undefined)]))
+    const choices = new Map(rows.map((r) => [r.tx.key, effective(r, r.tx.direction === 'out' ? { kind: r.parent ? 'fee' : 'cost' } : { kind: 'income' })]))
     const plan = buildPlan({ rows, choices, data, features: ALL_FEATURES, profile: DEMO_SETTINGS_TAX, rates: new Map(), batch: 'b1' })
     for (const o of plan.ops) {
       if (o.op === 'createRecord') await repo.saveRecord(o.record)

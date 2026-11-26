@@ -348,6 +348,34 @@ Started Date, Completed Date, Description, Amount, Fee, Currency, State, Balance
 `YYYY-MM-DD HH:MM:SS`, dot decimals, money out negative, the fee separate and on top, one file per
 currency). Neither source is an official Pro schema.
 
+*The app's language.* Revolut's community reports that a CSV export follows the app's language:
+a user with the app in French got French headers, comma decimals, spaces between thousands and
+semicolons. The translated header names themselves are published nowhere, so InFlow guards three
+ways (`lib/import/locale.ts`):
+1. **Words** in English, Romanian, German, French, Spanish, Italian, Portuguese, Polish, Dutch,
+   Hungarian and Czech, for headers, states (completed, pending, reversed, declined, failed,
+   cancelled), types (card payment, transfer, exchange, top-up, fee, refund, cash), "Payment
+   from X" / "To X" wording and month names. All plain translations: assumptions, not evidence.
+2. **Formats** whatever the language: decimal comma or point, thousands by point, comma, space,
+   no-break space or apostrophe, a typeset minus (−), currency symbols and names around the
+   number (€, lei, zł, Kč, Ft); dates as ISO, `20260903`, `01.09.2026`, `01/09/2026` or
+   `01-09-2026` (order from the file, else asked), the month in words in any of the languages
+   above in any order (`1. März 2026`, `Mar 1, 2026`, `1 de marzo de 2026`, `2026. márc. 1.`),
+   with 24- or 12-hour times; an unsigned amount with a direction column (`Af`/`Bij`,
+   `Debit`/`Credit`, `S`/`H`); a currency in the amount's header (`Bedrag (EUR)`).
+3. **Anything else is asked, never dropped.** Headers in a language with no words here (Swedish,
+   Cyrillic or Greek: kept as written, not erased) go to the column picker, pre-filled from what
+   each column holds (dates, money with both signs, currency codes, states, the most varied text)
+   and marked *suggested: check it*. A state or direction word InFlow doesn't know is asked once
+   ("State “SLUTFÖRD” means…"), never read as completed or as pending. What you settle is kept on
+   this device per layout (the header row, `inflow:import-layouts`: choices only, never file
+   contents), so the next export of the same layout reads at once, saying so, with *Set it up
+   again*. A row whose values don't line up with the header (an unquoted comma) never asks a
+   question: it is reported on its own.
+
+Fixtures for each: `en-GB.csv`, `en-US.csv`, `de-DE.csv`, `fr-FR.csv`, `es-ES.csv`, `nl-NL.csv`,
+`sv-SE-unknown.csv`, `bg-BG-headers.csv`; tests in `lib/import/international.test.ts`.
+
 *Layouts read:*
 
 | Layout | Basis | Fixture |
@@ -375,30 +403,68 @@ currency). Neither source is an official Pro schema.
 | Reference, balance, ID | Reference, Payment reference, Referinta / Balance, Sold / ID, Transaction ID, Id tranzactie | optional |
 | Rate, original | Exchange rate, FX rate, Rate, Curs / Orig amount, Original amount / Orig currency, Original currency | optional, for the record only |
 
+The table lists the English and Romanian names; the other languages' are in `lib/import/locale.ts`.
+A direction column (`Af Bij`, `Debit/Credit`, `Soll/Haben`, `Sens`…) turns an unsigned Amount into money in or out.
+
 Recognised and deliberately **not used**: Total amount (it may include the fee), Card number,
 Card label, Card state, MCC, Account, beneficiary account details, Related transaction ID, Spend
 program, Category, Notes, Tags. Anything else is listed as not recognised.
 
-*Never guessed; asked instead* (`Statement.needs`; while any is set, nothing is read):
+*Never guessed; asked instead* (`Statement.needs`; while any is set, nothing is read and the
+Import screen asks; answers are kept per layout on this device):
 - **Mapping**: a date, an amount or a currency column can't be found; two columns claim one
-  meaning (`Amount` and `Suma`); a signed amount and money in/out together; one column mapped
-  twice. The Import screen then shows why and a picker per field ("Read with these columns").
-  Exception: a UTC and a local column of the same date: the local one is used.
-- **Currency**: no currency column: choose the file's currency.
-- **Date order**: slash dates where no day is above 12 (`03/04/2026`), or some day-first and
-  some month-first. Dotted dates are taken as day first (European); ISO dates as written, with no
-  time-zone shift (a UTC timestamp near midnight keeps its UTC date).
+  meaning (`Amount` and `Suma`, two columns both called "Amount", two "Name" columns); a signed
+  amount and money in/out together; a direction column without an amount; one column mapped
+  twice; a manual mapping pointing at a column the file doesn't have. Exception: a UTC and a
+  local column of the same date: the local one is used.
+- **Currency**: no currency column (and none in the amount's header): choose the file's currency.
+- **Date order**: slash or dash dates where no day is above 12 (`03/04/2026`), or some day-first
+  and some month-first. Dotted dates are taken as day first (European).
+- **Decimal mark**: an amount that reads two ways (`1,250`) when the *amount column itself* shows
+  no decimal mark. Never inferred from the balance, fee or another column (audit A-09).
+- **Time zone**: times with no zone (no `Z`, no offset, no "(UTC)" or zone in the header) when
+  any of them falls where Bucharest time and UTC give different days (late evening and the small
+  hours). Elsewhere both readings give the same day, so nothing is asked.
+- **State**: a file with no state column: "every row is completed?" A state word in no known
+  language: what it means. An *empty* state cell is never read as completed: that row is shown as
+  "no state given" and not imported (audit A-19).
+- **Signs**: a signed file where every amount is positive yet some rows are card payments, fees
+  or cash: "money out has no minus? map the columns" or "they are all money in" (audit A-21).
 
-*Values.* The decimal mark is read from the file's own money values (`1.234,50`, `12.50`,
-`1.234.567` say which); a value that could be read two ways (`1,250` with nothing else to go by)
-or that contradicts the file (`12,50` in a dot file), more than two decimals, or a badly grouped
-number (`12.5.0`) is refused with the line and the reason. Currency symbols € £ and "lei" are
-read; "$" is refused (several currencies). An empty fee, balance or reference is *not given*
-(`null` / empty), never 0; a fee in another currency than the transaction is left out with a note.
-Every data row ends either read or reported (`txs + issues = rows`): too many values (an
-unquoted comma), a row cut short, no or zero amount, both money in and out, negative money in, an
-unknown currency, an impossible date. If every amount in a signed file is positive, a note warns
-that money out may lack its minus sign.
+*Accounting date and time zone* (audit A-13..A-17). A transaction belongs to the day it happened
+in **Europe/Bucharest**: the completed date if there is one, else the started date. A time with
+`Z` or an offset, or in a column labelled "(UTC)" or with a zone ("(Europe/London)"), is converted
+to Bucharest time (so 31 Dec 22:30 UTC is 1 Jan, a new tax year). A time with no zone is
+Bucharest time unless you say UTC (asked only when it matters, above). A date with no time is
+taken as written. A completed time before the started one is noted. `startedAt` is shown in
+Bucharest time.
+
+*Values.* Each money column's decimal mark is read from its own values (`1.234,50`, `12.50`,
+`1.234.567` say which). Refused, with the line and the reason: a value that contradicts its
+column's mark (`12,50` in a dot column), more than two decimals, a badly grouped number
+(`12.5.0`), **two signs at once** (`(-12.50)`, `-12.50-`: previously read as +12.50, audit A-07),
+more than 13 whole digits. Currency symbols € £ and "lei" are read; "$" and "kr" are refused
+(several currencies each). An empty fee, balance or reference is *not given* (`null` / empty),
+never 0.
+
+*Optional fields never cost a transaction* (audit A-10, A-11): an unreadable fee, balance,
+exchange rate or original amount is noted on its line and left unknown; the transaction is kept.
+A fee in another currency than the transaction, or fees of both signs in one file (which are
+charges can't be told), are not imported, with a note saying to add them by hand.
+
+*Every row has one outcome.* A data row is read (and then reviewed), or reported with why:
+malformed CSV (text after a closing quote, a quote never closed on the last line), more values
+than columns (an unquoted delimiter: never read shifted), cut short, no date, an impossible date or
+time, no or zero amount, both money in and out, negative money in, a negative amount with a
+direction column, an unknown currency, the same bank ID twice. Notes never remove a row. While a
+question above is open, no row is read at all.
+
+*CSV syntax* (`lib/import/csv.ts`, audit A-01..A-06): RFC 4180 quoting; CRLF, LF and a lone CR;
+a UTF-8 byte-order mark. The file is decoded as strict UTF-8 (another encoding is refused rather
+than turning letters into "�"). The 5 MB limit is in bytes. A header that splits equally by two
+delimiters is refused. A quote inside an unquoted field is kept as a character (it can't shift
+columns); text after a closing quote makes the row malformed. A quote left open before the last
+line would swallow the lines after it, so the whole file is refused.
 
 **Mapping example.**
 `TRANSFER, Current, 2026-03-02 09:15:01, 2026-03-02 09:15:44, Payment from Acme SRL, 1200.00, 0.00, RON, COMPLETED, 5200.00`
@@ -406,27 +472,53 @@ that money out may lack its minus sign.
 named "ACME S.R.L." it is suggested as income from that client, with the source and activity of
 their last received payment, no venue, **no sessions** (0: counted in totals, not per session,
 until you add them), no tax withheld, tax classification and reserve as the payment form would
-suggest, and `importMeta { key, batch, counterparty }`.
+suggest, and `importMeta { key, fp, batch, counterparty }`.
 `TRANSFER … To Sala Lumina, -400.00, 2.00` → two rows: 400 to Sala Lumina (yours to say what it
 is) and a 2.00 bank fee (operating, bank fees). The fee is never added to the 400.
 
 **Fields kept from the file:** date (completed, else started), direction, amount, fee,
-currency, type, state, description, counterparty, and on each record only `importMeta`: the
-fingerprint, the batch and the counterparty name. Balance, product, reference and the bank's id
-feed the fingerprint and are not stored. The file itself is never stored or sent.
+currency, type, state, description, counterparty, and on each record only `importMeta`: its key,
+its content fingerprint, the batch and the counterparty name. Balance, reference and the bank's
+id feed the identity and are not stored. The original-currency amount is shown for the record and
+never imported. The file itself is never stored or sent.
 
-**Duplicates.** The fingerprint is the bank's id when the file has one; otherwise a hash of the
-started timestamp to the second, currency, product, type, signed amount, fee, the balance after
-and the description, so two identical coffees are two transactions and a later, overlapping
-export finds the same one. **Never amount and date alone**, and never the file name.
-- *Already in InFlow* (exact): a record, cost or refund carries the key; or the ledger says an
-  import made it and it has since been deleted (it stays out unless you tick *import it anyway*).
-- *Probably already in* (likely): an entry you typed, same currency and amount, same day, same
-  client (or name in a cost's description), and only one such: linking is suggested.
-- *Possible duplicate*: same currency and amount within 3 days of an entry you typed, or the
-  same day, amount and name as another row of this file. Never imported until you link it,
-  leave it out or say *import it anyway*.
-- Linking writes only `importMeta.matched` on your entry; nothing else of it changes.
+*Counterparty columns* (audit A-22, A-23): a Payer column names the other party only for money
+in, a Beneficiary/Payee column only for money out (the other side is you); a neutral column
+(Counterparty, Merchant, Name) for either. With none on the right side, the description is read
+("Payment from X"). The other party is a suggestion for matching a client, never a new client.
+
+**Duplicates and identity** (audit A-26..A-33, E-01..E-03). Each transaction has a **key**:
+the bank's id (`rv:id:…`) when the file has one, else its **content fingerprint**: the instant it
+started (UTC, to the second; the date when there is no time), currency, signed amount and the
+balance after it, or, with no balance column, its description and reference. Not the type,
+product or fee (they change with the app's language and layout), and never the file name, row
+order or amount and date alone. Both key and fingerprint are stored on the record.
+- *Already in InFlow* (exact): an entry carries the key, or the same fingerprint (so an export
+  with ids finds rows imported from one without, and back). Two **different bank ids are never
+  the same transaction**, whatever their content. Also exact: the ledger says an import made it
+  and it was deleted since (stays out unless *import it anyway*).
+- The **same bank id twice in a file** is one transaction listed twice: read once, the repeat
+  reported. Twice with different details: neither row is read.
+- **Identical rows with no id and no balance** can't be told apart (from each other or from a
+  later export): they are numbered in file order (`#2`) and each is a *possible duplicate* that
+  needs *import it anyway*. The numbering is not a bank identity: a later export holding only some
+  of them can't be matched one-to-one, which is why each needs your decision.
+- *Probably already in* (likely): one entry you typed, same currency and amount, same day, same
+  client (or name in a cost's description). *Possible duplicate*: same currency and amount within
+  3 days of an entry you typed or one imported before fingerprints existed, a near-identical row
+  of this file, or a row whose earlier save never answered. Neither is imported until you link
+  it, leave it out or say *import it anyway*.
+- **Linking** and **receiving** need the target confirmed on the row ("Yes: this transaction is
+  that entry"), as does a suggested refund's payment: a matching amount is not proof. Linking
+  changes only `importMeta` on your entry, nothing else (E-02).
+- Guarantees, tested: the same file again, an overlapping part, another order: nothing more is
+  made (E-01). A reworded description with the same balance, the same transaction in UTC and in
+  Bucharest time, and with and without its id: recognised (A-29, A-30, A-32).
+- Limits: with no id *and* no balance, a reworded description is a new fingerprint (shown as new;
+  a manually entered match would still be offered as possible). A layout that gives only a
+  completed date in one export and a started time in another yields different fingerprints.
+  Keys from the first version of this importer (26 Nov 2026, before fingerprints) can't be
+  recognised: those rows are offered as possible duplicates instead (A-44).
 
 **Classification.** Money in: income, money back for a cost (with the cost, part of it is
 fine), refund from a supplier, transfer, leave out. Money out: business cost, bank fee, refund to
@@ -435,8 +527,13 @@ transfer, personal, leave out. Pending, declined and reversed rows are shown and
 Suggestions, in order: your choice on the row > a rule for this exact counterparty > a rule for
 words in the description (longest first) > the plain reading (an exchange, ATM, top-up, pocket or
 one of *your own names* is a transfer; FEE is a bank fee; a client's exact name on money in is
-income from them, or the receipt of their expected payment; a client's name on money out with a
-payment to refund is a refund). **Money out is never called business or personal for you**:
+income from them, or the receipt of their expected payment, to confirm; a client's name on money
+out with a payment to refund is a refund, to confirm). **Money in from a name that is no client
+is not taken for income** (audit A-35): it needs a decision. Two clients whose names fold the same
+("Acme SRL", "ACME S.R.L.") are never told apart for you (A-34). Rules of the same standing that
+disagree are not applied (A-36); a client, source or venue a rule names that no longer exists is
+dropped with a note, and a stale id blocks a row (A-37, A-38). A refund from a supplier is shown
+as **unsupported**, counted apart, never "set aside" (A-42). **Money out is never called business or personal for you**:
 words like "Zoom" only suggest the category if you say it was a cost. Deductibility starts where
 a cost typed by hand starts (by its kind) and is shown to check.
 
@@ -450,13 +547,23 @@ you. Rows say *your rule* when one applied. Rules can be changed (kind) and dele
 **Rates.** Each foreign-currency row takes the ECB rate for its own date (`fetchRonRate`), once;
 offline, the last rate used for that currency. A row with no rate waits.
 
-**Saving and undo.** Rows are saved one at a time through `saveRecord`, `saveCost`,
-`saveRefund` (with every check those make), each written to the ledger as it lands. Stopped
-part way (a failed save, a closed tab), the same file again carries on: what landed carries its
-key. **Undo** deletes what the import created (the confirmation says how many were edited since),
-unmarks what it linked, puts expected payments back as they were (unless edited since), and
-keeps anything something newer depends on (a refund added since, a reimbursement naming a
-cost), saying so. Clients made during the review stay.
+**Saving and undo.** Just before saving, the plan is made again from the data as it is now; if it
+differs from what you reviewed (an entry edited or deleted meanwhile, another tab, a rate now
+known), nothing is saved and the summary is shown again (E-08). One import runs at a time across
+this device's tabs (a lock; one left by a closed tab is taken over after two minutes, E-04).
+Rows are saved one at a time through `saveRecord`, `saveCost`, `saveRefund` (with every check
+those make). The import key is part of the saved row itself (the Notion "Import" column), so a
+row and its marker can't be separated. Each row is marked *pending* in the ledger before it is
+sent: on this device a failed save wrote nothing and the mark is cleared; in Notion, where a
+page can be made with its answer lost, the mark stays, the row is shown next time as *possibly
+already in*, and if imported anyway, Notion is searched for the page first and that page is kept
+(E-03). Stopped part way, the same file again carries on. **Undo** deletes what the import
+created (the confirmation says how many were edited since), unmarks what it linked, puts expected
+payments back as they were, and keeps anything something newer depends on (a refund added since,
+a reimbursement naming a cost), or a balance still expected that you changed since (E-06),
+saying so. An undo that can't finish says how much failed, keeps the batch undoable and its ledger
+entries for what is still there; undoing again finishes it, and undoing a finished undo changes
+nothing (E-05, E-07). Clients made during the review stay.
 
 **Device and Notion.** `importMeta` lives on the row: on the device in the data, in Notion in an
 "Import" text column on Income and Costs, added the first time it's needed. Without permission to
@@ -465,7 +572,9 @@ rules, own names) is kept on this device per data set (`import:device`, `import:
 `import:notion:<db>`), and in device backups (`imports`, optional: older backups restore as
 before; a damaged history is read as far as it goes and never refuses a backup). A second device
 on the same Notion still recognises every imported row by its key; only its set-aside decisions
-and rules are per device.
+and rules are per device. **Not guarded:** two devices importing the same new transactions into
+one Notion at the same moment (the lock is per device); the second would find the first's rows
+only after a reload.
 
 **Clients & work** shows, for the period: paying clients (clients, never payments), new and
 returning, income per paying client net of refunds, and payments with no client, naming the
@@ -475,22 +584,25 @@ imported counterparties among them (`lib/clientMetrics.ts`). Cost recovery is le
 import makes is the ECB rate (currency and date). Descriptions and amounts are not logged.
 
 **Limitations.**
-- No official Revolut Pro sample or schema exists publicly: the layouts are the personal one
-  documented by third parties, a Business-style one built from Revolut's field list, and common
-  bank conventions, all tested on invented fixtures. Check a real Pro export before relying on it.
-- Not read: Excel, PDF, two-digit years, amounts with no currency column in a multi-currency
-  file, unsigned amounts with a separate debit/credit indicator column (not supported), and the
-  original-currency amount as the amount (it is kept for the record only).
-- A supplier's refund (money back on a card payment) has nowhere to go in InFlow's model: it is
-  shown and left out; adjust the cost by hand.
-- A partial reimbursement is linked to one cost; a payment that settles two expected payments
-  can't be split here (import it as new, or receive one by hand).
-- Rates for a whole month are fetched one date at a time (one request per currency and date).
-- Reserves for several new payments in one import are each suggested against what was recorded
-  before the import, not against one another.
-- Set-aside decisions and rules don't travel between devices (only through a backup).
-- Expected payments are matched only with the same currency and a client's exact name, or the
-  exact amount.
+- **No genuine Revolut Pro export has been tested.** No official Pro sample or schema exists
+  publicly. Tested layouts: the personal statement layout documented by third parties; a
+  Business-style layout *built from* the field list in Revolut's help centre (its header wording is
+  an assumption; it is not a real Business or Pro export); common bank conventions; eleven
+  languages as plain translations. All on invented fixtures (`lib/import/fixtures/`). Until a real
+  Pro export has been read and checked row by row against the app, this is for controlled testing.
+- Not read: Excel, PDF, two-digit years, weekday names inside a date ("Tuesday 1 March 2026"),
+  the original-currency amount as the amount (shown for the record only), "kr" and "$".
+- A supplier's refund has nowhere to go in InFlow's model: shown as unsupported, never imported.
+- A reimbursement is linked to one cost (part of it is fine, never more than is left of it, same
+  currency); a payment that settles two expected payments can't be split here.
+- Rates are fetched one currency and date at a time; reserves for several new payments in one
+  import are each suggested against what was recorded before the import.
+- Set-aside decisions, rules and layout answers stay on this device (a backup carries the first
+  two).
+- Expected payments are offered only in the same currency, for a client's exact name or the exact
+  amount, and always need confirming.
+- The audit report with every scenario and result: `src/inflow/lib/import/audit.test.ts`,
+  `src/inflow/app/importAudit.test.tsx` (ids A-nn and E-nn).
 
 ## Release 1, the first stable release (26 Nov 2026)
 
@@ -566,11 +678,11 @@ need it. Device data: no new migration (schema stays 2); backups keep version 1.
 
 ## Usability, performance and workflow (26 Nov 2026, audit C, E, F-03, G)
 
-- **A shorter payment form (C-01, E-03).** Amount, currency, client, date and status up front;
-  description, people, sessions, hours, source, venue, activity, recurring, the reimbursement's
-  cost and notes under **More details**, with a one-line summary of what is in it. Left open or
-  closed, it opens that way next time (`inflow:form-details`); a mistake in a folded field
-  opens it.
+- **A shorter payment form (C-01, E-03).** Amount, currency, client, date and status first;
+  then description, people, sessions, hours, source, venue, activity, recurring, the
+  reimbursement's cost and notes, always in view. (A *More details* fold hid them until 26 Nov
+  2026; it was removed: nothing about a payment is folded away. Only the optional Tax section
+  still folds.)
 - **Plain words first (C-03).** P&L: *Costs of the work (direct, COGS)*, *Left after the work's
   costs (gross margin)*, *Running costs (operating, SG&A)*, *Profit before equipment write-off
   (EBITDA)*, *Equipment written off over its life (depreciation)*, *Profit from the work (EBIT)*,
@@ -594,8 +706,8 @@ need it. Device data: no new migration (schema stays 2); backups keep version 1.
 - **A reminder for an expected payment.** Saving one (or moving its date) offers *Remind me*:
   a calendar file (`.ics`, `lib/ics.ts`) for the due date, all day, with a morning alert. The
   calendar app opens it; nothing is sent anywhere.
-- **A reimbursement names the cost it repays** (`IncomeRecord.repaysCostId`, optional, under
-  More details when the activity is Reimbursement). On Costs the cost then shows *partly
+- **A reimbursement names the cost it repays** (`IncomeRecord.repaysCostId`, optional, shown when
+  the activity is Reimbursement). On Costs the cost then shows *partly
   reimbursed · X lei* until the received reimbursements naming it cover it, then *reimbursed*
   (`reimbursedCosts`, `lib/finance.ts`: several add up, an expected one counts for nothing yet, a
   refund of one takes it back off). A link only: no figure changes. Notion: a "Repays cost" text column, added when first needed;
@@ -920,8 +1032,8 @@ and date. What the remediation added sits behind the switch it belongs to, or fo
 | Available to spend (Overview) | Tax or Costs on; with both off it would only repeat what came in |
 | Add a cost (Overview, a venue's row) | Costs on |
 | "Counted under the deal when it was added" | Venue deals on, and the venue's deal has since changed |
-| Repays which cost | Costs on, activity Reimbursement, under More details |
-| Description, sessions, hours, source, venue, activity, recurring, notes | under More details, folded by default |
+| Repays which cost | Costs on, activity Reimbursement |
+| Description, sessions, hours, source, venue, activity, recurring, notes | always shown, after amount, client and date |
 
 Screens enter with Stillflow's 320 ms rise (`.screenIn`, off under reduced motion); the
 theme is Device / Light / Dark.

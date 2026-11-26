@@ -25,6 +25,11 @@ export interface Repo {
   /** `payment`: the payment refunded, as loaded (Notion names the row after it). */
   saveRefund(f: Refund, payment?: IncomeRecord, opts?: { inflowId?: string }): Promise<Refund>
   deleteRefund(id: string): Promise<void>
+  /**
+   * Notion only: the row an import made for this transaction key, if one exists, found in Notion
+   * itself. Used when a save's answer was lost, so a retry never makes the row twice.
+   */
+  findImported?(kind: 'record' | 'cost' | 'refund', key: string): Promise<string | null>
 }
 
 /** The shape device data is written in now. 2: each payment snapshots its venue's deal. */

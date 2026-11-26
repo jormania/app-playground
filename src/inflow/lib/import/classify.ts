@@ -10,7 +10,7 @@
  * for words in the description (longest first) > the plain reading of the transaction's type.
  */
 import type {
-  Category, CostCategory, CostGroup, CostRecord, InflowData, IncomeRecord, Refund,
+  Category, CostCategory, CostGroup, InflowData, IncomeRecord,
 } from '../../domain/types'
 import { CATEGORIES_BY_GROUP, deductibleByDefault } from '../../domain/vocabulary'
 import { fold } from '../clients'
@@ -66,6 +66,11 @@ export interface Choice {
   paymentId: string | null
   /** A possible duplicate you've said to import all the same. */
   anyway: boolean
+  /**
+   * You have looked at the entry this row links to, the expected payment it settles or the
+   * payment it refunds, and said it is the right one. A suggestion alone never is.
+   */
+  confirmed: boolean
 }
 
 export type Confidence = 'sure' | 'rule' | 'suggested' | 'none'
@@ -90,7 +95,8 @@ export interface Rule {
 /** What an earlier import decided for a transaction key. */
 export interface LedgerEntry {
   batch: string
-  outcome: 'created' | 'linked' | 'received' | 'skipped'
+  /** `pending`: a save was started and its answer never came back; whether it landed is unknown. */
+  outcome: 'created' | 'linked' | 'received' | 'skipped' | 'pending'
   kind: Kind
   /** The record, cost or refund created or linked. */
   target?: string
@@ -189,7 +195,7 @@ export function blankChoice(): Choice {
     kind: 'review', action: 'import', target: null,
     clientId: null, sourceId: null, venueId: null, category: null,
     costGroup: 'operating', costCategory: 'other_operating', deductible: deductibleByDefault('operating'),
-    repaysCostId: null, paymentId: null, anyway: false,
+    repaysCostId: null, paymentId: null, anyway: false, confirmed: false,
   }
 }
 
@@ -198,15 +204,28 @@ const recordLabel = (r: IncomeRecord, data: InflowData) => {
   return [r.description, client].filter(Boolean).join(' · ') || 'Payment'
 }
 
-/** Where a key already lives in the data: a record, cost or refund carrying it. */
-function holder(key: string, data: InflowData): Candidate | null {
-  const r = data.records.find((x) => x.importMeta?.key === key)
-  if (r) return { kind: 'record', id: r.id, label: recordLabel(r, data), date: r.date, amount: r.amount }
-  const c = data.costs.find((x) => x.importMeta?.key === key)
-  if (c) return { kind: 'cost', id: c.id, label: c.description, date: c.date, amount: c.amount }
-  const f = data.refunds.find((x) => x.importMeta?.key === key)
-  if (f) return { kind: 'refund', id: f.id, label: 'Refund', date: f.date, amount: f.amount }
-  return null
+type Held = Candidate & { key: string; fp?: string }
+
+/** Every entry an import made or matched, with the identity it carries. */
+function heldEntries(data: InflowData): Held[] {
+  const out: Held[] = []
+  for (const r of data.records) if (r.importMeta?.key) out.push({ kind: 'record', id: r.id, label: recordLabel(r, data), date: r.date, amount: r.amount, key: r.importMeta.key, fp: r.importMeta.fp })
+  for (const c of data.costs) if (c.importMeta?.key) out.push({ kind: 'cost', id: c.id, label: c.description, date: c.date, amount: c.amount, key: c.importMeta.key, fp: c.importMeta.fp })
+  for (const f of data.refunds) if (f.importMeta?.key) out.push({ kind: 'refund', id: f.id, label: 'Refund', date: f.date, amount: f.amount, key: f.importMeta.key, fp: f.importMeta.fp })
+  return out
+}
+
+const isBankId = (key: string) => key.startsWith('rv:id:')
+
+/**
+ * Where a transaction already lives in the data: by its key (the bank id, or the content
+ * fingerprint); else by its content fingerprint, so an export with ids finds rows imported from one
+ * without, and the other way round. Two different bank ids are never the same transaction.
+ */
+function holder(tx: Pick<BankTx, 'key' | 'fp'>, held: Held[]): Candidate | null {
+  const byKey = held.find((h) => h.key === tx.key)
+  if (byKey) return byKey
+  return held.find((h) => h.fp === tx.fp && !(isBankId(tx.key) && isBankId(h.key))) ?? null
 }
 
 /** Rows read from bank transactions: a fee row joins each completed transaction that carries one. */
@@ -218,7 +237,7 @@ export function expandFees(txs: BankTx[]): { tx: BankTx; parent: string | null }
       out.push({
         parent: tx.key,
         tx: {
-          ...tx, key: `${tx.key}:fee`, direction: 'out', amount: tx.fee, fee: 0, type: 'FEE',
+          ...tx, key: `${tx.key}:fee`, fp: `${tx.fp}:fee`, direction: 'out', amount: tx.fee, fee: 0, type: 'FEE',
           description: `Bank fee: ${tx.description}`, counterparty: 'Revolut', balance: null,
         },
       })
@@ -228,6 +247,7 @@ export function expandFees(txs: BankTx[]): { tx: BankTx; parent: string | null }
 }
 
 const STATE_WORD: Record<string, string> = {
+  UNKNOWN: 'the file gives no state for it, so whether the money moved is unknown',
   PENDING: 'still pending at the bank',
   DECLINED: 'declined',
   REVERTED: 'reversed by the bank',
@@ -240,17 +260,22 @@ const STATE_WORD: Record<string, string> = {
 export function classify(rows: { tx: BankTx; parent: string | null }[], ctx: ClassifyContext): Row[] {
   const { data } = ctx
   const own = ctx.ownNames.map(nameKey).filter(Boolean)
-  const clientsByName = new Map(data.clients.map((c) => [nameKey(c.name), c]))
-  const imported = new Set<string>([
-    ...data.records.map((r) => r.importMeta?.key), ...data.costs.map((c) => c.importMeta?.key), ...data.refunds.map((f) => f.importMeta?.key),
-  ].filter((k): k is string => !!k))
+  // Clients by name; two whose names fold the same are never told apart for you.
+  const clientsByName = new Map<string, typeof data.clients>()
+  for (const c of data.clients) { const k = nameKey(c.name); if (k) clientsByName.set(k, [...(clientsByName.get(k) ?? []), c]) }
+  const held = heldEntries(data)
+  const exists = {
+    client: new Set(data.clients.map((x) => x.id)), source: new Set(data.sources.map((x) => x.id)), venue: new Set(data.venues.map((x) => x.id)),
+  }
   const received = data.records.filter((r) => r.status === 'received')
   const expectedOpen = data.records.filter((r) => r.status === 'expected')
 
   return rows.map(({ tx, parent }, i): Row => {
     const base = blankChoice()
     const cp = nameKey(tx.counterparty)
-    const client = cp ? clientsByName.get(cp) ?? null : null
+    const named = cp ? clientsByName.get(cp) ?? [] : []
+    const client = named.length === 1 ? named[0] : null
+    const sameName = named.length > 1 ? ` ${named.length} clients are called "${tx.counterparty}", so none is picked: choose.` : ''
 
     // Never imported: the money didn't (or didn't stay) move.
     const locked = tx.state !== 'COMPLETED'
@@ -259,38 +284,47 @@ export function classify(rows: { tx: BankTx; parent: string | null }[], ctx: Cla
 
     // Already here? The fingerprint first; then what an earlier import decided.
     let match: Match = { status: 'new', reason: 'Not seen before.', candidates: [] }
-    const held = imported.has(tx.key) ? holder(tx.key, data) : null
-    const past = ctx.ledger[tx.key]
-    if (held) match = { status: 'exact', reason: 'Imported before: this transaction is already in InFlow.', candidates: [held] }
-    else if (past && past.outcome !== 'skipped') {
+    const found = holder(tx, held)
+    const past = ctx.ledger[tx.key] ?? ctx.ledger[tx.fp]
+    if (found) match = { status: 'exact', reason: 'Imported before: this transaction is already in InFlow.', candidates: [{ kind: found.kind, id: found.id, label: found.label, date: found.date, amount: found.amount }] }
+    else if (past?.outcome === 'pending') {
+      // A save of this row started in an earlier import and never answered: it may be in Notion already.
+      match = { status: 'possible', reason: 'An earlier import was saving this transaction when it stopped, so it may already be in InFlow. Look for it before importing it again.', candidates: [] }
+    } else if (past && past.outcome !== 'skipped') {
       // The ledger says it was imported, but the record has since gone: deleted by you.
       match = { status: 'exact', reason: 'Imported before and since deleted in InFlow; it stays out unless you import it anyway.', candidates: [] }
     }
 
     // Manually entered money that might be this transaction: same currency and amount, close in time.
     if (match.status === 'new' && !locked) {
-      const near = <T extends { date: string; amount: number; currency: string; importMeta?: unknown }>(xs: T[]) =>
-        xs.filter((x) => !x.importMeta && x.currency === tx.currency && Math.abs(x.amount - tx.amount) < EPS && Math.abs(dayDiff(x.date, tx.date)) <= NEAR_DAYS)
+      // Entries typed by hand, and entries imported before content fingerprints existed (their old keys
+      // can't be recognised): either might be this transaction.
+      const near = <T extends { date: string; amount: number; currency: string; importMeta?: { fp?: string } | null }>(xs: T[]) =>
+        xs.filter((x) => (!x.importMeta || !x.importMeta.fp) && x.currency === tx.currency && Math.abs(x.amount - tx.amount) < EPS && Math.abs(dayDiff(x.date, tx.date)) <= NEAR_DAYS)
           .sort((a, b) => Math.abs(dayDiff(a.date, tx.date)) - Math.abs(dayDiff(b.date, tx.date)))
       let cands: Candidate[] = []
-      let sameName = false
+      let sameDayName = false
       if (tx.direction === 'in') {
         const rs = near(received)
         cands = rs.map((r) => ({ kind: 'record' as const, id: r.id, label: recordLabel(r, data), date: r.date, amount: r.amount }))
-        sameName = rs.some((r) => r.date === tx.date && !!client && r.clientId === client.id)
+        sameDayName = rs.some((r) => r.date === tx.date && !!client && r.clientId === client.id)
       } else {
-        const cs = near(data.costs as (CostRecord & { importMeta?: unknown })[])
-        const fs = near(data.refunds as (Refund & { importMeta?: unknown })[])
+        const cs = near(data.costs)
+        const fs = near(data.refunds)
         cands = [
           ...cs.map((c) => ({ kind: 'cost' as const, id: c.id, label: c.description, date: c.date, amount: c.amount })),
           ...fs.map((f) => ({ kind: 'refund' as const, id: f.id, label: 'Refund', date: f.date, amount: f.amount })),
         ]
-        sameName = cs.some((c) => c.date === tx.date && cp !== '' && nameKey(c.description).includes(cp))
+        sameDayName = cs.some((c) => c.date === tx.date && cp !== '' && nameKey(c.description).includes(cp))
       }
       if (cands.length) {
-        match = sameName && cands.length === 1
+        match = sameDayName && cands.length === 1
           ? { status: 'likely', reason: `Same amount, day and name as an entry you added by hand.`, candidates: cands }
           : { status: 'possible', reason: `Same amount within ${NEAR_DAYS} days of ${cands.length === 1 ? 'an entry' : `${cands.length} entries`} you added by hand.`, candidates: cands }
+      }
+      // Identical rows with nothing (no id, no balance) to tell them apart: each needs a decision.
+      if (match.status === 'new' && tx.twins > 1) {
+        match = { status: 'possible', reason: `${tx.twins} rows in this file are identical and have no transaction ID or balance, so InFlow can't tell them apart from each other or from a later export. Import each one only if it really happened.`, candidates: [] }
       }
       // The same money twice in this file (different second or balance): worth a look.
       if (match.status === 'new' && !parent) {
@@ -331,17 +365,26 @@ export function classify(rows: { tx: BankTx; parent: string | null }[], ctx: Cla
       return out({ ...base, kind: 'fee', costGroup: 'operating', costCategory: 'bank_fees', deductible: deductibleByDefault('operating') }, 'sure', 'The fee the bank charged on this transaction, from its Fee column: a cost of its own, never part of the payment.')
     }
 
-    // A saved rule.
-    const rule = rulesFor(tx, ctx.rules)[0] ?? null
+    // A saved rule: the best one, unless rules of the same standing disagree.
+    const ranked = rulesFor(tx, ctx.rules)
+    const top = ranked[0]
+    const tied = top ? ranked.filter((r) => r.match === top.match && (r.match === 'counterparty' || fold(r.value).length === fold(top.value).length)) : []
+    const say = (r: Rule) => JSON.stringify([r.kind, r.clientId ?? null, r.sourceId ?? null, r.venueId ?? null, r.category ?? null, r.costGroup ?? null, r.costCategory ?? null])
+    const disagree = tied.length > 1 && new Set(tied.map(say)).size > 1
+    const rule = top && !disagree ? top : null
+    if (disagree) {
+      return out({ ...base }, 'none', `Your rules disagree about "${tx.counterparty}" (${tied.map((r) => KIND_LABEL[r.kind].toLowerCase()).join(' / ')}), so none is applied: decide here, and tidy the rules in Settings.`)
+    }
     if (rule) {
       const group = rule.costGroup ?? (rule.costCategory ? groupOf(rule.costCategory) : base.costGroup)
       const choice: Choice = {
         ...base,
         kind: rule.kind,
         action: SET_ASIDE.includes(rule.kind) ? 'skip' : 'import',
-        clientId: rule.clientId ?? (client?.id ?? null),
-        sourceId: rule.sourceId ?? null,
-        venueId: rule.venueId ?? null,
+        // A client, source or venue the rule names but that no longer exists is not used.
+        clientId: rule.clientId && exists.client.has(rule.clientId) ? rule.clientId : rule.clientId ? null : (client?.id ?? null),
+        sourceId: rule.sourceId && exists.source.has(rule.sourceId) ? rule.sourceId : null,
+        venueId: rule.venueId && exists.venue.has(rule.venueId) ? rule.venueId : null,
         category: rule.category ?? (rule.kind === 'recovery' ? 'reimbursement' : null),
         costGroup: group,
         costCategory: rule.costCategory ?? base.costCategory,
@@ -349,7 +392,8 @@ export function classify(rows: { tx: BankTx; parent: string | null }[], ctx: Cla
       }
       if (rule.kind === 'refundIssued') choice.paymentId = refundCands[0]?.id ?? null
       const how = rule.match === 'counterparty' ? `"${rule.value}"` : `descriptions containing "${rule.value}"`
-      return out(choice, 'rule', `Your rule for ${how}.`, rule)
+      const gone = [rule.clientId && !exists.client.has(rule.clientId) ? 'client' : '', rule.sourceId && !exists.source.has(rule.sourceId) ? 'source' : '', rule.venueId && !exists.venue.has(rule.venueId) ? 'venue' : ''].filter(Boolean)
+      return out(choice, 'rule', `Your rule for ${how}.${gone.length ? ` The ${gone.join(' and ')} it names no longer exist${gone.length === 1 ? 's' : ''}: choose again.` : ''}`, rule)
     }
 
     const text = fold(`${tx.counterparty} ${tx.description}`)
@@ -371,7 +415,8 @@ export function classify(rows: { tx: BankTx; parent: string | null }[], ctx: Cla
         const last = [...received].filter((r) => r.clientId === client.id).sort((a, b) => b.date.localeCompare(a.date))[0]
         return out({ ...base, kind: 'income', clientId: client.id, sourceId: last?.sourceId ?? null, category: last?.category ?? null }, 'suggested', `From ${client.name}, a client of yours.`)
       }
-      return out({ ...base, kind: 'income' }, 'suggested', 'Money in: income unless you say otherwise. No client by this name yet.')
+      // Money from a name that is no client: income, money back or your own money? Yours to say.
+      return out({ ...base }, 'none', `Money in from "${tx.counterparty || 'an unnamed sender'}", who isn't a client of yours: income, money back for a cost, or a transfer? You decide.${sameName}`)
     }
 
     // Money out.

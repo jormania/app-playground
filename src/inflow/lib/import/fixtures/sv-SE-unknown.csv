@@ -1,0 +1,4 @@
+Typ;Datum;Beskrivning;Belopp;Valuta;Status
+Överföring;2026-09-01;Betalning från Nordljus AB;1 200,00;SEK;SLUTFÖRD
+Kortbetalning;2026-09-02;Café Kanel;-45,00;SEK;SLUTFÖRD
+Kortbetalning;2026-09-03;Pressbyrån;-32,00;SEK;VÄNTANDE

@@ -53,7 +53,9 @@ function setup(store: KeyValueStore) {
 }
 
 /** What the Import screen does on Import: classify, apply the person's choices, plan, run. */
-async function runImport(h: ReturnType<typeof setup>['result'], over: (r: Row) => Partial<Choice> | undefined = (r) => (r.tx.direction === 'out' && r.suggestion.kind === 'review' ? { kind: 'cost' } : undefined)) {
+/** The person's choices: money out still undecided is a business cost; every suggested match is looked at and confirmed. */
+const decideAll = (r: Row): Partial<Choice> => ({ ...(r.tx.direction === 'out' && r.suggestion.kind === 'review' ? { kind: 'cost' as const } : {}), confirmed: true })
+async function runImport(h: ReturnType<typeof setup>['result'], over: (r: Row) => Partial<Choice> | undefined = decideAll) {
   const { app, im } = h.current
   const rows = classify(expandFees(readStatement(parseCsv(CSV)).txs), { data: app.data, rules: im.state.rules, ledger: im.state.ledger, ownNames: im.state.ownNames })
   const batch = `imp_${Math.random().toString(36).slice(2, 8)}`

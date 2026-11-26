@@ -22,6 +22,12 @@ A release is a point on `main` worth naming; the number shows at the foot of Set
 - **Undo a whole import**, with what it will do shown first.
 - **Clients & work** now counts paying clients, new and returning, and income per client.
 
+- **Audited** (adversarial, 26 Nov 2026): fixed a sign flip on `(-12.50)`, the same bank ID
+  imported twice, UTC times on the wrong day, empty states read as completed, the payer taken
+  for the payee, a silent pick between same-named clients, stale ids from rules, and valid
+  transactions lost to an unreadable fee. Matches now need confirming; a plan that went stale is
+  never saved. Still experimental: no genuine Revolut Pro export has been tested.
+
 **Using Notion:** the first import adds an "Import" text column to Income and Costs. Without
 permission to add it, InFlow refuses to import rather than lose track of what came in.
 
@@ -36,7 +42,7 @@ every screen, with your data protected. Details in `INFLOW.md`, "Release 1".
 - **A simpler start.** New: income, insights and printable reports, nothing else. Expected
   payments, costs, tax, venue deals, foreign currencies and refunds are a switch away, in
   Settings or in the welcome guide.
-- **A shorter payment form.** Amount, client and date; the rest under *More details*.
+- **A shorter payment form.** Amount, client and date first; the rest follows below them.
 - **Expected payments**, when switched on: *Received* in one tap at that day's rate with a tax
   reserve suggested, or *Part…* when only some of it arrived, from the Overview, Income or the
   payment itself; a calendar reminder for the due date.

@@ -16,3 +16,11 @@ belong to no real person, business or account. None comes from a real Revolut ex
 | `conflicting-columns.csv` | Two amount columns | Must ask for mapping |
 | `total-amount-only.csv` | Only "Total amount" | Must ask: it may include the fee |
 | `malformed-rows.csv` | One bad row of each kind | Each reported by line |
+| `en-GB.csv` | English headers, `14/09/2026 08:12` (day first) | App in UK English (assumed) |
+| `en-US.csv` | English headers, `09/14/2026 8:12 AM` (month first, 12-hour) | App in US English (assumed) |
+| `de-DE.csv` | German headers, states and types; `;`, `1.500,00`, `01.09.2026` | App in German (assumed translation) |
+| `fr-FR.csv` | French headers and states; no-break spaces between thousands, U+2212 minus | App in French (the format a Revolut user reported; headers assumed) |
+| `es-ES.csv` | Spanish headers, dates in words (`5 de septiembre de 2026`) | App in Spanish (assumed) |
+| `nl-NL.csv` | Unsigned amounts with an Af/Bij column, currency in the header, `20260903` | A common Dutch bank layout (assumed) |
+| `sv-SE-unknown.csv` | A language InFlow has no words for: amount header and state values unknown | Must ask |
+| `bg-BG-headers.csv` | Cyrillic headers | Must ask, with the picker suggested from the content |

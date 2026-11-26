@@ -39,7 +39,7 @@ const CSV = [
 
 const base = (): InflowData => ({
   clients: [client('acme', 'ACME S.R.L.'), client('ana', 'Ana Popescu'), client('gamma', 'Gamma SRL')],
-  sources: [], venues: [],
+  sources: [{ id: 'src-direct', name: 'Direct', type: 'direct', description: '', active: true, taxDefault: 'profile' }], venues: [],
   records: [
     // Ana's payment, entered by hand the day before the bank booked it: a likely or possible duplicate.
     pay({ id: 'r-ana', amount: 450, date: '2026-03-02', clientId: 'ana' }),
@@ -51,7 +51,7 @@ const base = (): InflowData => ({
   costs: [], refunds: [],
 })
 
-const read = () => readStatement(parseCsv(CSV)).txs
+const read = () => readStatement(parseCsv(CSV), { timeZone: 'local' }).txs
 const ctx = (data: InflowData, rules: Rule[] = []) => ({ data, rules, ledger: {}, ownNames: ['Maria Stan'] })
 const byLine = (rows: ReturnType<typeof classify>, line: number, fee = false) => rows.find((r) => r.tx.line === line && !!r.parent === fee)!
 
@@ -75,8 +75,9 @@ describe('classifying a statement (Release 2, experimental)', () => {
   it('a client named exactly (accents, dots and case aside) is suggested; an unknown name is not invented', () => {
     const acme = byLine(rows, 2)
     expect(acme.suggestion).toMatchObject({ kind: 'income', action: 'import', clientId: 'acme', sourceId: 'src-direct', category: 'coaching_1on1', venueId: null })
+    // Money in from a name that is no client is not taken for income: it waits for a decision.
     const beta = byLine(rows, 8)
-    expect(beta.suggestion).toMatchObject({ kind: 'income', clientId: null, venueId: null })
+    expect(beta.suggestion).toMatchObject({ kind: 'review', clientId: null, venueId: null })
   })
 
   it('money matching a hand-entered payment is never imported silently', () => {
@@ -84,7 +85,8 @@ describe('classifying a statement (Release 2, experimental)', () => {
     expect(ana.match.status).toBe('possible')
     expect(ana.match.candidates.map((c) => c.id)).toEqual(['r-ana'])
     expect(blocker(ana, ana.suggestion, data, ALL_FEATURES)).toMatch(/may already be in InFlow/)
-    expect(blocker(ana, { ...ana.suggestion, action: 'link', target: 'r-ana' }, data, ALL_FEATURES)).toBeNull()
+    expect(blocker(ana, { ...ana.suggestion, action: 'link', target: 'r-ana' }, data, ALL_FEATURES)).toMatch(/Confirm/)
+    expect(blocker(ana, { ...ana.suggestion, action: 'link', target: 'r-ana', confirmed: true }, data, ALL_FEATURES)).toBeNull()
     expect(blocker(ana, { ...ana.suggestion, anyway: true }, data, ALL_FEATURES)).toBeNull()
   })
 
@@ -101,8 +103,8 @@ describe('classifying a statement (Release 2, experimental)', () => {
     d.costs.push(cost({ id: 'c-zoom', description: 'Zoom subscription', amount: 75.5, date: '2026-03-03', group: 'operating', category: 'software' }))
     const r = byLine(classify(expandFees(read()), ctx(d)), 4)
     expect(r.match).toMatchObject({ status: 'possible', candidates: [{ kind: 'cost', id: 'c-zoom' }] })
-    const p = buildPlan({ rows: [r], data: d, features: ALL_FEATURES, profile: DEMO_SETTINGS_TAX, rates: new Map(), batch: 'b', choices: new Map([[r.tx.key, { ...r.suggestion, kind: 'cost', action: 'link', target: 'c-zoom' }]]) })
-    expect(p.ops).toEqual([{ op: 'link', key: r.tx.key, kind: 'cost', counterparty: 'Zoom, Inc.', target: { kind: 'cost', id: 'c-zoom' } }])
+    const p = buildPlan({ rows: [r], data: d, features: ALL_FEATURES, profile: DEMO_SETTINGS_TAX, rates: new Map(), batch: 'b', choices: new Map([[r.tx.key, { ...r.suggestion, kind: 'cost', action: 'link', target: 'c-zoom', confirmed: true }]]) })
+    expect(p.ops).toEqual([{ op: 'link', key: r.tx.key, fp: r.tx.fp, kind: 'cost', counterparty: 'Zoom, Inc.', target: { kind: 'cost', id: 'c-zoom' } }])
   })
 
   it('two identical coffees a few minutes apart are two transactions, flagged for a look', () => {
@@ -135,7 +137,8 @@ describe('classifying a statement (Release 2, experimental)', () => {
     ]
     const tx = byLine(rows, 6).tx
     expect(rulesFor(tx, rules).map((r) => r.id)).toEqual(['c1', 'w2', 'w1'])
-    const r = byLine(classify(expandFees(read()), ctx(data, rules)), 6)
+    const withVenue = { ...data, venues: [{ id: 'v-lumina', name: 'Sala Lumina' } as InflowData['venues'][number]] }
+    const r = byLine(classify(expandFees(read()), ctx(withVenue, rules)), 6)
     expect(r.rule?.id).toBe('c1')
     expect(r.confidence).toBe('rule')
     expect(r.suggestion).toMatchObject({ kind: 'cost', costGroup: 'direct', costCategory: 'venue_hire', venueId: 'v-lumina', deductible: true })
@@ -146,7 +149,7 @@ describe('classifying a statement (Release 2, experimental)', () => {
 
   it('a rule is only made from a decided, new, completed row with a name', () => {
     const r = byLine(rows, 8)
-    const c: Choice = { ...r.suggestion, clientId: 'new-beta' }
+    const c: Choice = { ...r.suggestion, kind: 'income', clientId: 'new-beta' }
     expect(canRemember(r, c)).toBe(true)
     expect(ruleFrom(r, c, 'x', '2026-03-31')).toMatchObject({ match: 'counterparty', value: 'Beta Corp', direction: 'in', kind: 'income', clientId: 'new-beta' })
     expect(canRemember(byLine(rows, 3), byLine(rows, 3).suggestion)).toBe(false) // possible duplicate
@@ -184,14 +187,14 @@ describe('planning an import', () => {
   const rates = new Map([[rateKey('EUR', '2026-03-13'), 4.9775]])
   const plan = buildPlan({
     rows, data, features, profile: DEMO_SETTINGS_TAX, rates, batch: 'b1',
-    choices: decide({ 3: { anyway: true }, 4: { kind: 'cost' }, 6: { kind: 'cost', costGroup: 'direct', costCategory: 'venue_hire' }, 12: { kind: 'personal' }, 13: { kind: 'personal' } }),
+    choices: decide({ 3: { anyway: true }, 4: { kind: 'cost' }, 6: { kind: 'cost', costGroup: 'direct', costCategory: 'venue_hire' }, 8: { kind: 'income' }, 9: { confirmed: true }, 12: { kind: 'personal' }, 13: { kind: 'personal' }, 14: { confirmed: true } }),
     suggestReserve: (r) => ({ amount: Math.round(r.amountRon * 0.1 * 100) / 100, rulesId: 'RO-2026' }),
   })
 
   it('counts every row exactly once', () => {
     // 14 bank rows + 1 fee row = 15: 1 never (pending), 4 set aside (exchange, own name, 2 coffees),
     // income 3 (Acme, Ana anyway, Beta), 1 received (Gamma part), costs 3 (Zoom, Sala, its fee) + 1 plan fee, 1 refund.
-    expect(plan.counts).toEqual({ records: 3, costs: 4, refunds: 1, linked: 0, received: 1, setAside: 4, waiting: 0, alreadyIn: 0, never: 1 })
+    expect(plan.counts).toEqual({ records: 3, costs: 4, refunds: 1, linked: 0, received: 1, setAside: 4, waiting: 0, alreadyIn: 0, never: 1, unsupported: 0 })
     expect(plan.blocked).toEqual([])
   })
 
@@ -251,7 +254,7 @@ describe('planning an import', () => {
   it('a refund beyond what is left, a missing rate, or a switched-off feature waits, with a reason', () => {
     const big = rows.find((r) => r.tx.line === 9)!
     const d2 = { ...data, refunds: [{ id: 'f0', paymentId: 'r-acme-jan', date: '2026-02-01', amount: 900, currency: 'RON', fxRate: 1, amountRon: 900, notes: '' } as Refund] }
-    const p = buildPlan({ rows: [big], data: d2, features, profile: DEMO_SETTINGS_TAX, rates, batch: 'b2', choices: new Map([[big.tx.key, big.suggestion]]) })
+    const p = buildPlan({ rows: [big], data: d2, features, profile: DEMO_SETTINGS_TAX, rates, batch: 'b2', choices: new Map([[big.tx.key, { ...big.suggestion, confirmed: true }]]) })
     expect(p.blocked[0].message).toMatch(/more than the 100 RON/)
     const eur = rows.find((r) => r.tx.line === 14)!
     const p2 = buildPlan({ rows: [eur], data, features, profile: DEMO_SETTINGS_TAX, rates: new Map(), batch: 'b3', choices: new Map([[eur.tx.key, { ...eur.suggestion, action: 'import', target: null }]]) })
@@ -264,7 +267,7 @@ describe('planning an import', () => {
   it('two rows can never both settle all of one expected payment', () => {
     const eur = rows.find((r) => r.tx.line === 14)!
     const twin = { ...eur, tx: { ...eur.tx, key: `${eur.tx.key}#x`, amount: 300 } }
-    const p = buildPlan({ rows: [eur, twin], data, features, profile: DEMO_SETTINGS_TAX, rates, batch: 'b4', choices: new Map([[eur.tx.key, eur.suggestion], [twin.tx.key, twin.suggestion]]) })
+    const p = buildPlan({ rows: [eur, twin], data, features, profile: DEMO_SETTINGS_TAX, rates, batch: 'b4', choices: new Map([[eur.tx.key, { ...eur.suggestion, confirmed: true }], [twin.tx.key, { ...twin.suggestion, confirmed: true }]]) })
     expect(p.counts.received).toBe(1)
     expect(p.blocked[0].message).toMatch(/already settles/)
   })

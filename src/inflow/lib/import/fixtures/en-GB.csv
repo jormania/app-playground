@@ -1,0 +1,3 @@
+Type,Product,Started Date,Completed Date,Description,Amount,Fee,Currency,State,Balance
+TRANSFER,Current,14/09/2026 08:12,14/09/2026 08:13,Payment from Hollow Oak Retreats,640.00,0.00,GBP,COMPLETED,2640.00
+CARD_PAYMENT,Current,02/10/2026 19:40,03/10/2026 07:00,"Pret A Manger, Kings Cross",-8.45,0.00,GBP,COMPLETED,2631.55

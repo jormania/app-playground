@@ -91,6 +91,8 @@ interface InflowState {
   deviceHasOwnData: boolean
   /** Where this workspace's import history, rules and ledger live (Release 2, experimental): one per data set. */
   importStore: { store: KeyValueStore; key: string }
+  /** Notion only: the row an import made for this key, looked up in Notion; null on this device or when none. */
+  findImported: (kind: 'record' | 'cost' | 'refund', key: string) => Promise<string | null>
   toast: (t: ToastInput | string) => void
   toasts: ReturnType<typeof useToastStack>
 }
@@ -479,6 +481,8 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
 
   const books = useMemo(() => withRefunds(data), [data])
 
+  const findImported = useCallback(async (kind: 'record' | 'cost' | 'refund', key: string) => (repo.findImported ? repo.findImported(kind, key) : null), [repo])
+
   // Import history belongs to the data it was imported into: the demo, this device, or one Notion workspace.
   const importStore = useMemo(() => ({
     store,
@@ -488,7 +492,7 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
   const value: InflowState = {
     today, settings: shownSettings, updateSettings, on, data, books, load, error, offlineCopy, reload, period, setPeriod,
     filter, setFilter, saveRecord, deleteRecord, saveRefund, deleteRefund, saveCost, deleteCost, costsAvailable, saveEntity, deleteEntity, workspace, setWorkspace, clearDemo, loadDemo, resetDemo, restore,
-    copyDeviceToNotion, deviceHasOwnData, importStore, toast, toasts,
+    copyDeviceToNotion, deviceHasOwnData, importStore, findImported, toast, toasts,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

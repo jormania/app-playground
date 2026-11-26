@@ -81,12 +81,12 @@ export function importFromText(s: string): ImportMeta | undefined {
   try {
     const m = JSON.parse(s.trim().replace(/\\([{}])/g, '$1'))
     if (!m || typeof m !== 'object' || typeof m.key !== 'string' || !m.key || typeof m.batch !== 'string') return undefined
-    return { key: m.key, batch: m.batch, counterparty: typeof m.counterparty === 'string' ? m.counterparty : '', ...(m.matched === true ? { matched: true } : {}) }
+    return { key: m.key, ...(typeof m.fp === 'string' && m.fp ? { fp: m.fp } : {}), batch: m.batch, counterparty: typeof m.counterparty === 'string' ? m.counterparty : '', ...(m.matched === true ? { matched: true } : {}) }
   } catch { return undefined }
 }
 
 export const importToText = (m: ImportMeta | null | undefined): string =>
-  m ? JSON.stringify({ key: m.key, batch: m.batch, counterparty: m.counterparty, ...(m.matched ? { matched: true } : {}) }) : ''
+  m ? JSON.stringify({ key: m.key, ...(m.fp ? { fp: m.fp } : {}), batch: m.batch, counterparty: m.counterparty, ...(m.matched ? { matched: true } : {}) }) : ''
 
 /** A row read from Notion carries `importMeta` only when its Import column holds one. */
 const withImport = <T extends object>(x: T, p: Props): T => {
@@ -501,6 +501,14 @@ export class NotionRepo implements Repo {
   }
 
   /** The Notion page holding the device row with this InFlow ID, if one was already copied. */
+  async findImported(kind: 'record' | 'cost' | 'refund', key: string): Promise<string | null> {
+    const db = await this.dbFor(kind)
+    if (!db) return null
+    const res = await this.call(`databases/${db}/query`, 'POST', { page_size: 1, filter: { property: 'Import', rich_text: { contains: `"key":${JSON.stringify(key)}` } } })
+    const hit = (res.results ?? [])[0]
+    return hit ? String(hit.id).replace(/-/g, '') : null
+  }
+
   async findCopied(kind: CopyKind, inflowId: string): Promise<string | null> {
     const db = await this.dbFor(kind)
     if (!db) return null

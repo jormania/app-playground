@@ -23,17 +23,22 @@ export interface Batch {
   at: string
   /** About the file, never its contents: the name you picked, its date range and row count. */
   file: { name: string; rows: number; from: string | null; to: string | null; currencies: string[] }
+  /** `done` also after an undo that could not put everything back (`undoFailed`): it can be undone again. */
   status: 'running' | 'done' | 'undone'
   /** What this import made, with a stamp of each as saved, to tell later edits apart. */
   created: { kind: Held; id: string; key: string; stamp: string }[]
   /** Existing entries it marked as these transactions, with what they carried before. */
   linked: { kind: Held; id: string; key: string; before: ImportMeta | null }[]
   /** Expected payments it marked received: the payment as it was, to put back on undo. */
-  received: { key: string; expectedId: string; receivedId: string; before: IncomeRecord; stamp: string; part: boolean }[]
+  received: { key: string; expectedId: string; receivedId: string; before: IncomeRecord; stamp: string; part: boolean
+    /** The expected payment's balance as this import saved it; null if that save failed. Undo leaves it alone if it changed since. */
+    remainingStamp?: string | null }[]
   setAside: number
   /** Clients made during the review; undo keeps them and says so. */
   clients: string[]
   undoneAt?: string
+  /** How many entries the last undo could not put back. */
+  undoFailed?: number
 }
 
 export interface ImportState {

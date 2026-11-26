@@ -8,12 +8,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CostRecord, Currency, ImportMeta, IncomeRecord, InflowData, Refund } from '../domain/types'
 import { lastRate } from '../lib/guards'
-import type { Kind, Rule } from '../lib/import/classify'
+import { nameKey, type Kind, type Rule } from '../lib/import/classify'
 import { rateKey, type Op } from '../lib/import/plan'
 import { fetchRonRate } from '../lib/money'
 import { newId } from '../store/repo'
 import { EMPTY_IMPORTS, loadImports, stamp, updateImports, type Batch, type ImportState } from '../store/imports'
+import { TAB_ID } from '../store/repo'
+import type { KeyValueStore } from '../../shared/kvStore'
 import { useInflow } from './state'
+
+/** Thrown when another tab holds the import lock. */
+export class ImportBusy extends Error {}
+
+/** A lock older than this is a tab that closed mid-import: taken over. */
+const LOCK_MS = 2 * 60_000
+const refreshLock = (store: KeyValueStore, key: string) =>
+  store.update<{ tab: string; at: number } | null>(key, (cur) => (cur?.tab === TAB_ID ? { tab: TAB_ID, at: Date.now() } : cur ?? null))
 
 export interface RunResult {
   batch: Batch
@@ -61,14 +71,20 @@ export function previewUndo(batch: Batch, d: InflowData): UndoPreview {
   }
   for (const r of batch.received) {
     const x = d.records.find((y) => y.id === r.receivedId)
+    const rest = r.part ? d.records.find((y) => y.id === r.expectedId) : undefined
+    // Already put back by an earlier undo: the payment is as it was before the money arrived.
+    if (!r.part && x && stamp(x) === stamp(r.before)) { p.gone++; continue }
+    if (r.part && !x && rest && stamp(rest) === stamp(r.before)) { p.gone++; continue }
     if (!x) { p.gone++; continue }
-    p.unreceive.push({ id: r.receivedId, label: label(x), edited: stamp(x) !== r.stamp })
+    // A balance still expected that was changed since (or a received part edited) is left as it is.
+    const restEdited = r.part && !!rest && r.remainingStamp !== undefined && r.remainingStamp !== null && stamp(rest) !== r.remainingStamp
+    p.unreceive.push({ id: r.receivedId, label: label(x), edited: stamp(x) !== r.stamp || restEdited })
   }
   return p
 }
 
 export function useImports() {
-  const { data, importStore, saveRecord, saveCost, saveRefund, deleteRecord, deleteCost, deleteRefund } = useInflow()
+  const { data, importStore, saveRecord, saveCost, saveRefund, deleteRecord, deleteCost, deleteRefund, findImported, reload } = useInflow()
   const [state, setState] = useState<ImportState>(EMPTY_IMPORTS)
   const [ready, setReady] = useState(false)
   const dataRef = useRef(data)
@@ -100,63 +116,111 @@ export function useImports() {
   }, [])
 
   const run = useCallback(async (ops: Op[], file: Batch['file'], batchId: string, clients: string[]): Promise<RunResult> => {
-    const batch: Batch = { id: batchId, at: new Date().toISOString(), file, status: 'running', created: [], linked: [], received: [], setAside: 0, clients }
-    await change((s) => ({ ...s, batches: [batch, ...s.batches] }))
-    const log = async (key: string, kind: Kind, outcome: 'created' | 'linked' | 'received' | 'skipped', target: string | undefined, patch: (b: Batch) => Batch) => {
-      await change((s) => ({
-        ...s,
-        ledger: { ...s.ledger, [key]: { batch: batchId, outcome, kind, ...(target ? { target } : {}) } },
-        batches: s.batches.map((b) => (b.id === batchId ? patch(b) : b)),
-      }))
+    // One import at a time across this device's tabs: two would each save the same rows.
+    const lockKey = `${importStore.key}:lock`
+    const onNotion = importStore.key.startsWith('import:notion:')
+    let mine = false
+    await importStore.store.update<{ tab: string; at: number } | null>(lockKey, (cur) => {
+      if (cur && cur.tab !== TAB_ID && Date.now() - cur.at < LOCK_MS) return cur
+      mine = true
+      return { tab: TAB_ID, at: Date.now() }
+    })
+    if (!mine) throw new ImportBusy('Another tab is importing into the same data. Wait for it to finish, then try again.')
+    try {
+      const earlier = (await loadImports(importStore.store, importStore.key)).ledger
+      const batch: Batch = { id: batchId, at: new Date().toISOString(), file, status: 'running', created: [], linked: [], received: [], setAside: 0, clients }
+      await change((s) => ({ ...s, batches: [batch, ...s.batches] }))
+      const log = async (key: string, fp: string | undefined, kind: Kind, outcome: 'created' | 'linked' | 'received' | 'skipped' | 'pending', target: string | undefined, patch: (b: Batch) => Batch = (b) => b) => {
+        const entry = { batch: batchId, outcome, kind, ...(target ? { target } : {}) }
+        await change((s) => ({
+          ...s,
+          // Under its key and its content fingerprint, so an export with or without ids finds it.
+          ledger: { ...s.ledger, [key]: entry, ...(fp && fp !== key ? { [fp]: entry } : {}) },
+          batches: s.batches.map((b) => (b.id === batchId ? patch(b) : b)),
+        }))
+      }
+      /**
+       * A save that failed: on this device nothing was written (a write lands whole or not at all),
+       * so the row is simply not imported yet. In Notion the page may have been made with its answer
+       * lost: the "pending" mark stays, and the next run looks for the page before making it again.
+       */
+      const unsure = async (key: string, fp: string | undefined) => {
+        if (onNotion) return
+        await change((s) => {
+          const ledger = { ...s.ledger }
+          for (const k of [key, fp]) if (k && ledger[k]?.batch === batchId && ledger[k].outcome === 'pending') delete ledger[k]
+          return { ...s, ledger }
+        })
+      }
+      let failedAt: string | null = null
+      let adopted = 0
+      for (const op of ops) {
+        await refreshLock(importStore.store, lockKey)
+        if (op.op === 'skip') {
+          await log(op.key, undefined, op.kind, 'skipped', undefined, (b) => ({ ...b, setAside: b.setAside + 1 }))
+          continue
+        }
+        if (op.op === 'createRecord' || op.op === 'createCost' || op.op === 'createRefund') {
+          const kind = op.op === 'createRecord' ? 'record' : op.op === 'createCost' ? 'cost' : 'refund'
+          const fp = op.op === 'createRecord' ? op.record.importMeta?.fp : op.op === 'createCost' ? op.cost.importMeta?.fp : op.refund.importMeta?.fp
+          // A save of this row that never answered, in an earlier run: if it reached Notion, keep that row.
+          if (earlier[op.key]?.outcome === 'pending') {
+            const there = await findImported(kind, op.key)
+            if (there) {
+              adopted++
+              await log(op.key, fp, op.kind, 'created', there, (b) => ({ ...b, created: [...b.created, { kind, id: there, key: op.key, stamp: '' }] }))
+              continue
+            }
+          }
+          // Marked as being saved before it is sent: a lost answer is then never mistaken for "not saved".
+          await log(op.key, fp, op.kind, 'pending', undefined)
+          const saved = op.op === 'createRecord' ? await saveRecord(op.record) : op.op === 'createCost' ? await saveCost(op.cost) : await saveRefund(op.refund)
+          if (!saved) { await unsure(op.key, fp); failedAt = op.key; break }
+          await log(op.key, fp, op.kind, 'created', saved.id, (b) => ({ ...b, created: [...b.created, { kind, id: saved.id, key: op.key, stamp: stamp(saved) }] }))
+          continue
+        }
+        if (op.op === 'link') {
+          const x = find(dataRef.current, op.target.kind, op.target.id)
+          if (!x) { failedAt = op.key; break }
+          const before: ImportMeta | null = x.importMeta ?? null
+          const meta: ImportMeta = { key: op.key, fp: op.fp, batch: batchId, counterparty: op.counterparty, matched: true }
+          // Only the import marker changes: every other field is the entry as it is now.
+          const saved = op.target.kind === 'record' ? await saveRecord({ ...(x as IncomeRecord), importMeta: meta })
+            : op.target.kind === 'cost' ? await saveCost({ ...(x as CostRecord), importMeta: meta })
+              : await saveRefund({ ...(x as Refund), importMeta: meta })
+          if (!saved) { failedAt = op.key; break }
+          await log(op.key, op.fp, op.kind, 'linked', saved.id, (b) => ({ ...b, linked: [...b.linked, { kind: op.target.kind, id: saved.id, key: op.key, before }] }))
+          continue
+        }
+        // receive
+        const before = dataRef.current.records.find((r) => r.id === op.expectedId)
+        if (!before || before.status !== 'expected') { failedAt = op.key; break }
+        const fp = op.received.importMeta?.fp
+        await log(op.key, fp, op.kind, 'pending', undefined)
+        const got = await saveRecord(op.received)
+        if (!got) { await unsure(op.key, fp); failedAt = op.key; break }
+        const part = !!op.remaining
+        const rest = op.remaining ? await saveRecord(op.remaining) : null
+        await log(op.key, fp, op.kind, 'received', got.id, (b) => ({ ...b, received: [...b.received, { key: op.key, expectedId: op.expectedId, receivedId: got.id, before, stamp: stamp(got), part, remainingStamp: rest ? stamp(rest) : null }] }))
+        // The money is recorded; if the balance didn't save, the expected payment still shows its old amount.
+        if (op.remaining && !rest) { failedAt = op.key; break }
+      }
+      const next = await change((s) => ({ ...s, batches: s.batches.map((b) => (b.id === batchId ? { ...b, status: 'done' } : b)) }))
+      // Rows found in Notion rather than made: load them, so the screens show them.
+      if (adopted) await reload()
+      return { batch: next.batches.find((b) => b.id === batchId)!, failedAt }
+    } finally {
+      await importStore.store.update<{ tab: string; at: number } | null>(lockKey, (cur) => (cur?.tab === TAB_ID ? null : cur ?? null))
     }
-    let failedAt: string | null = null
-    for (const op of ops) {
-      if (op.op === 'skip') {
-        await log(op.key, op.kind, 'skipped', undefined, (b) => ({ ...b, setAside: b.setAside + 1 }))
-        continue
-      }
-      if (op.op === 'createRecord' || op.op === 'createCost' || op.op === 'createRefund') {
-        const saved = op.op === 'createRecord' ? await saveRecord(op.record) : op.op === 'createCost' ? await saveCost(op.cost) : await saveRefund(op.refund)
-        if (!saved) { failedAt = op.key; break }
-        const kind = op.op === 'createRecord' ? 'record' : op.op === 'createCost' ? 'cost' : 'refund'
-        await log(op.key, op.kind, 'created', saved.id, (b) => ({ ...b, created: [...b.created, { kind, id: saved.id, key: op.key, stamp: stamp(saved) }] }))
-        continue
-      }
-      if (op.op === 'link') {
-        const x = find(dataRef.current, op.target.kind, op.target.id)
-        if (!x) { failedAt = op.key; break }
-        const before: ImportMeta | null = x.importMeta ?? null
-        const meta: ImportMeta = { key: op.key, batch: batchId, counterparty: op.counterparty, matched: true }
-        const saved = op.target.kind === 'record' ? await saveRecord({ ...(x as IncomeRecord), importMeta: meta })
-          : op.target.kind === 'cost' ? await saveCost({ ...(x as CostRecord), importMeta: meta })
-            : await saveRefund({ ...(x as Refund), importMeta: meta })
-        if (!saved) { failedAt = op.key; break }
-        await log(op.key, op.kind, 'linked', saved.id, (b) => ({ ...b, linked: [...b.linked, { kind: op.target.kind, id: saved.id, key: op.key, before }] }))
-        continue
-      }
-      // receive
-      const before = dataRef.current.records.find((r) => r.id === op.expectedId)
-      if (!before) { failedAt = op.key; break }
-      const got = await saveRecord(op.received)
-      if (!got) { failedAt = op.key; break }
-      const part = !!op.remaining
-      if (op.remaining && !(await saveRecord(op.remaining))) {
-        // The money is recorded; the expected payment still shows its old amount. Logged so undo can put it right.
-        await log(op.key, op.kind, 'received', got.id, (b) => ({ ...b, received: [...b.received, { key: op.key, expectedId: op.expectedId, receivedId: got.id, before, stamp: stamp(got), part }] }))
-        failedAt = op.key
-        break
-      }
-      await log(op.key, op.kind, 'received', got.id, (b) => ({ ...b, received: [...b.received, { key: op.key, expectedId: op.expectedId, receivedId: got.id, before, stamp: stamp(got), part }] }))
-    }
-    const next = await change((s) => ({ ...s, batches: s.batches.map((b) => (b.id === batchId ? { ...b, status: 'done' } : b)) }))
-    return { batch: next.batches.find((b) => b.id === batchId)!, failedAt }
-  }, [change, saveRecord, saveCost, saveRefund])
+  }, [change, saveRecord, saveCost, saveRefund, importStore, findImported, reload])
 
   /** Undoes a batch as `previewUndo` describes. Returns how many entries could not be put back. */
   const undo = useCallback(async (batch: Batch): Promise<{ failed: number }> => {
     const d = dataRef.current
     const p = previewUndo(batch, d)
     let failed = 0
+    // The ids put back: their ledger entries go; anything that failed or was kept stays recorded.
+    const done = new Set<string>()
     // Refunds first, so a payment never goes before its refund; then payments and costs.
     const order = { refund: 0, record: 1, cost: 2 }
     for (const r of [...p.remove].sort((a, b) => order[a.kind] - order[b.kind])) {
@@ -165,6 +229,7 @@ export function useImports() {
       const ok = r.kind === 'record' ? await deleteRecord(x as IncomeRecord, { quiet: true })
         : r.kind === 'cost' ? await deleteCost(x as CostRecord, { quiet: true }) : await deleteRefund(x as Refund, { quiet: true })
       if (!ok) failed++
+      else done.add(r.id)
     }
     for (const l of p.unlink) {
       const x = find(dataRef.current, l.kind, l.id)
@@ -173,6 +238,7 @@ export function useImports() {
       const saved = l.kind === 'record' ? await saveRecord({ ...(x as IncomeRecord), importMeta: before })
         : l.kind === 'cost' ? await saveCost({ ...(x as CostRecord), importMeta: before }) : await saveRefund({ ...(x as Refund), importMeta: before })
       if (!saved) failed++
+      else done.add(l.id)
     }
     for (const u of p.unreceive.filter((x) => !x.edited)) {
       const r = batch.received.find((y) => y.receivedId === u.id)!
@@ -180,16 +246,26 @@ export function useImports() {
       if (r.part && now && !(await deleteRecord(now, { quiet: true }))) { failed++; continue }
       // The expected payment as it was before the money arrived (the same record when paid in full).
       if (!(await saveRecord(r.before))) failed++
+      else done.add(u.id)
     }
+    // Gone already (deleted by you, or put back by an earlier undo): nothing left to record either.
+    const present = (id: string) => !!(find(dataRef.current, 'record', id) ?? find(dataRef.current, 'cost', id) ?? find(dataRef.current, 'refund', id))
     await change((s) => ({
       ...s,
-      ledger: Object.fromEntries(Object.entries(s.ledger).filter(([, e]) => e.batch !== batch.id)),
-      batches: s.batches.map((b) => (b.id === batch.id ? { ...b, status: 'undone', undoneAt: new Date().toISOString() } : b)),
+      // Kept: other batches; saves whose answer was lost (they may be in Notion); entries still in InFlow.
+      ledger: Object.fromEntries(Object.entries(s.ledger).filter(([, e]) => e.batch !== batch.id || e.outcome === 'pending' || (e.target !== undefined && !done.has(e.target) && present(e.target) && e.outcome !== 'skipped'))),
+      batches: s.batches.map((b) => (b.id === batch.id
+        ? failed ? { ...b, status: 'done', undoFailed: failed } : { ...b, status: 'undone', undoneAt: new Date().toISOString(), undoFailed: 0 }
+        : b)),
     }))
     return { failed }
   }, [change, deleteRecord, deleteCost, deleteRefund, saveRecord, saveCost, saveRefund])
 
-  const saveRule = useCallback((r: Rule) => change((s) => ({ ...s, rules: [...s.rules.filter((x) => x.id !== r.id), r] })), [change])
+  // A new rule replaces one for the same name and direction: two never compete.
+  const saveRule = useCallback((r: Rule) => change((s) => ({
+    ...s,
+    rules: [...s.rules.filter((x) => x.id !== r.id && !(x.match === r.match && x.direction === r.direction && nameKey(x.value) === nameKey(r.value))), r],
+  })), [change])
   const deleteRule = useCallback((id: string) => change((s) => ({ ...s, rules: s.rules.filter((x) => x.id !== id) })), [change])
   const setOwnNames = useCallback((names: string[]) => change((s) => ({ ...s, ownNames: [...new Set(names.map((n) => n.trim()).filter(Boolean))] })), [change])
 

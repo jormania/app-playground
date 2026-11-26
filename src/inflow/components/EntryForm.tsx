@@ -35,8 +35,6 @@ import { incomeErrors, incomeFindings, lastRate, type Finding, type Fix } from '
 import styles from '../styles/ui.module.css'
 
 const LAST_KEY = 'inflow:last-entry'
-/** Whether the payment form's "More details" was left open. */
-const DETAILS_KEY = 'inflow:form-details'
 const NEW = '__new__'
 /** A typed name that reads as a company starts as a business client. */
 const COMPANY = /\b(srl|s\.r\.l|sa|s\.a|pfa|ii|ltd|llc|gmbh|inc|ong|asocia[tț]ia|funda[tț]ia)\b/i
@@ -114,9 +112,6 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
   const [creating, setCreating] = useState<{ kind: EntityKind; entity: Entity } | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [busy, setBusy] = useState(false)
-  // Amount, client and date up front; the rest folds under "More details", remembered open or closed (audit C-01, E-03).
-  const [detailsOpen, setDetailsOpen] = useState(() => readJson<boolean>(DETAILS_KEY, false))
-  const openDetails = (v: boolean) => { setDetailsOpen(v); writeJson(DETAILS_KEY, v) }
   // Asked to count this payment under its venue's deal as it is now, not the one it was saved with.
   const [currentTerms, setCurrentTerms] = useState(false)
   // Tax stays folded away unless the payment needs a decision; it's optional.
@@ -280,12 +275,12 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
     if (!draft.date) { setError('Pick the date it was received.'); return }
     if (draft.currency !== 'RON' && (!Number.isFinite(fxRate) || fxRate <= 0)) { setError('Enter the exchange rate to lei.'); return }
     const attendeesNum = draft.attendees.trim() === '' ? null : Math.round(parseAmount(draft.attendees))
-    if (attendeesNum !== null && (!Number.isFinite(attendeesNum) || attendeesNum < 0)) { setDetailsOpen(true); setError('People per session is a head count: one whole number, like 8.'); return }
+    if (attendeesNum !== null && (!Number.isFinite(attendeesNum) || attendeesNum < 0)) { setError('People per session is a head count: one whole number, like 8.'); return }
     const sessionsNum = draft.sessions.trim() === '' ? 1 : Math.round(parseAmount(draft.sessions))
     // 0 is a balance payment: the sessions were counted with the part paid first.
-    if (!Number.isFinite(sessionsNum) || sessionsNum < 0) { setDetailsOpen(true); setError('Sessions should be a whole number: 1 or more, or 0 for the balance of a part payment.'); return }
+    if (!Number.isFinite(sessionsNum) || sessionsNum < 0) { setError('Sessions should be a whole number: 1 or more, or 0 for the balance of a part payment.'); return }
     const hoursNum = draft.hours.trim() === '' ? null : parseRate(draft.hours)
-    if (hoursNum !== null && (!Number.isFinite(hoursNum) || hoursNum <= 0)) { setDetailsOpen(true); setError('Hours should be a number above zero, or empty.'); return }
+    if (hoursNum !== null && (!Number.isFinite(hoursNum) || hoursNum <= 0)) { setError('Hours should be a number above zero, or empty.'); return }
     const reserveNum = !settings.features.tax ? record?.taxReserve ?? null : draft.reserve === '' ? null : parseAmount(draft.reserve)
     if (reserveNum !== null && !Number.isFinite(reserveNum)) { setError('The tax reserve is not a number.'); return }
     const allSuggested = !touched.has('taxability') && !touched.has('taxHandling') && !touched.has('vat')
@@ -358,14 +353,6 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
       .sort((a, b) => Number(b.clientId === draft.clientId && !!draft.clientId) - Number(a.clientId === draft.clientId && !!draft.clientId) || b.date.localeCompare(a.date))
       .slice(0, 60)
     : []
-  const detailsSummary = [
-    draft.description.trim() || autoDescription,
-    data.sources.find((x) => x.id === draft.sourceId)?.name,
-    draft.sessions.trim() && draft.sessions.trim() !== '1' ? `${draft.sessions.trim()} sessions` : null,
-    draft.hours.trim() ? `${draft.hours.trim()} h` : null,
-    draft.recurring ? 'recurring' : null,
-    draft.notes.trim() ? 'notes' : null,
-  ].filter(Boolean).join(' · ')
   const activeSources = data.sources.filter((s) => s.active || s.id === draft.sourceId).sort((a, b) => a.name.localeCompare(b.name))
   // A payment keeps the venue deal it was made under; say so when the venue's deal has since changed.
   const snapshot = on('deals') && record && record.venueId === draft.venueId && venue && record.dealTerms && !sameTerms(record.dealTerms, termsOf(venue)) ? record.dealTerms : null
@@ -454,22 +441,8 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
             // Part of it arrived: the same rule as Part… on the Overview and Income (lib/receive.ts).
             <div className={styles.partRow}><span className={styles.hint}>Only part of it arrived?</span><ReceiveActions r={record} only="part" onDone={onClose} /></div>
           )}
-          {!detailsOpen && (
-            <button type="button" className={styles.disclosure} onClick={() => openDetails(true)} aria-expanded={false}>
-              <span>
-                <b>More details</b>
-                <span className={styles.disclosureSummary}>{detailsSummary}</span>
-              </span>
-              <ChevronDown size={18} aria-hidden />
-            </button>
-          )}
-          {detailsOpen && (
+          {/* Every field in view: nothing about the payment is folded away. */}
           <div className={styles.section}>
-            <h3 className={styles.sectionTitle}>
-              <button type="button" className={styles.sectionToggle} onClick={() => openDetails(false)} aria-expanded>
-                More details <ChevronDown size={16} aria-hidden style={{ transform: 'rotate(180deg)' }} />
-              </button>
-            </h3>
           <TextInput label="Description" value={draft.description} onChange={(v) => set({ description: v })} placeholder={autoDescription === 'Payment' ? 'e.g. Coaching session' : autoDescription} name="description"
             hint={!draft.description.trim() && autoDescription !== 'Payment' ? 'Left empty, it is saved as shown.' : undefined} />
           {on('deals') && attendeesField}
@@ -509,7 +482,6 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
             )}
             <TextArea label="Notes" value={draft.notes} onChange={(v) => set({ notes: v })} />
           </div>
-          )}
 
           {settings.features.tax && !taxOpen && (
             <button type="button" className={styles.disclosure} onClick={() => setTaxOpen(true)} aria-expanded={false}>

@@ -14,7 +14,7 @@ export const REVOLUT_CSV = [
 
 describe('reading a statement (Release 2, experimental)', () => {
   it('reads the standard layout: direction, fee apart, completed date preferred, pending kept for review', () => {
-    const s = readStatement(parseCsv(REVOLUT_CSV))
+    const s = readStatement(parseCsv(REVOLUT_CSV), { timeZone: 'local' })
     expect(s.issues).toEqual([])
     expect(s.summary).toMatchObject({ rows: 5, read: 5, from: '2026-03-02', to: '2026-03-31', currencies: ['RON'], incoming: 1, outgoing: 4 })
     expect(s.txs[0]).toMatchObject({ direction: 'in', amount: 1200, fee: 0, counterparty: 'Ana Popescu', type: 'TRANSFER', state: 'COMPLETED', date: '2026-03-02' })
@@ -23,48 +23,49 @@ describe('reading a statement (Release 2, experimental)', () => {
   })
   it('any column order, other names, semicolons, decimal commas, Romanian text, a BOM, CRLF', () => {
     const csv = '﻿Data;Descriere;Suma;Moneda;Stare\r\n02.03.2026;"Plată de la Ștefan Țepeș; atelier";"1.250,75";EUR;Completed\r\n'
-    const s = readStatement(parseCsv(csv))
+    const s = readStatement(parseCsv(csv), { allCompleted: true })
     expect(s.issues).toEqual([])
     expect(s.txs[0]).toMatchObject({ date: '2026-03-02', description: 'Plată de la Ștefan Țepeș; atelier', amount: 1250.75, currency: 'EUR', direction: 'in', state: 'COMPLETED' })
   })
   it('money in / money out columns; several currencies', () => {
     const csv = 'Date,Description,Money out,Money in,Currency\n2026-04-01,Payment from Acme,,500,EUR\n2026-04-02,Canva,12.99,,USD\n'
-    const s = readStatement(parseCsv(csv))
+    const s = readStatement(parseCsv(csv), { allCompleted: true })
     expect(s.txs.map((t) => [t.direction, t.amount, t.currency])).toEqual([['in', 500, 'EUR'], ['out', 12.99, 'USD']])
     expect(s.summary.currencies).toEqual(['EUR', 'USD'])
   })
   it('missing required columns: says which; a file without a currency column reads once its currency is named', () => {
     expect(mapHeader(['Description', 'Balance']).missing).toHaveLength(3)
     const csv = 'Date,Description,Amount\n2026-04-01,Payment from Acme,500\n'
-    expect(readStatement(parseCsv(csv)).map.missing).toEqual([expect.stringMatching(/currency/)])
-    expect(readStatement(parseCsv(csv), { fileCurrency: 'EUR' }).txs[0].currency).toBe('EUR')
+    expect(readStatement(parseCsv(csv), { allCompleted: true }).map.missing).toEqual([expect.stringMatching(/currency/)])
+    expect(readStatement(parseCsv(csv), { fileCurrency: 'EUR', allCompleted: true }).txs[0].currency).toBe('EUR')
   })
   it('bad rows are reported by line and left out, never read as zero', () => {
     const csv = 'Date,Description,Amount,Currency\n2026-04-01,Ok,10,RON\nnot a date,Bad,10,RON\n2026-04-02,Bad amount,ten,RON\n2026-04-03,Odd,5,XYZ\n'
-    const s = readStatement(parseCsv(csv))
+    const s = readStatement(parseCsv(csv), { allCompleted: true })
     expect(s.txs).toHaveLength(1)
     expect(s.issues.map((i) => i.line)).toEqual([3, 4, 5])
   })
   it('numbers and dates as banks write them', () => {
     expect([parseAmount('1,234.50'), parseAmount('1.234,50'), parseAmount("1'234.50"), parseAmount('(12.50)'), parseAmount('12.50-'), parseAmount('-0.99'), parseAmount('1,5'), parseAmount('€ 20'), parseAmount('abc')])
       .toEqual([1234.5, 1234.5, 1234.5, -12.5, -12.5, -0.99, 1.5, 20, NaN])
-    expect(parseDateTime('2026-03-02 09:15:01')).toEqual({ date: '2026-03-02', time: '09:15:01' })
-    expect(parseDateTime('2/3/2026')).toEqual({ date: '2026-03-02', time: '00:00:00' })
-    expect(parseDateTime('5 Nov 2026')).toEqual({ date: '2026-11-05', time: '00:00:00' })
+    expect(parseDateTime('2026-03-02 09:15:01')).toMatchObject({ date: '2026-03-02', time: '09:15:01' })
+    expect(parseDateTime('2/3/2026')).toMatchObject({ date: '2026-03-02', time: '00:00:00' })
+    expect(parseDateTime('5 Nov 2026')).toMatchObject({ date: '2026-11-05', time: '00:00:00' })
     expect(parseDateTime('2026-13-01')).toBeNull()
   })
   it('the same transaction has the same fingerprint in any export; identical twins in one file stay apart', () => {
-    const a = readStatement(parseCsv(REVOLUT_CSV)).txs
+    const a = readStatement(parseCsv(REVOLUT_CSV), { timeZone: 'local' }).txs
     const reordered = [REVOLUT_CSV.split('\n')[0], ...REVOLUT_CSV.split('\n').slice(1).reverse()].join('\n')
-    const b = readStatement(parseCsv(reordered)).txs
+    const b = readStatement(parseCsv(reordered), { timeZone: 'local' }).txs
     expect(new Set(a.map((t) => t.key))).toEqual(new Set(b.map((t) => t.key)))
     const twin = REVOLUT_CSV + '\n' + REVOLUT_CSV.split('\n')[1]
-    const keys = readStatement(parseCsv(twin)).txs.map((t) => t.key)
+    const keys = readStatement(parseCsv(twin), { timeZone: 'local' }).txs.map((t) => t.key)
     expect(new Set(keys).size).toBe(keys.length)
   })
   it('unreadable files fail with a sentence', () => {
     expect(() => parseCsv('')).toThrow(CsvError)
-    expect(() => parseCsv('a,b\n"open,1')).toThrow(/never closed/)
+    expect(parseCsv('a,b\n"open,1').rows[0].error).toMatch(/never closed/)
+    expect(() => parseCsv('a,b\n"open,1\n2,3\n')).toThrow(/never closed/)
   })
   it('counterparty from Revolut wording', () => {
     expect([counterpartyOf('Payment from SC Alfa SRL'), counterpartyOf('To Ion'), counterpartyOf('Transfer to Maria'), counterpartyOf('Uber')]).toEqual(['SC Alfa SRL', 'Ion', 'Maria', 'Uber'])

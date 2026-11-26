@@ -1,0 +1,7 @@
+Typ;Produkt;Startdatum;Abschlussdatum;Beschreibung;Betrag;Gebühr;Währung;Status;Saldo
+Überweisung;Girokonto;01.09.2026 08:12:44;01.09.2026 08:13:02;Zahlung von Lumen Studio SRL;1.500,00;0,00;EUR;ABGESCHLOSSEN;6.500,00
+Kartenzahlung;Girokonto;02.09.2026 19:40:00;03.09.2026 07:00:00;Canva, Inc.;-59,99;0,00;EUR;ABGESCHLOSSEN;6.440,01
+Überweisung;Girokonto;04.09.2026 10:00:00;04.09.2026 10:00:20;Überweisung an Sala Aurora;-400,00;1,50;EUR;ABGESCHLOSSEN;6.038,51
+Kartenzahlung;Girokonto;05.09.2026 12:00:00;;Bäckerei Müller;-4,20;0,00;EUR;AUSSTEHEND;6.034,31
+Umtausch;Girokonto;06.09.2026 11:00:00;06.09.2026 11:00:00;In RON umgetauscht;-200,00;0,00;EUR;ABGESCHLOSSEN;5.834,31
+Gebühr;Girokonto;30.09.2026 23:59:59;30.09.2026 23:59:59;Pro-Tarifgebühr;-7,00;0,00;EUR;ABGESCHLOSSEN;5.827,31

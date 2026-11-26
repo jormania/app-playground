@@ -9,7 +9,8 @@ import { decimalEvidence, detectDateOrder, mapHeader, readMoney, readStatement, 
 import { classify, expandFees } from './classify'
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8')
-const read = (name: string, opts: Parameters<typeof readStatement>[1] = {}) => readStatement(parseCsv(fixture(name)), opts)
+/** Most fixtures answer the file-level questions (Bucharest time, all completed) so other behaviour shows; the questions are tested on their own. */
+const read = (name: string, opts: Parameters<typeof readStatement>[1] = {}) => readStatement(parseCsv(fixture(name)), { timeZone: 'local', allCompleted: true, ...opts })
 /** Every data row is either read or reported: none disappears. */
 const accounted = (s: Statement) => expect(s.txs.length + s.issues.length).toBe(s.summary.rows)
 const brief = (s: Statement) => s.txs.map((t) => [t.line, t.date, t.direction, t.amount, t.currency, t.fee, t.state])
@@ -18,7 +19,7 @@ describe('fixture: personal-standard.csv (the layout third-party importers docum
   const s = read('personal-standard.csv')
 
   it('reads every row, with direction from the sign and the completed date where there is one', () => {
-    expect(s.needs).toEqual({ mapping: false, currency: false, dateOrder: false })
+    expect(s.needs).toEqual({ mapping: false, currency: false, dateOrder: false, decimal: false, timeZone: false, stateless: false, signs: false, states: [], directions: [] })
     expect(s.issues).toEqual([])
     accounted(s)
     expect(brief(s)).toEqual([
@@ -120,7 +121,7 @@ describe('fixture: ro-money-in-out.csv (Romanian names, semicolons, comma decima
 describe('fixture: minimal-file-currency.csv (date, description, amount; optional columns absent)', () => {
   it('asks for the currency and reads nothing until it is given', () => {
     const s = read('minimal-file-currency.csv')
-    expect(s.needs).toEqual({ mapping: false, currency: true, dateOrder: false })
+    expect(s.needs).toEqual({ mapping: false, currency: true, dateOrder: false, decimal: false, timeZone: false, stateless: false, signs: false, states: [], directions: [] })
     expect(s.txs).toEqual([])
   })
 
@@ -165,14 +166,11 @@ describe('what needs a person to decide', () => {
     expect(detectDateOrder(['25/04/2026', '04/25/2026'])).toBe('mixed')
   })
 
-  it('ambiguous-decimals.csv: "1,250" alone could be 1.25 or 1,250, so neither is imported', () => {
+  it('ambiguous-decimals.csv: "1,250" alone could be 1.25 or 1,250, so the decimal mark is asked', () => {
+    // Nothing in the amount column says which mark is the decimal: asked, and nothing is read until then.
     const s = read('ambiguous-decimals.csv')
-    accounted(s)
+    expect(s.needs.decimal).toBe(true)
     expect(s.txs).toEqual([])
-    expect(s.issues).toEqual([
-      { line: 2, message: expect.stringMatching(/could be 1\.250 or 1250/) },
-      { line: 3, message: expect.stringMatching(/could be 2\.500 or 2500/) },
-    ])
     expect(read('ambiguous-decimals.csv', { decimal: '.' }).txs.map((t) => t.amount)).toEqual([1250, 2500])
   })
 
@@ -211,13 +209,16 @@ describe('what needs a person to decide', () => {
 
 describe('fixture: malformed-rows.csv (one bad row of each kind)', () => {
   const s = read('malformed-rows.csv')
-  it('reads the good rows, reports every bad one by line with why, and drops none silently', () => {
+  it('reads the good rows, reports every bad one by line with why, keeps one whose optional fee is bad, and drops none silently', () => {
     accounted(s)
+    // Line 12's fee can't be read: the transaction is kept with its fee unknown, and a note says so.
     expect(brief(s)).toEqual([
       [2, '2026-05-01', 'in', 300, 'RON', null, 'COMPLETED'],
+      [12, '2026-05-10', 'out', 20, 'RON', null, 'COMPLETED'],
       [13, '2026-05-11', 'out', 1234.56, 'RON', 0, 'COMPLETED'],
     ])
-    expect(s.issues.map((i) => i.line)).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+    expect(s.issues.map((i) => i.line)).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11])
+    expect(s.notes).toEqual([{ line: 12, message: expect.stringMatching(/Fee not read: "abc" is not a number/) }])
     const why = Object.fromEntries(s.issues.map((i) => [i.line, i.message]))
     expect(why[3]).toMatch(/"12\.5\.0" is not a well-formed number/)
     expect(why[4]).toMatch(/"1\.250" has more decimals than an amount of money/)
@@ -228,7 +229,6 @@ describe('fixture: malformed-rows.csv (one bad row of each kind)', () => {
     expect(why[9]).toMatch(/zero/)
     expect(why[10]).toMatch(/No amount/)
     expect(why[11]).toMatch(/Unreadable date "2026-02-30 10:00:00"/)
-    expect(why[12]).toMatch(/Fee: "abc" is not a number/)
   })
 })
 

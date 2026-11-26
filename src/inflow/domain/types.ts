@@ -173,8 +173,10 @@ export interface CostRecord {
  * transaction again and to undo its batch, nothing more (Release 2, experimental).
  */
 export interface ImportMeta {
-  /** The bank transaction's fingerprint (see `lib/import/revolut.ts`). */
+  /** The bank transaction's identity: its bank id when the file had one, else its content fingerprint (see `lib/import/revolut.ts`). */
   key: string
+  /** Its content fingerprint, kept too so an export with ids finds rows imported from one without. Absent on rows imported before it existed. */
+  fp?: string
   /** The import batch that created or matched the row. */
   batch: string
   /** The name the bank gave the other party, as written there. */

@@ -1,0 +1,5 @@
+Type;Produit;Date de début;Date de fin;Description;Montant;Frais;Devise;État;Solde
+Virement;Courant;01/09/2026 08:12;01/09/2026 08:13;Virement de Atelier Lune;1 500,00;0,00;EUR;TERMINÉ;6 500,00
+Paiement par carte;Courant;15/09/2026 19:40;16/09/2026 07:00;Boulangerie Éclair;−4,80;0,00;EUR;TERMINÉ;6 495,20
+Paiement par carte;Courant;20/09/2026 12:00;;Librairie Côté Cour;−22,00;0,00;EUR;EN ATTENTE;6 473,20
+Remboursement;Courant;21/09/2026 09:00;21/09/2026 09:00;Remboursement Librairie Côté Cour;12,00;0,00;EUR;TERMINÉ;6 485,20
