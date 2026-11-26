@@ -29,7 +29,7 @@ function Description({ text }: { text: string }) {
 }
 
 export function SessionDetail({ id }: { id: string }) {
-  const { byId, userData, history, toggleFavourite, setUserData, ready, seriesDefs, seriesProgress, toast } = useStillflow()
+  const { byId, userData, history, toggleFavourite, setUserData, rate, ready, seriesDefs, seriesProgress, toast } = useStillflow()
   const [embedded, setEmbedded] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [editing, setEditing] = useState<PracticeEntry | null>(null)
@@ -145,7 +145,7 @@ export function SessionDetail({ id }: { id: string }) {
 
           <div className={s.spread} style={{ margin: 'var(--space-md) 0' }}>
             <span className={s.muted}>Practise it again?</span>
-            <RepeatRating value={mine.rating} onChange={(r) => setUserData({ ...mine, rating: r })} />
+            <RepeatRating value={mine.rating} onChange={(r) => rate(session.id, r)} />
           </div>
 
           <dl className={s.meta}>

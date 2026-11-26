@@ -136,6 +136,18 @@ describe('a session, end to end', () => {
     expect(await screen.findByText('1 session')).toBeTruthy()
   })
 
+  it('rating a session "A staple" also makes it a favourite, and lowering it later keeps the favourite', async () => {
+    const { user } = await start()
+    await go('#/session/demo-bedtime')
+    expect(await screen.findByRole('button', { name: /Add to favourites/ })).toBeTruthy()
+    await user.click(screen.getByRole('radio', { name: '5: A staple' }))
+    expect(await screen.findByRole('button', { name: /^Favourite$/ })).toBeTruthy()
+    expect(await screen.findByText(/in your favourites now/)).toBeTruthy()
+    await user.click(screen.getByRole('radio', { name: '3: Happy to repeat' }))
+    expect(screen.getByRole('button', { name: /^Favourite$/ })).toBeTruthy()
+    await waitFor(async () => expect((await new StillflowRepo(store).load()).userData['demo-bedtime']).toMatchObject({ rating: 3, favourite: true }))
+  })
+
   it('keeps everything across a restart', async () => {
     const { user } = await start()
     await go('#/session/demo-bedtime')
