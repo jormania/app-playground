@@ -18,6 +18,7 @@ import { Findings } from './Findings'
 import { useHint } from '../app/hints'
 import { costFindings, lastRate, type Finding } from '../lib/guards'
 import { costTaxEffect } from '../tax/estimate'
+import { ClientPicker } from './ClientPicker'
 import styles from '../styles/ui.module.css'
 
 const LAST_KEY = 'inflow:last-cost'
@@ -149,7 +150,6 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) 
     onClose()
   }
 
-  const clients = data.clients.filter((c) => !c.archived || c.id === draft.clientId).sort((a, b) => a.name.localeCompare(b.name))
   const venues = data.venues.filter((v) => !v.archived || v.id === draft.venueId).sort((a, b) => a.name.localeCompare(b.name))
 
   // What this cost does to the tax estimate, and the one VAT trap of buying abroad.
@@ -227,10 +227,7 @@ export function CostForm({ cost, copyOf, onClose, onDuplicate }: CostFormProps) 
                 {options(ACTIVITY).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </SelectInput>
             </div>
-            <SelectInput label="Client" value={draft.clientId} onChange={(v) => set({ clientId: v })}>
-              <option value="">—</option>
-              {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </SelectInput>
+            <ClientPicker clients={data.clients} records={data.records} today={today} value={draft.clientId} onPick={(v) => set({ clientId: v })} empty="—" />
           </div>
           <SettingsToggle label="Recurring" hint={h('Rent, subscriptions, monthly fees. Next month it is offered under “Usually paid by now”.')} checked={draft.recurring} onChange={(e) => set({ recurring: e.target.checked })} />
           <SettingsToggle label="Deductible" hint={h('Counts as an expense for the tax estimate. Equipment and drawings are not.')} checked={draft.deductible} onChange={(e) => set({ deductible: e.target.checked })} />

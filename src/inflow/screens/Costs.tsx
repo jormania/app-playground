@@ -19,6 +19,7 @@ import { costsCsv, download } from '../store/backup'
 import { Donut } from '../components/Donut'
 import { ListEnd } from '../components/ListEnd'
 import { readJson, writeJson } from '../../shared/storage'
+import { ClientPicker } from '../components/ClientPicker'
 import styles from '../styles/ui.module.css'
 
 export interface CostFilter {
@@ -180,11 +181,8 @@ export function Costs({ onOpen, onCopy, filter, setFilter }: { onOpen: (id: stri
               {options(ACTIVITY).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               <option value={NO_ENTITY}>No activity</option>
             </SelectInput>
-            <SelectInput label="Client" value={filter.clientId} onChange={(v) => set({ clientId: v })}>
-              <option value="">Any</option>
-              {[...data.clients].sort((a, b) => a.name.localeCompare(b.name)).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              <option value={NO_ENTITY}>No client</option>
-            </SelectInput>
+            <ClientPicker clients={data.clients} records={data.records} today={today} value={filter.clientId} onPick={(v) => set({ clientId: v })}
+              empty="Any client" extras={[{ value: NO_ENTITY, label: 'No client' }]} includeArchived />
           </div>
         </section>
       )}

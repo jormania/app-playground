@@ -20,6 +20,7 @@ import { monthLabel, monthShort, parseDate, weekdayShort } from '../lib/dates'
 import { lei, money } from '../lib/money'
 import { inRange } from '../lib/period'
 import { download, recordsCsv } from '../store/backup'
+import { ClientPicker } from '../components/ClientPicker'
 import styles from '../styles/ui.module.css'
 
 export function applyFilter(data: InflowData, f: IncomeFilter, range: { from: string; to: string }): IncomeRecord[] {
@@ -90,11 +91,8 @@ export function Income({ onOpen }: { onOpen: (id: string) => void }) {
       {showFilters && (
         <section className={styles.panel}>
           <div className={styles.formRow}>
-            <SelectInput label="Client" value={filter.clientId} onChange={(v) => set({ clientId: v })}>
-              <option value="">Any</option>
-              {[...data.clients].sort((a, b) => a.name.localeCompare(b.name)).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              <option value={NO_ENTITY}>No client</option>
-            </SelectInput>
+            <ClientPicker clients={data.clients} records={data.records} today={today} value={filter.clientId} onPick={(v) => set({ clientId: v })}
+              empty="Any client" extras={[{ value: NO_ENTITY, label: 'No client' }]} includeArchived />
             <SelectInput label="Source" value={filter.sourceId} onChange={(v) => set({ sourceId: v })}>
               <option value="">Any</option>
               {data.sources.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}

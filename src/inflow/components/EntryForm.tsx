@@ -22,12 +22,15 @@ import type { Entity, EntityKind } from '../store/repo'
 import { blankEntity, EntityEditor, KIND_LABEL } from './EntityEditor'
 import { DateShortcuts, parseAmount, parseRate, SelectInput, TextArea, TextInput } from './fields'
 import { Findings } from './Findings'
+import { ClientPicker } from './ClientPicker'
 import { useHint } from '../app/hints'
 import { incomeErrors, incomeFindings, lastRate, type Finding, type Fix } from '../lib/guards'
 import styles from '../styles/ui.module.css'
 
 const LAST_KEY = 'inflow:last-entry'
 const NEW = '__new__'
+/** A typed name that reads as a company starts as a business client. */
+const COMPANY = /\b(srl|s\.r\.l|sa|s\.a|pfa|ii|ltd|llc|gmbh|inc|ong|asocia[tț]ia|funda[tț]ia)\b/i
 
 interface Draft {
   description: string
@@ -110,19 +113,6 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
   const warnings = warned && warned.draft === draft ? warned.items : []
   const touch = (f: TaxField | 'reserve' | 'withheld' | 'fx' | 'prefill') => setTouched((t) => new Set(t).add(f))
 
-  // The clients paid most recently, as one-tap chips above the picker.
-  const recentClients = useMemo(() => {
-    const seen = new Set<string>()
-    const out: { id: string; name: string }[] = []
-    for (const r of [...data.records].sort((a, b) => b.date.localeCompare(a.date))) {
-      if (!r.clientId || seen.has(r.clientId)) continue
-      seen.add(r.clientId)
-      const c = data.clients.find((x) => x.id === r.clientId)
-      if (c && !c.archived) out.push(c)
-      if (out.length === 5) break
-    }
-    return out
-  }, [data.records, data.clients])
 
   // The amounts this client pays most often, as one-tap chips: most freelancers charge a few set prices.
   const usual = useMemo(() => {
@@ -310,7 +300,6 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
     onClose()
   }
 
-  const activeClients = data.clients.filter((c) => !c.archived || c.id === draft.clientId).sort((a, b) => a.name.localeCompare(b.name))
   const activeSources = data.sources.filter((s) => s.active || s.id === draft.sourceId).sort((a, b) => a.name.localeCompare(b.name))
   const activeVenues = data.venues.filter((v) => !v.archived || v.id === draft.venueId).sort((a, b) => a.name.localeCompare(b.name))
 
@@ -362,19 +351,9 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
               </>}
             />
           )}
-          {isNew && !copyOf && !draft.clientId && recentClients.length > 0 && (
-            <div className={styles.chips} aria-label="Recent clients">
-              {recentClients.map((c) => (
-                <button key={c.id} type="button" className={styles.chip} onClick={() => pickClient(c.id)}>{c.name}</button>
-              ))}
-            </div>
-          )}
-          <SelectInput label="Client" value={draft.clientId} onChange={pickClient} name="client"
-            hint={h(activeClients.length ? 'Picking one fills the rest from their last payment. “+ New client…” at the bottom.' : 'Your own list. Add one with “+ New client…” at the bottom.')}>
-            <option value="">— none —</option>
-            {activeClients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            <option value={NEW}>+ New client…</option>
-          </SelectInput>
+          <ClientPicker clients={data.clients} records={data.records} today={today} value={draft.clientId} onPick={pickClient}
+            onCreate={(name) => setCreating({ kind: 'client', entity: { ...blankEntity('client', name), ...(COMPANY.test(name) ? { kind: 'business' } : {}) } as Entity })}
+            hint={h('Type to search; picking one fills the rest from their last payment. A new name offers “+ Add”. Clients unpaid for a year leave the list until searched.')} />
           {usual.length > 0 && (
             <div className={styles.chips} aria-label="Usual amounts">
               <span className={styles.panelSub}>Usual:</span>
@@ -515,7 +494,7 @@ export function EntryForm({ open, record, copyOf, onClose, onDuplicate }: EntryF
         <EntityEditor
           open
           kind={creating.kind}
-          entity={null}
+          entity={creating.entity}
           onClose={() => setCreating(null)}
           onSaved={(e) => {
             const k = creating.kind

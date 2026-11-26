@@ -516,3 +516,19 @@ their link underline. The "Optional" badge is gone from tax, which only shows on
   guide → **Show hints** turns them off (`settings.showHints`, `app/hints.ts`, as Sol
   Odyssey's guidance). Hints that report something live (a rate being fetched, a per-head
   figure, a tax saving, the tax suggestion's reasons) are not wrapped and always show.
+
+## Clients at scale, 26 Nov 2026
+Years of one-off 1:1 clients would turn a dropdown into hundreds of names. Every place a
+client is chosen is now a search box (`components/ClientPicker.tsx`, `lib/clients.ts`):
+- **Typing** finds anyone not archived by the start of any word of the name, accents ignored
+  ("stef" finds Ștefănescu), quiet clients included and marked so.
+- **With nothing typed:** the five clients paid most recently, then your businesses.
+- **Quiet:** an individual with no payment received for 12 months leaves that list. They are
+  still found by search and in every report, and come back with their next payment. Businesses
+  and people not yet paid never go quiet. Nothing is deleted.
+- **Adding:** a name that matches no one exactly is offered as "+ Add …", which opens the
+  new-client form with it filled in; a name reading as a company (SRL, SA, Ltd, GmbH, …)
+  starts as a business.
+- **Where:** the payment form (with Add), the cost form's client link, the Income and Costs
+  filters (with "No client"; archived clients reachable), and the client statement in Print.
+  Settings' client list gains a search box past 12 entries and shows 30 at a time.

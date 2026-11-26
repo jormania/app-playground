@@ -23,6 +23,14 @@ async function go(hash: string) {
   })
 }
 
+/** The client field is a search box: type the first name, pick the match. */
+async function chooseClient(user: ReturnType<typeof userEvent.setup>, scope: Pick<typeof screen, 'getByRole' | 'findByRole'>, name: string) {
+  const box = scope.getByRole('combobox', { name: 'Client' })
+  await user.click(box)
+  await user.type(box, name.split(' ')[0])
+  await user.click(await scope.findByRole('option', { name: new RegExp(`^${name}`) }))
+}
+
 function settings(patch: Record<string, unknown> = {}) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify({ showTour: false, ...patch }))
 }
@@ -69,7 +77,7 @@ describe('InFlow', () => {
     await user.click(screen.getByRole('button', { name: /Add income/ }))
     const dialog = await screen.findByRole('dialog')
     await user.type(within(dialog).getByLabelText('Amount'), '750')
-    await user.selectOptions(within(dialog).getByLabelText('Client'), within(dialog).getByRole('option', { name: 'Andreea Vlad' }))
+    await chooseClient(user, within(dialog), 'Andreea Vlad')
     expect(within(dialog).getByText(/\(suggested\)/)).toBeTruthy()
     await user.click(within(dialog).getByRole('button', { name: 'Add' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
@@ -104,7 +112,7 @@ describe('InFlow', () => {
     // A statement waits for its client.
     await user.click(screen.getByRole('radio', { name: /Client statement/ }))
     expect(screen.queryByTitle('Report preview')).toBeNull()
-    await user.selectOptions(screen.getByLabelText('Client'), screen.getByRole('option', { name: 'Andreea Vlad' }))
+    await chooseClient(user, screen, 'Andreea Vlad')
     expect((await screen.findByTitle('Report preview')).getAttribute('srcdoc')).toContain('Andreea Vlad')
     // Adjust: a section off leaves the print.
     await user.click(screen.getByRole('radio', { name: /Year in review/ }))
@@ -199,13 +207,28 @@ describe('small conveniences', () => {
     await screen.findByTestId('period-total')
     await user.click(screen.getByRole('button', { name: /Add income/ }))
     const dialog = await screen.findByRole('dialog')
-    await user.selectOptions(within(dialog).getByLabelText('Client'), within(dialog).getByRole('option', { name: 'Radu Stoica' }))
+    await chooseClient(user, within(dialog), 'Radu Stoica')
     const chips = within(within(dialog).getByLabelText('Usual amounts')).getAllByRole('button')
     expect(chips.length).toBeGreaterThan(0)
     await user.click(chips[0])
     expect((within(dialog).getByLabelText('Amount') as HTMLInputElement).value).not.toBe('')
     await user.clear(within(dialog).getByLabelText('Description'))
     expect((within(dialog).getByLabelText('Description') as HTMLInputElement).placeholder).toContain(' · ')
+  })
+
+  it('adds a client from what was typed, the name already filled in', async () => {
+    settings()
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    await user.click(screen.getByRole('button', { name: /Add income/ }))
+    const dialog = await screen.findByRole('dialog')
+    const box = within(dialog).getByRole('combobox', { name: 'Client' })
+    await user.click(box)
+    await user.type(box, 'Maria Pop')
+    await user.click(await within(dialog).findByRole('option', { name: /Add “Maria Pop”/ }))
+    const editor = await screen.findByRole('dialog', { name: 'New client' })
+    expect((within(editor).getByLabelText('Name') as HTMLInputElement).value).toBe('Maria Pop')
   })
 
   it('hides field hints once switched off, but never a live figure', async () => {
@@ -256,7 +279,7 @@ describe('small conveniences', () => {
     await screen.findByTestId('period-total')
     await user.click(screen.getByRole('button', { name: /Add income/ }))
     const dialog = await screen.findByRole('dialog')
-    await user.selectOptions(within(dialog).getByLabelText('Client'), within(dialog).getByRole('option', { name: 'Ioana Marinescu' }))
+    await chooseClient(user, within(dialog), 'Ioana Marinescu')
     const amount = within(dialog).getByLabelText('Amount') as HTMLInputElement
     await user.clear(amount)
     await user.type(amount, '10000')

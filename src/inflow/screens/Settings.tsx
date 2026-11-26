@@ -10,7 +10,7 @@ import { memoryStore } from '../../shared/kvStore'
 import { parseNotionId } from '../../shared/notionId'
 import { useInflow } from '../app/state'
 import { useInsightFeedback } from '../app/insightFeedback'
-import { EntityEditor } from '../components/EntityEditor'
+import { EntityEditor, KIND_LABEL } from '../components/EntityEditor'
 import { NumberInput, SelectInput, TextInput } from '../components/fields'
 import type { Client, FeatureKey, Settings as SettingsT, TaxProfileId, Venue } from '../domain/types'
 import { CLIENT_COUNTRY, DEAL, PROFILE, SOURCE_TYPE, VENUE_TYPE, options } from '../domain/vocabulary'
@@ -25,6 +25,7 @@ import { ALL_FEATURES, NO_FEATURES, SIMPLE_FEATURES } from '../store/settings'
 import { readJson, writeJson } from '../../shared/storage'
 import type { ReactNode } from 'react'
 import { useHint } from '../app/hints'
+import { fold } from '../lib/clients'
 import styles from '../styles/ui.module.css'
 
 /**
@@ -150,7 +151,12 @@ export function Settings() {
 
   const stats = useMemo(() => clientStats(data.records), [data.records])
   const list: Entity[] = manage === 'client' ? data.clients : manage === 'source' ? data.sources : data.venues
-  const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name))
+  // Years of one-off clients make a long list: search it, and show a page at a time.
+  const [entityQuery, setEntityQuery] = useState('')
+  const [entityAll, setEntityAll] = useState(false)
+  const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name)).filter((e) => !entityQuery.trim() || fold(e.name).includes(fold(entityQuery)))
+  const ENTITY_PAGE = 30
+  const shownEntities = entityAll ? sorted : sorted.slice(0, ENTITY_PAGE)
 
   return (
     <div className={styles.settingsList}>
@@ -333,9 +339,13 @@ export function Settings() {
         {h(<p className={styles.hint} style={{ marginTop: 0 }}>These fill the pickers in the forms; “+ New…” there adds to them too. Archive instead of deleting to keep a client's history.</p>)}
         <SegmentedControl size="sm" label="List" value={manage} onChange={(v) => setManage(v as EntityKind)}
           options={[{ value: 'client', label: `Clients (${data.clients.length})` }, { value: 'source', label: `Sources (${data.sources.length})` }, { value: 'venue', label: `Venues (${data.venues.length})` }]} />
+        {list.length > 12 && (
+          <input className={styles.search} type="search" placeholder={`Search ${list.length} ${KIND_LABEL[manage]}s…`} value={entityQuery}
+            onChange={(e) => setEntityQuery(e.target.value)} aria-label={`Search ${KIND_LABEL[manage]}s`} style={{ marginTop: 'var(--space-sm)', width: '100%' }} />
+        )}
         <div className={styles.rows} style={{ marginTop: 'var(--space-sm)' }}>
-          {sorted.length === 0 && <p className={styles.hint}>None yet.</p>}
-          {sorted.map((e) => {
+          {sorted.length === 0 && <p className={styles.hint}>{entityQuery.trim() ? 'No match.' : 'None yet.'}</p>}
+          {shownEntities.map((e) => {
             const st = manage === 'client' ? stats.get(e.id) : undefined
             const venue = e as Venue
             const sub = manage === 'client'
@@ -350,6 +360,11 @@ export function Settings() {
               </button>
             )
           })}
+          {sorted.length > ENTITY_PAGE && (
+            <button type="button" className={styles.linkButton} onClick={() => setEntityAll((x) => !x)}>
+              {entityAll ? `Show the first ${ENTITY_PAGE}` : `Show all ${sorted.length}`}
+            </button>
+          )}
         </div>
       </Section>
 

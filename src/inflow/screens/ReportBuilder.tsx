@@ -19,6 +19,7 @@ import {
 } from '../lib/report'
 import { shortDate } from '../lib/dates'
 import { download } from '../store/backup'
+import { ClientPicker } from '../components/ClientPicker'
 import styles from '../styles/ui.module.css'
 
 const KEY = 'inflow:report-choice'
@@ -64,7 +65,6 @@ export function ReportBuilder() {
     if (w) { w.focus(); w.print() }
   }
   const file = `inflow-${(opt.title || 'report').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${opt.from}-${opt.to}.html`
-  const clients = [...data.clients].sort((a, b) => a.name.localeCompare(b.name))
   const year = Number(today.slice(0, 4))
 
   return (
@@ -83,10 +83,8 @@ export function ReportBuilder() {
           </div>
 
           {preset === 'client' && (
-            <SelectInput label="Client" value={opt.clientId} onChange={(v) => set({ clientId: v })}>
-              <option value="">Choose a client…</option>
-              {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </SelectInput>
+            <ClientPicker clients={data.clients} records={data.records} today={today} value={opt.clientId} onPick={(v) => set({ clientId: v })}
+              empty="Choose a client…" includeArchived />
           )}
 
           <div className={styles.periodLine}>
