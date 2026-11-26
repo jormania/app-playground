@@ -1150,6 +1150,8 @@ Remaining: the React 19 family (runtime and types together), last, as this item 
 
 **React 19 done 2026-11-25 — `react` / `react-dom` 18.3.1 → 19.3.1, `@types/react` 18.3.31 → 19.3.2, `@types/react-dom` 18.3.7 → 19.3.0** (runtime and types together, as this item asked). It needed **no source change**: `npm run typecheck` clean across every path, suite 6799 across 520 files, `eslint .` clean, build green, and `npm ls react` shows one deduped copy (no peer conflicts in react-query, testing-library, speed-insights, lucide-react, react-markdown or recharts 2.15). `dist/` 12412 → 12492 KB. Checked against react.dev's React 19 upgrade guide, which was reachable this time: no `propTypes`/`defaultProps` on function components, no legacy context, string refs, `createFactory`, `ReactDOM.render`/`hydrate`/`findDOMNode`/`unmountComponentAtNode`, `react-dom/test-utils`, `react-is` or `javascript:` URLs anywhere in `src/`. The one silent runtime change that typecheck can't see in the JSX apps is that a ref callback's return value is now a cleanup. The only arrow ref callback with an expression body (`src/loom/components/ThreadList.jsx:70`) returns `undefined`. The three error boundaries (Daily Stoic, Lexi5, KeyPath) are class components and still supported. **Not checked: behaviour the suite does not cover**: render errors now go to `window.reportError` instead of being re-thrown, and Strict Mode's double render reuses `useMemo` results.
 
+**`jsdom` done 2026-11-26 — 30.1.2 → 31.0.1** (floor raised in `package.json`; a major behind again, so a run by the 2026-11-24 rule). `engines` is unchanged (`^22.22.2 || ^24.15.0 || >=26.0.0`), so no Node-floor change this time. Suite 7041 across 539 files, typecheck clean; dev-only, nothing in `dist/` or any handler changes. jsdom ships no changelog in the package, so release notes were not read; what is verified is the engines field, the suite and typecheck. Left in the table: `vitest` 5, `typescript` 7, `tailwindcss` 4 + `tailwind-merge` 3, `recharts` 3, `happy-dom` 21, `sharp` 0.35.
+
 **What's still left is the 2026-10-02 table** and later re-measurements, each its own run: `vitest` 5, `typescript` 7, `tailwindcss` 4 + `tailwind-merge` 3, `recharts` 3, `jsdom` 31, `happy-dom` 21, `sharp` 0.35 (`vite-plugin-pwa` 2 is R-046).
 
 **The 2026-09-13 inventory above is incomplete — re-measured 2026-10-02** with
@@ -1871,6 +1873,16 @@ untouched. The item stays open: `clickdeck-pricing`, `clickdeck-studio-search`,
 `notion-photo-proxy`, `notion-upload`, `places` and `steam-search` (non-hltb
 modes) are still untested — one per run, `notion-upload.js` next since it shares
 `_shared.js`.
+
+**`api/notion-upload.js` done 2026-11-26** — `api/_tests/notion-upload.test.js`, 16
+tests, real `_shared.js` guards, only `fetch` stubbed: 405, origin 403, the 429 on
+the 21st call, 401 without a token, 400 for a missing/short/traversal/array upload
+id, 400 on an empty body, 413 above 8 MiB (across chunks; exactly 8 MiB passes),
+the multipart re-wrap (URL, Bearer, pinned `2025-09-03`, filename decoded, content
+type, bytes joined), default filename and a malformed `x-filename`, status/body
+passthrough, empty body → `{}`, network failure → 502. Handler untouched. Still
+open: `clickdeck-pricing`, `clickdeck-studio-search`, `notion-photo-proxy`, `places`
+and `steam-search` (non-hltb modes) — one per run, `notion-photo-proxy.js` next.
 
 ## R-024 — Delete the 41 spent `claude/*` branches · `refactor` · `open` — **not agent-executable, see below**
 
