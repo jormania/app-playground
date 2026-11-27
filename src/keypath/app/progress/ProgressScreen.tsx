@@ -9,6 +9,8 @@ import { JOURNEY } from '../journey/steps'
 import type { Door, LogRecord } from '../log'
 import { levelOf } from '../songs/level'
 import { WeeklyNote } from './WeeklyNote'
+import { DayChain } from './DayChain'
+import { earnedStickers, STICKERS } from '../screens/stickers'
 import type { Profile } from '../profiles'
 import { TopBar } from '../screens/TopBar'
 import { SongLibrary } from '../songs/library'
@@ -153,6 +155,8 @@ export function ProgressScreen() {
   /** "24 Sep" (or "24 sept." in Romanian) from the summary's local YYYY-MM-DD. */
   const day = (d: string | null) => (d ? new Date(`${d}T12:00`).toLocaleDateString(settings.language === 'ro' ? 'ro-RO' : 'en-GB', { day: 'numeric', month: 'short' }) : '')
   const doneSteps = data ? JOURNEY.filter((x) => data.journey[x.id]) : []
+  /** Stickers earned, from the same log her Home reads them from. */
+  const stickers = useMemo(() => (data ? earnedStickers(data.records, (id) => data.levels.get(id)).size : 0), [data])
   const testOuts = data ? doneSteps.filter((x) => data.journey[x.id]?.how === 'testOut').length : 0
   /** The games she has played, with rounds and her best at each level she played; and the ones not yet. */
   const games = data && s ? GAMES.map((g) => {
@@ -186,28 +190,45 @@ export function ProgressScreen() {
 
       {data && s && s.sessions > 0 && (
         <>
+          <div className={styles.who}>
+            <span className={styles.whoFace} aria-hidden>
+              {data.profile.avatar}
+            </span>
+            <span className={styles.whoName}>{data.profile.name}</span>
+            <span className={styles.whoWhen}>{s.from === s.to ? day(s.from) : t('pRange', { from: day(s.from), to: day(s.to) })}</span>
+          </div>
+          <DayChain days={s.days} full />
           <WeeklyNote key={data.profile.id} player={data.profile} records={data.records} titles={data.titles} levels={data.levels} />
           <section className={styles.panel}>
-            <h2 className={styles.h2}>{t('pGlance')}</h2>
-            <p className={styles.hint}>{s.from === s.to ? day(s.from) : t('pRange', { from: day(s.from), to: day(s.to) })}</p>
+            <h2 className={styles.h2}>
+              <span className={styles.icon} aria-hidden>
+                ✨
+              </span>
+              {t('pGlance')}
+            </h2>
             <Tiles
               items={[
                 [t('pTileDays'), s.days.length],
                 [t('pTileTime'), t('pMinutes', { count: Math.round(s.minutes) })],
                 [t('pTileSessions'), s.sessions],
-                [t('pTileCameBack'), t('pTimes', { count: s.cameBackNextDay })],
+                [t('pTileStickers'), t('pStickersOf', { count: stickers, total: STICKERS.length })],
               ]}
             />
           </section>
 
           <section className={styles.panel}>
-            <h2 className={styles.h2}>{t('pDoors')}</h2>
+            <h2 className={styles.h2}>
+              <span className={styles.icon} aria-hidden>
+                🚪
+              </span>
+              {t('pDoors')}
+            </h2>
             <ul className={styles.rows}>
               {(Object.keys(DOOR_TITLE) as Door[]).map((d) => {
                 const most = Math.max(1, ...Object.values(s.doors).map((x) => x.minutes))
                 const door = s.doors[d]
                 return (
-                  <li key={d} className={styles.meterRow}>
+                  <li key={d} className={`${styles.meterRow} ${styles[d]}`}>
                     <span className={styles.rowTitle}>{t(DOOR_TITLE[d])}</span>
                     <span className={styles.figure}>{door.opens > 0 ? t('pMinutes', { count: Math.round(door.minutes) }) : ''}</span>
                     <span className={styles.meter} aria-hidden>
@@ -221,8 +242,13 @@ export function ProgressScreen() {
             <p className={styles.hint}>{t('pDoorsHint')}</p>
           </section>
 
-          <section className={styles.panel}>
-            <h2 className={styles.h2}>{t('pSongs')}</h2>
+          <section className={`${styles.panel} ${styles.songs}`}>
+            <h2 className={styles.h2}>
+              <span className={styles.icon} aria-hidden>
+                🎵
+              </span>
+              {t('pSongs')}
+            </h2>
             <Tiles
               items={[
                 [t('pTileTries'), s.songs.started],
@@ -273,12 +299,19 @@ export function ProgressScreen() {
             {s.songs.added > 0 && <p className={styles.hint}>{t('pAdded', { count: s.songs.added })}</p>}
           </section>
 
-          <section className={styles.panel}>
-            <h2 className={styles.h2}>{t('pJourney')}</h2>
+          <section className={`${styles.panel} ${styles.journey}`}>
+            <h2 className={styles.h2}>
+              <span className={styles.icon} aria-hidden>
+                🗺️
+              </span>
+              {t('pJourney')}
+            </h2>
             <div className={styles.meterRow}>
               <span className={styles.rowTitle}>{t('pJourneyMeter', { done: doneSteps.length, total: JOURNEY.length })}</span>
-              <span className={styles.meter} aria-hidden>
-                <span style={{ width: `${(doneSteps.length / JOURNEY.length) * 100}%` }} />
+              <span className={styles.steps} aria-hidden>
+                {JOURNEY.map((x) => (
+                  <span key={x.id} data-done={data.journey[x.id] ? '' : undefined} />
+                ))}
               </span>
             </div>
             {doneSteps.length > 0 && (
@@ -292,8 +325,13 @@ export function ProgressScreen() {
             {s.journey.checksPassed + s.journey.checksFailed > 0 && <p className={styles.hint}>{t('pChecks', { passed: s.journey.checksPassed, failed: s.journey.checksFailed })}</p>}
           </section>
 
-          <section className={styles.panel}>
-            <h2 className={styles.h2}>{t('pChallenges')}</h2>
+          <section className={`${styles.panel} ${styles.challenges}`}>
+            <h2 className={styles.h2}>
+              <span className={styles.icon} aria-hidden>
+                ⚡
+              </span>
+              {t('pChallenges')}
+            </h2>
             {played.length > 0 && (
               <div className={styles.tableWrap}>
                 <table className={styles.table}>
@@ -319,8 +357,13 @@ export function ProgressScreen() {
             {notPlayed.length > 0 && <p className={styles.hint}>{t('pNotPlayed', { games: notPlayed.join(', ') })}</p>}
           </section>
 
-          <section className={styles.panel}>
-            <h2 className={styles.h2}>{t('pStudio')}</h2>
+          <section className={`${styles.panel} ${styles.studio}`}>
+            <h2 className={styles.h2}>
+              <span className={styles.icon} aria-hidden>
+                🎨
+              </span>
+              {t('pStudio')}
+            </h2>
             {s.studio.recorded + data.keptTakes + s.studio.played > 0 ? (
               <Tiles
                 items={[
@@ -336,7 +379,12 @@ export function ProgressScreen() {
 
           {s.keyboard.setupsDone + s.keyboard.setupsLeft + s.keyboard.lostMidSong > 0 && (
             <section className={styles.panel}>
-              <h2 className={styles.h2}>{t('pKeyboardTitle')}</h2>
+              <h2 className={styles.h2}>
+              <span className={styles.icon} aria-hidden>
+                🎹
+              </span>
+              {t('pKeyboardTitle')}
+            </h2>
               <dl className={styles.pairs}>
                 <div>
                   <dt>{t('pSetupsFinished')}</dt>
@@ -367,7 +415,12 @@ export function ProgressScreen() {
           )}
 
           <section className={styles.panel}>
-            <h2 className={styles.h2}>{t('pSettingsTitle')}</h2>
+            <h2 className={styles.h2}>
+              <span className={styles.icon} aria-hidden>
+                ⚙️
+              </span>
+              {t('pSettingsTitle')}
+            </h2>
             <dl className={styles.pairs}>
               <div>
                 <dt>{t('pInvitations')}</dt>

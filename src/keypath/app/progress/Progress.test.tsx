@@ -57,6 +57,11 @@ describe('Progress', () => {
     // Two numbers in two tiles, not one line: "Sessions: 9, 37 min" read as 9.37 minutes.
     expect(valueOf('Sessions')).toBe('2')
     expect(valueOf('Time playing')).toBe('10 min')
+    // Her string of days at the top. That evening was long ago: a new string, said kindly, and her longest kept.
+    expect(screen.getByRole('heading', { name: 'days in a row' })).toBeTruthy()
+    expect(screen.getByText('Play today, and a new string starts.')).toBeTruthy()
+    expect(screen.getByText('Your longest string: 1 day')).toBeTruthy()
+    expect(valueOf('Stickers')).toMatch(/^\d+ of 23$/)
     // Songs, opened once and first; about nine minutes there. A door never opened says so, not "0×".
     expect(screen.getByText('9 min')).toBeTruthy()
     expect(screen.getByText('opened once · the first door once')).toBeTruthy()

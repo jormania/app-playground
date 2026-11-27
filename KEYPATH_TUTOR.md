@@ -1145,6 +1145,27 @@ the notes already had time limits; "Connect" on the setup screens reads 4 px wid
 only because of its larger tap area. A sweep of every screen above, after the fixes: no sideways
 scroll, no hidden option, no page or console error.
 
+### A string of days, and Progress with some colour (2026-11-27)
+
+KeyPath was built without a streak on purpose (§10, and the roadmap's "Left out on purpose"): a
+streak that breaks tells a child she failed. Her father asked for one after her first evening,
+because seeing the days add up is a big thing for a child, so it is built to keep that and drop
+the punishment (`progress/streak.ts`, `progress/DayChain.tsx`):
+
+- A bead for each day she played (practice, `PRACTICE_TYPES`), the days in a row joined into a
+  string; the big number is the string she is on. Until she plays today, yesterday's string is
+  still open ("Play today to make it 4.").
+- Nothing scolds. A string that ends is followed by a new one ("Play today, and a new string
+  starts."), never "lost"; her longest string is kept and shown.
+- On Home, under Today, a week of beads (only once she has played a day); at the top of Progress,
+  two weeks, with the longest string. It replaces "Came back the next day", which said the same
+  less well; that tile is now her stickers, "6 of 23".
+
+Progress also got its punch: whose progress and over which days at the top, each section with
+its door's emoji and colour as on Home (the edge, the bars, the tiles), tiles with a coloured top,
+and the Journey as ten pills. The bead colours were picked at 3:1 or better against every surface
+in both themes; axe-core finds no violations.
+
 ### From Nora's first evening (2026-11-27)
 
 The first real log: one evening on her father's phone, 37 minutes. Songs took 28 of them and 54

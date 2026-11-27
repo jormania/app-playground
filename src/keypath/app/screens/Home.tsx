@@ -10,6 +10,7 @@ import { navigate } from '../router'
 import type { StringKey } from '../i18n'
 import { StickerShelf } from './StickerShelf'
 import { TodayCard } from './TodayCard'
+import { HomeDayChain } from '../progress/DayChain'
 import styles from '../app.module.css'
 
 const DOORS: { door: Door; icon: string; title: StringKey; blurb: StringKey }[] = [
@@ -85,6 +86,7 @@ export function Home() {
         </button>
       )}
       <TodayCard />
+      <HomeDayChain />
       <nav className={styles.doors}>
         {DOORS.map((d, i) => (
           <button key={d.door} type="button" className={`${styles.door} ${styles[d.door]}`} style={{ '--i': i } as React.CSSProperties} onClick={() => open(d.door)}>

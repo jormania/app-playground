@@ -438,3 +438,27 @@ describe('KeyPath shell: the sound through the keyboard, in Settings', () => {
     localStorage.removeItem('keypath:keyboard-output')
   })
 })
+
+describe('KeyPath shell: her string of days, on Home', () => {
+  it('shows the days in a row, and never scolds: a new string just starts', async () => {
+    const store = memoryStore()
+    const p = await new ProfileRepo(store).create('Nora', '🐺')
+    await new ProfileRepo(store).setCurrent(p.id)
+    const day = (ago: number) => new Date(Date.now() - ago * 86_400_000).toISOString()
+    const played = (ago: number) => ({ type: 'song_started', songId: 'starter:ode', practice: 'right', tempo: 1, mode: 'wait', at: day(ago), profileId: p.id })
+    // Yesterday and the day before; not yet today. Long ago, a single day.
+    await store.set(K.log(p.id), [played(9), played(2), played(1)])
+    history.replaceState(null, '', '#/home')
+    await start(store)
+    expect(await screen.findByRole('heading', { name: 'days in a row' })).toBeTruthy()
+    expect(screen.getByText('Play today to make it 3.')).toBeTruthy()
+    expect(screen.getByRole('img', { name: 'Played on 2 of the last 7 days' })).toBeTruthy()
+  })
+
+  it('shows nothing before her first day of playing', async () => {
+    await start()
+    await createPlayer('Nora')
+    await screen.findByText('Hi, Nora!')
+    expect(screen.queryByText(/in a row/)).toBeNull()
+  })
+})

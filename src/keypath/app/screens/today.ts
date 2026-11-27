@@ -10,8 +10,9 @@ import { exclusive, K, type KeyValueStore } from '../store'
 // Today (KEYPATH_TUTOR.md §10, "Learning curve", slice 3): four small things
 // for about five minutes: a warm-up, a song (or its next part), a Journey
 // step, a quick game, picked from her log. The picks are kept for the day, so they don't
-// move as she plays; whether each is done is read from today's log. No
-// streak: a missed day costs nothing, and tomorrow brings new picks.
+// move as she plays; whether each is done is read from today's log. A missed
+// day costs nothing here, and tomorrow brings new picks (the days in a row are
+// counted apart, kindly, by progress/streak.ts).
 
 export type TodayGame = 'race' | 'echo' | 'chord' | 'ear' | 'read'
 export type TodayItem = { kind: 'warmup' } | { kind: 'song'; songId: string } | { kind: 'journey'; step: StepId } | { kind: 'game'; game: TodayGame }

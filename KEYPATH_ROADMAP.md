@@ -99,6 +99,7 @@ after all (`KEYPATH_TUTOR.md` §9, "Release 5").
 ## Left out on purpose
 
 A pianist on video, a big pop library (copyright; **Add a song** is the way in
-for those), streaks that can break, and anything that sends her name or her
+for those), streaks that punish a missed day (the string of days, 2026-11-27, counts the days in a
+row and never calls one lost), and anything that sends her name or her
 playing anywhere except the Claude notes she can turn off. The sustain pedal waits
 until a footswitch is bought.

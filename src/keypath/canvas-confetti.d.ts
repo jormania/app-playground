@@ -14,6 +14,10 @@ declare module 'canvas-confetti' {
     origin?: { x?: number; y?: number }
     disableForReducedMotion?: boolean
   }
-  const confetti: (options?: Options) => Promise<null> | null
+  type Fire = (options?: Options) => Promise<null> | null
+  const confetti: Fire & {
+    /** A cannon that draws on the canvas given, instead of one of its own. */
+    create: (canvas: HTMLCanvasElement, options?: { resize?: boolean; disableForReducedMotion?: boolean }) => Fire
+  }
   export default confetti
 }

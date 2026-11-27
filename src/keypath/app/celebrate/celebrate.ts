@@ -44,6 +44,21 @@ export function motionAllowed(): boolean {
 /** For tests: every moment celebrated, in order. */
 export const celebrated: Moment[] = []
 
+/**
+ * The confetti's own canvas, made once and marked as decoration (aria-hidden):
+ * the library's would sit on the page as unnamed content a screen reader can land on.
+ */
+let fire: ((options?: object) => Promise<null> | null) | null = null
+function cannon(create: (canvas: HTMLCanvasElement, options?: { resize?: boolean; disableForReducedMotion?: boolean }) => (options?: object) => Promise<null> | null) {
+  if (fire) return fire
+  const canvas = document.createElement('canvas')
+  canvas.setAttribute('aria-hidden', 'true')
+  Object.assign(canvas.style, { position: 'fixed', inset: '0', width: '100%', height: '100%', pointerEvents: 'none', zIndex: '50' })
+  document.body.appendChild(canvas)
+  fire = create(canvas, { resize: true, disableForReducedMotion: true })
+  return fire
+}
+
 export function celebrate(moment: Moment): void {
   celebrated.push(moment)
   triggerHaptic(moment === 'echoPassed' || moment === 'connected' ? 'light' : 'success')
@@ -51,7 +66,8 @@ export function celebrate(moment: Moment): void {
   // Loaded on demand, like Lexi5: the library is only needed once there is something to celebrate.
   import('canvas-confetti')
     .then(({ default: confetti }) => {
-      BURSTS[moment].forEach((b, i) => setTimeout(() => void confetti({ ...b, colors: COLOURS, disableForReducedMotion: true, zIndex: 50 }), i * 180))
+      const fire = cannon(confetti.create)
+      BURSTS[moment].forEach((b, i) => setTimeout(() => void fire({ ...b, colors: COLOURS, disableForReducedMotion: true }), i * 180))
     })
     .catch(() => {})
 }
