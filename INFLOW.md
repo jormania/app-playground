@@ -1060,7 +1060,7 @@ and date. What the remediation added sits behind the switch it belongs to, or fo
 | Repays which cost | Costs on, activity Reimbursement |
 | Description, sessions, hours, source, venue, activity, recurring, notes | always shown, after amount, client and date |
 
-Screens enter with Stillflow's 320 ms rise (`.screenIn`, off under reduced motion); the
+Screens enter with Mat Days' 320 ms rise (`.screenIn`, off under reduced motion); the
 theme is Device / Light / Dark.
 
 ## PWA

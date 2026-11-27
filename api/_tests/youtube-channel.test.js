@@ -1,4 +1,4 @@
-// Stillflow's channel reader: both sources, pagination, the odd videos a
+// Mat Days' channel reader: both sources, pagination, the odd videos a
 // channel's uploads hold (private, live, deleted), and every failure coming
 // back as a status with a readable message, never a throw.
 import { describe, it, expect, vi, afterEach } from 'vitest'

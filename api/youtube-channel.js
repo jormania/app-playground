@@ -1,7 +1,7 @@
 import { originAllowed, rateLimited, clientIp } from './_shared.js'
 import { CHANNEL_ID_RE, HttpError, checkAvailable, parseIds, readChannelPage, validPageToken } from './_lib/youtube.js'
 
-// Stillflow's "Check for updates" and "Import the whole channel": one page of a
+// Mat Days' "Check for updates" and "Import the whole channel": one page of a
 // YouTube channel's uploads per call, so each call stays short and the app can
 // show progress and stop early. See api/_lib/youtube.js for the two sources.
 //

@@ -1,4 +1,4 @@
-// Reading a YouTube channel's uploads for Stillflow's "Check for updates".
+// Reading a YouTube channel's uploads for Mat Days' "Check for updates".
 //
 // Two ways, chosen by whether YOUTUBE_API_KEY is set on the deployment:
 //

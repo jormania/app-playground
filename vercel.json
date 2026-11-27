@@ -10,6 +10,9 @@
     { "path": "/api/wanderlist-remind", "schedule": "0 17 * * *" },
     { "path": "/api/clickdeck-pricing", "schedule": "0 2 * * *" }
   ],
+  "redirects": [
+    { "source": "/stillflow-react.html", "destination": "/mat-days-react.html", "permanent": false }
+  ],
   "rewrites": [
     {
       "source": "/api/clickdeck-hltb",

@@ -860,7 +860,7 @@ button.row:hover { background: var(--color-surface-2); }
 
 .dealTag { font-size: var(--text-xs); font-weight: var(--weight-bold); padding: 2px 8px; border-radius: var(--radius-pill); background: var(--color-surface-2); color: var(--color-muted); }
 
-/* ── transitions (Stillflow's exhale: opacity and transform only) ───────── */
+/* ── transitions (Mat Days' exhale: opacity and transform only) ───────── */
 .screenIn { animation: screenIn 320ms cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 @keyframes screenIn {
   from { opacity: 0; transform: translateY(8px); }

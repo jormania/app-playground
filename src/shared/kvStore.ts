@@ -5,7 +5,7 @@ import { createStore, del, entries, get, keys, promisifyRequest, set, setMany, u
  * memory in tests and on the phone's IndexedDB in the browser.
  *
  * Promoted from The Long Listen (`src/long-listen/store/repo.ts`, which now
- * re-exports it) when Stillflow became the second app to need it. Each app gets
+ * re-exports it) when Mat Days became the second app to need it. Each app gets
  * a database of its own by name, so one app's "reset" can never touch another's.
  *
  * KeyPath deliberately keeps its own, smaller `store.ts`: it lives in

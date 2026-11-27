@@ -13,7 +13,7 @@ import type {
  * human-readable mirror of part of this (notion/mirror.ts), never the source.
  *
  * The store seam itself now lives in src/shared/kvStore.ts (promoted when
- * Stillflow needed the same thing); these are thin re-exports so every existing
+ * Mat Days needed the same thing); these are thin re-exports so every existing
  * import, and every test that runs on memory, keeps working unchanged.
  */
 export type { KeyValueStore } from '../../shared/kvStore'

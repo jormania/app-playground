@@ -1,15 +1,12 @@
-// Stillflow's service worker — asset caching only, no notifications.
-// Scoped to /stillflow-react.html; caches the app shell and assets so the
-// library, favourites and history (all in IndexedDB) open offline. YouTube
-// thumbnails and videos are cross-origin and deliberately not cached.
+// Retired: Stillflow is now Mat Days, at /mat-days-react.html (MAT_DAYS.md, "Renamed").
 //
-// Follows Fit Check's strategy: navigations are NETWORK-FIRST with a cached
-// fallback, everything else is stale-while-revalidate. Do not convert
-// navigations to cache-first, and keep the PROD-only registration guard in
-// main.tsx (see CLAUDE.md "Service workers & dev") — under `vite dev` a
-// cache-first worker pins the first copy of every unhashed dev URL forever.
-
-var CACHE = 'stillflow-cache-v6';
+// A phone that installed the old app still has a worker registered for
+// /stillflow-react.html, serving its cached copy of the page cache-first, so the
+// redirect in vercel.json would never be reached. The browser checks this file for
+// changes when the old app opens; this version replaces that worker, clears its
+// caches, unregisters, and sends any open window to the new address. Your practice
+// data is untouched: it lives on this origin under keys Mat Days still reads.
+var CACHE = 'stillflow-retired';
 var CACHE_PREFIX = 'stillflow-';
 
 self.addEventListener('install', function () {
@@ -18,62 +15,16 @@ self.addEventListener('install', function () {
 
 self.addEventListener('activate', function (e) {
   e.waitUntil(
-    caches.keys().then(function (keys) {
-      // Cache Storage is origin-wide and this repo hosts many apps on one
-      // origin — only ever touch our own prefixed caches, never another app's.
-      return Promise.all(
-        keys.filter(function (k) { return k.indexOf(CACHE_PREFIX) === 0 && k !== CACHE; })
-          .map(function (k) { return caches.delete(k); })
-      );
-    }).then(function () { return self.clients.claim(); })
-  );
-});
-
-self.addEventListener('fetch', function (e) {
-  // The manifest always comes from the network (the stored copy only when offline), so a
-  // changed icon or name reaches Chrome's install and update checks at once instead of a
-  // cached copy (CLAUDE.md, "PWA icon"). Checked by scripts/pwa-scope.test.js.
-  if (new URL(e.request.url).pathname.endsWith('.webmanifest')) {
-    e.respondWith(fetch(e.request).catch(function () { return caches.match(e.request); }));
-    return;
-  }
-  var req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
-  // API answers (the YouTube channel check) must always be fresh: never cached here.
-  if (new URL(req.url).pathname.indexOf('/api/') === 0) return;
-
-  if (req.mode === 'navigate') {
-    // A share arrives as a navigation carrying a query string
-    // (?text=…&url=…), and that made the offline path fail on exactly the
-    // lane most likely to be used away from wifi: the cached entry is keyed
-    // on the bare page URL, so `caches.match` missed it and the browser's
-    // offline page ate the share. `ignoreSearch` matches the page the query
-    // was appended to — the app boots, reads `location.search` and the share
-    // is still there. Storing is guarded the same way round: without it,
-    // every distinct share URL became its own cache entry, so the cache grew
-    // by one whole page copy per link shared.
-    var hasQuery = new URL(req.url).search !== '';
-    e.respondWith(
-      fetch(req).then(function (res) {
-        if (res && res.status === 200 && res.type === 'basic' && !hasQuery) {
-          var copy = res.clone();
-          caches.open(CACHE).then(function (cache) { cache.put(req, copy); });
-        }
-        return res;
-      }).catch(function () { return caches.match(req, { ignoreSearch: true }); })
-    );
-    return;
-  }
-
-  e.respondWith(
-    caches.open(CACHE).then(function (cache) {
-      return cache.match(req).then(function (cached) {
-        var network = fetch(req).then(function (res) {
-          if (res && res.status === 200 && res.type === 'basic') cache.put(req, res.clone());
-          return res;
-        }).catch(function () { return cached; });
-        return cached || network;
-      });
-    })
+    caches.keys()
+      .then(function (keys) {
+        return Promise.all(keys.filter(function (k) { return k.indexOf(CACHE_PREFIX) === 0 && k !== CACHE; }).map(function (k) { return caches.delete(k); }));
+      })
+      .then(function () { return self.registration.unregister(); })
+      .then(function () { return self.clients.matchAll({ type: 'window' }); })
+      .then(function (windows) {
+        windows.forEach(function (w) {
+          if (w.url.indexOf('/stillflow-react.html') !== -1) w.navigate(w.url.replace('/stillflow-react.html', '/mat-days-react.html'));
+        });
+      })
   );
 });

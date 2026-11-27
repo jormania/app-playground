@@ -64,7 +64,7 @@ first app's tests prove the move was behaviour-preserving.
   offset, `toFindingsProps`. Promoted when Radar-B became a second writer to that
   database. Change it here, in WANDERLIST.md and in the `wanderlist` skill, or in
   none of them.
-- [`share.js`](share.js) — the OS share sheet with a clipboard fallback; `shareFile` hands over a file (Stillflow's backup), reporting `unsupported` so the caller can download instead.
+- [`share.js`](share.js) — the OS share sheet with a clipboard fallback; `shareFile` hands over a file (Mat Days' backup), reporting `unsupported` so the caller can download instead.
 - [`anthropic.ts`](anthropic.ts) — the client-side Claude call: BYO key straight from
   the browser, the endpoint and API version, `anthropicHeaders()`, `requestAnthropic`,
   and `extractAnthropicText()`, which reads replies by block type. It re-exports the
