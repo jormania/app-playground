@@ -144,3 +144,18 @@ describe('the provider refuses edits that would break a refund (D1, D2), from an
     expect(ok).not.toBeNull()
   })
 })
+
+describe('a venue\'s new price from a date in the past', () => {
+  it('moves only the payments there since that date to the new deal', async () => {
+    const venue = { ...demo.venues.find((v) => v.deal === 'fixed')!, demo: undefined }
+    const old = { deal: venue.deal, feePerSession: venue.feePerSession, sharePct: venue.sharePct, monthlyFee: venue.monthlyFee }
+    const base = { ...demo.records.find((r) => r.status === 'received')!, demo: undefined, venueId: venue.id, clientId: null, sourceId: null, dealTerms: old }
+    const data = { ...demo, clients: [], sources: [], costs: [], refunds: [], venues: [venue], records: [{ ...base, id: 'loc_a', date: '2026-05-10' }, { ...base, id: 'loc_b', date: '2026-07-15' }] }
+    const store = memoryStore({ [DATA_KEY]: data })
+    const { result } = setup(store)
+    await waitFor(() => expect(result.current.load).toBe('ready'))
+    await act(async () => { await result.current.saveEntity('venue', { ...venue, feePerSession: venue.feePerSession + 200 }, { dealFrom: '2026-07-01' }) })
+    const stored = (await store.get(DATA_KEY)) as InflowData
+    expect(stored.records.map((r) => [r.id, r.dealTerms?.feePerSession])).toEqual([['loc_a', venue.feePerSession], ['loc_b', venue.feePerSession + 200]])
+  })
+})

@@ -10,6 +10,7 @@ import { useInflow } from '../app/state'
 import type { Entity, EntityKind } from '../store/repo'
 import { NumberInput, SelectInput, TextArea, TextInput } from './fields'
 import { useHint } from '../app/hints'
+import { sameTerms, termsOf } from '../lib/deals'
 import styles from '../styles/ui.module.css'
 
 export const KIND_LABEL: Record<EntityKind, string> = { client: 'client', source: 'income source', venue: 'venue' }
@@ -30,17 +31,22 @@ export interface EntityEditorProps {
 }
 
 export function EntityEditor({ kind, entity, open, onClose, onSaved, onDelete }: EntityEditorProps) {
-  const { saveEntity, on } = useInflow()
+  const { saveEntity, on, today, data } = useInflow()
   const h = useHint()
   const [draft, setDraft] = useState<Entity>(() => entity ?? blankEntity(kind))
   const [busy, setBusy] = useState(false)
   // Mounted fresh per opening by its parent, so the draft never carries over.
   const set = (patch: Record<string, unknown>) => setDraft((d) => ({ ...d, ...patch }) as Entity)
 
+  // A venue's deal changed: from when? Today unless said otherwise; payments since then follow it.
+  const dealChanged = kind === 'venue' && !!entity?.id && !sameTerms(termsOf(entity as Venue), termsOf(draft as Venue))
+  const [dealFrom, setDealFrom] = useState(today)
+  const atVenue = dealChanged ? data.records.filter((r) => r.venueId === entity!.id && !r.refundOf && r.date >= dealFrom).length : 0
+
   const save = async () => {
     if (!draft.name.trim()) return
     setBusy(true)
-    const saved = await saveEntity(kind, { ...draft, name: draft.name.trim() })
+    const saved = await saveEntity(kind, { ...draft, name: draft.name.trim() }, dealChanged ? { dealFrom } : {})
     setBusy(false)
     if (saved) { onSaved?.(saved); onClose() }
   }
@@ -112,6 +118,10 @@ export function EntityEditor({ kind, entity, open, onClose, onSaved, onDelete }:
                   )}
                   {v.deal === 'monthly' && (
                     <NumberInput label="Rent per month (lei)" value={v.monthlyFee} onCommit={(n) => set({ monthlyFee: n ?? 0 })} hint={h('Spread over that month\'s sessions there.')} />
+                  )}
+                  {dealChanged && (
+                    <TextInput label="The new deal applies from" type="date" value={dealFrom} onChange={(x) => setDealFrom(x || today)}
+                      hint={`Payments here from this date (${atVenue} so far) are counted under the new deal; earlier ones keep the old one. Set the day the price really changed.`} />
                   )}
                 </>
               )}

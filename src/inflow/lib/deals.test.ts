@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildDemo } from '../data/demo'
-import type { IncomeRecord, Venue } from '../domain/types'
-import { dealTotals, defaultAlternative, feeCoveredAt, sameDayRepeats, scenario, venueCostOf, venueDeal, venueDeals } from './deals'
+import type { DealTerms, IncomeRecord, Venue } from '../domain/types'
+import { dealHistory, dealTotals, restampFrom, defaultAlternative, feeCoveredAt, sameDayRepeats, scenario, venueCostOf, venueDeal, venueDeals } from './deals'
 import { takeHome } from './insights'
 
 const today = '2026-11-25'
@@ -144,5 +144,25 @@ describe('a payment covering several sessions', () => {
   it('the what-if runs per session too', () => {
     const d = venueDeal(room({ deal: 'share', sharePct: 0.25 }), [pack], all)
     expect(scenario(d, { deal: 'fixed', feePerSession: 50, sharePct: 0, monthlyFee: 0 }).hypothetical).toBe(1400)
+  })
+})
+
+describe('a venue\'s price that changes during the year', () => {
+  const venue = { id: 'v', name: 'Sala', type: 'in_person', location: '', notes: '', archived: false, deal: 'fixed', feePerSession: 800, sharePct: 0, monthlyFee: 0 } as Venue
+  const old: DealTerms = { deal: 'fixed', feePerSession: 600, sharePct: 0, monthlyFee: 0 }
+  const next: DealTerms = { deal: 'fixed', feePerSession: 800, sharePct: 0, monthlyFee: 0 }
+  const pay = (id: string, date: string, terms: DealTerms | undefined) => ({ id, date, venueId: 'v', status: 'received', amountRon: 1000, dealTerms: terms }) as IncomeRecord
+  const records = [pay('a', '2026-03-10', old), pay('b', '2026-06-20', old), pay('c', '2026-07-05', old), pay('d', '2026-07-20', { ...old, feePerSession: 500 }), pay('e', '2026-08-01', undefined)]
+
+  it('from the date it changed, payments still on the old deal move to the new one; earlier and hand-set ones stay', () => {
+    expect(restampFrom(records, 'v', old, next, '2026-07-01').map((r) => [r.id, r.dealTerms?.feePerSession])).toEqual([['c', 800], ['e', 800]])
+  })
+
+  it('the history says which deal applied when, and to how many payments', () => {
+    const moved = new Map(restampFrom(records, 'v', old, next, '2026-07-01').map((r) => [r.id, r]))
+    const after = records.map((r) => moved.get(r.id) ?? r)
+    expect(dealHistory(after, venue).map((h) => [h.terms.feePerSession, h.payments, h.from, h.to])).toEqual([
+      [600, 2, '2026-03-10', '2026-06-20'], [800, 1, '2026-07-05', '2026-07-05'], [500, 1, '2026-07-20', '2026-07-20'], [800, 1, '2026-08-01', '2026-08-01'],
+    ])
   })
 })

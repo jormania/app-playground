@@ -9,7 +9,7 @@ import { readJson, writeJson } from '../../shared/storage'
 import { useToastStack, type ToastInput } from '../../ds'
 import { buildDemo, demoOpening, hasDemo, withoutDemo } from '../data/demo'
 import type { CostRecord, FeatureKey, IncomeRecord, InflowData, Refund, Settings, Venue, Workspace } from '../domain/types'
-import { sameTerms, stampTerms, termsOf } from '../lib/deals'
+import { restampFrom, sameTerms, stampTerms, termsOf } from '../lib/deals'
 import { paymentEditError, refundError, refundsOf, withRefunds } from '../lib/refunds'
 import { todayString, type PeriodChoice } from '../lib/period'
 import { copyToNotion, NotionRepo, type CopyResult } from '../store/notion'
@@ -73,7 +73,8 @@ interface InflowState {
   deleteCost: (c: CostRecord, opts?: { quiet?: boolean }) => Promise<boolean>
   /** False in Notion mode when no Costs database sits next to Income. */
   costsAvailable: boolean
-  saveEntity: <T extends Entity>(kind: EntityKind, e: T) => Promise<T | null>
+  /** `dealFrom`: a venue whose deal changed, from this date: payments there since then move to the new deal. */
+  saveEntity: <T extends Entity>(kind: EntityKind, e: T, opts?: { dealFrom?: string }) => Promise<T | null>
   deleteEntity: (kind: EntityKind, id: string) => Promise<void>
   /** Demo or your own data; switching keeps both as they are. */
   workspace: Workspace
@@ -348,7 +349,7 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
     } catch (e) { fail(e, 'Deleting'); return false }
   }, [repo, apply, fail, toast, saveCost])
 
-  const saveEntity = useCallback(async <T extends Entity>(kind: EntityKind, e: T): Promise<T | null> => {
+  const saveEntity = useCallback(async <T extends Entity>(kind: EntityKind, e: T, opts: { dealFrom?: string } = {}): Promise<T | null> => {
     try {
       if (kind === 'venue' && e.id) {
         // A venue's deal changing reaches only new payments. Payments here saved before snapshots
@@ -358,10 +359,15 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
         const next = e as unknown as Venue
         if (before && !sameTerms(termsOf(before), termsOf(next))) {
           const old = termsOf(before)
-          for (const r of dataRef.current.records.filter((x) => x.venueId === e.id && x.dealTerms === undefined)) {
-            const pinned = await repo.saveRecord({ ...r, dealTerms: old })
-            apply((d) => ({ ...d, records: d.records.map((x) => (x.id === r.id ? pinned : x)) }))
+          // From the date the new deal applies (if given), payments still on the old deal move to it.
+          const moved = opts.dealFrom ? restampFrom(dataRef.current.records, e.id, old, termsOf(next), opts.dealFrom) : []
+          const movedIds = new Set(moved.map((r) => r.id))
+          const pin = dataRef.current.records.filter((x) => x.venueId === e.id && x.dealTerms === undefined && !movedIds.has(x.id)).map((r) => ({ ...r, dealTerms: old }))
+          for (const r of [...pin, ...moved]) {
+            const saved = await repo.saveRecord(r)
+            apply((d) => ({ ...d, records: d.records.map((x) => (x.id === r.id ? saved : x)) }))
           }
+          if (moved.length) toast({ message: `New deal applied to ${moved.length} ${moved.length === 1 ? 'payment' : 'payments'} at ${next.name} from ${opts.dealFrom}; earlier ones keep the old deal.`, tone: 'success' })
         }
       }
       const saved = await repo.saveEntity(kind, e)
@@ -373,7 +379,7 @@ export function InflowProvider({ children, store: injected, today: fixedToday, n
       })
       return saved
     } catch (err) { fail(err, 'Saving'); return null }
-  }, [repo, apply, fail])
+  }, [repo, apply, fail, toast])
 
   const deleteEntity = useCallback(async (kind: EntityKind, id: string) => {
     try {

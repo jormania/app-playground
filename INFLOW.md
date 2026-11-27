@@ -783,8 +783,17 @@ fee, share, monthly rent). A new payment, or one moved to another venue, takes t
 deal as it is now (`stampTerms`, applied in the provider on every save); editing a payment
 keeps its deal. Editing a venue's deal therefore changes only payments from then on: past
 sessions keep what they cost. The payment form says when its deal differs from the venue's
-current one and offers *Use the current deal for this payment*; Venue deals says how many
-payments there were made under an earlier deal.
+current one and offers *Use the current deal for this payment*.
+
+**A price that changes during the year** (27 Nov 2026). Editing a venue's deal asks *The new
+deal applies from* (today unless changed, e.g. the 1st of the month the rent went up). Payments
+there from that date still on the old deal, or on none, move to the new one in one step; earlier
+ones and any given another deal by hand stay (`restampFrom`, `lib/deals.ts`). Venue deals then
+lists, under each venue whose price changed in the period, each deal with its dates and number of
+payments (`dealHistory`). **Venue deals estimates from the deal; it is not a ledger.** Money
+actually paid to a venue (an invoice, a month's rent) is recorded with *+ Add a cost at …*: it
+counts in Profit and Cash flow, and Venue deals and Clients & work leave room-hire costs out (they
+read the deal instead), so nothing is counted twice.
 
 **Migration 2** (`store/repo.ts`, `normalise`; device data carries `schema`). What the deal was
 when an old payment was made was never recorded, so payments saved before snapshots take the

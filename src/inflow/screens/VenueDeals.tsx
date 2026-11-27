@@ -12,8 +12,9 @@ import { useInflow } from '../app/state'
 import { usePeriodData } from '../app/usePeriod'
 import { SegmentedControl } from '../../ds'
 import { parseAmount, TextInput } from '../components/fields'
-import { breakEvenPeople, dealTotals, describeTerms, refundsWithoutSessions, defaultAlternative, feeCoveredAt, keptPerPerson, sameDayRepeats, scenario, venueDeals, type Terms, type VenueDeal } from '../lib/deals'
+import { breakEvenPeople, dealHistory, dealTotals, describeTerms, refundsWithoutSessions, defaultAlternative, feeCoveredAt, keptPerPerson, sameDayRepeats, scenario, venueDeals, type DealSpan, type Terms, type VenueDeal } from '../lib/deals'
 import { lei, percent } from '../lib/money'
+import { shortDate } from '../lib/dates'
 import { WiderPeriod } from './Insights'
 import type { CostPreset } from '../components/CostForm'
 import styles from '../styles/ui.module.css'
@@ -83,14 +84,14 @@ export function DealsReport({ onAddCost }: { onAddCost?: (preset: CostPreset) =>
           <h2 className={styles.panelTitle}>By average kept a session</h2>
         </div>
         <div className={styles.dealList}>
-          {deals.map((d) => <VenueRow key={d.venue.id} d={d} best={best} onAddCost={onAddCost} />)}
+          {deals.map((d) => <VenueRow key={d.venue.id} d={d} best={best} onAddCost={onAddCost} history={dealHistory(data.records.filter((r) => r.status === 'received' && r.date >= range.from && r.date <= range.to), d.venue)} />)}
         </div>
       </section>
     </>
   )
 }
 
-function VenueRow({ d, best, onAddCost }: { d: VenueDeal; best: number; onAddCost?: (preset: CostPreset) => void }) {
+function VenueRow({ d, best, onAddCost, history }: { d: VenueDeal; best: number; onAddCost?: (preset: CostPreset) => void; history: DealSpan[] }) {
   const v = d.venue
   const n = d.sessionCount
   const covered = feeCoveredAt(d)
@@ -120,8 +121,17 @@ function VenueRow({ d, best, onAddCost }: { d: VenueDeal; best: number; onAddCos
             ? <>You keep <b>{percent(1 - v.sharePct)}</b> of session revenue.</>
             : null}
         {repeats > 0 && <> {repeats} {repeats === 1 ? 'payment shares' : 'payments share'} a day with another and {repeats === 1 ? 'counts' : 'count'} as a separate session.</>}
-        {d.underEarlierDeal > 0 && <> {d.underEarlierDeal} {d.underEarlierDeal === 1 ? 'payment here was' : 'payments here were'} made under an earlier deal and {d.underEarlierDeal === 1 ? 'keeps it' : 'keep it'}.</>}
       </p>
+      {history.length > 1 && (
+        <div className={styles.dealHistory}>
+          <span className={styles.statLabel}>The deal changed in this period: each payment counts under the deal it was made under.</span>
+          <ul>
+            {history.map((h) => (
+              <li key={h.from}><span className={styles.dealTag}>{describeTerms(h.terms)}</span> {h.from === h.to ? shortDate(h.from) : `${shortDate(h.from)} – ${shortDate(h.to)}`} · {h.payments} {h.payments === 1 ? 'payment' : 'payments'}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {(v.deal === 'fixed' || v.deal === 'share' || v.deal === 'hybrid') && <BreakEven d={d} />}
       <WhatIf d={d} />
       {onAddCost && (
@@ -129,6 +139,7 @@ function VenueRow({ d, best, onAddCost }: { d: VenueDeal; best: number; onAddCos
           + Add a cost at {v.name}
         </button>
       )}
+      {onAddCost && <p className={styles.hint} style={{ margin: 0 }}>A cost here is money actually paid (an invoice, a month's rent): it counts in Profit and Cash flow. This page reads the deal above instead, so nothing is counted twice.</p>}
     </article>
   )
 }

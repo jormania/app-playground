@@ -1412,3 +1412,8 @@ button.line::after { inset: -8px 0; }
 /* Import from Revolut (Release 2, experimental): a checkbox beside each transaction, a 44 px target. */
 .importRow { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: start; }
 .importRow > input { width: 20px; height: 20px; margin: 14px 12px; accent-color: var(--color-accent); }
+
+/* Venue deals: how a venue's price changed in the period, one line per deal. */
+.dealHistory { display: grid; gap: 4px; font-size: var(--text-sm); }
+.dealHistory ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.dealHistory li { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; color: var(--color-muted); }

@@ -273,3 +273,27 @@ export function breakEvenPeople(t: Terms, pricePerPerson: number): number | null
   if (!(each > 0)) return null
   return Math.max(1, Math.ceil(t.feePerSession / each - 1e-9))
 }
+
+/**
+ * A venue's deal changed on `from` (which may be earlier than the day it was edited): the payments
+ * there from that date that still carry the old deal, or none, move to the new one; earlier ones
+ * keep the old. A payment given another deal by hand is left alone. Returns the payments to save.
+ */
+export function restampFrom(records: IncomeRecord[], venueId: string, old: DealTerms, next: DealTerms, from: string): IncomeRecord[] {
+  return records
+    .filter((r) => r.venueId === venueId && !r.refundOf && r.date >= from && (r.dealTerms === undefined || r.dealTerms === null || sameTerms(r.dealTerms, old)))
+    .map((r) => ({ ...r, dealTerms: next }))
+}
+
+export interface DealSpan { terms: DealTerms; payments: number; from: string; to: string }
+
+/** The deals payments at a venue were counted under, in date order: how a price changed over the period. */
+export function dealHistory(records: IncomeRecord[], venue: Venue): DealSpan[] {
+  const spans: DealSpan[] = []
+  for (const r of [...records].filter((x) => x.venueId === venue.id && !x.refundOf).sort((a, b) => a.date.localeCompare(b.date))) {
+    const t = termsFor(r, venue)
+    const last = spans.at(-1)
+    if (last && sameTerms(last.terms, t)) { last.payments++; last.to = r.date } else spans.push({ terms: t, payments: 1, from: r.date, to: r.date })
+  }
+  return spans
+}
