@@ -5,9 +5,10 @@
  * ends, a legend for two series, a hover readout on every bar, and the
  * fixed three-hue order for taxability.
  */
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { Bucket } from '../lib/period'
-import { compact, lei, percent } from '../lib/money'
+import { compact, delta, lei, percent } from '../lib/money'
+import { monthLabel, shortDate, weekdayShort } from '../lib/dates'
 import type { BreakdownRow } from '../lib/analytics'
 import styles from '../styles/ui.module.css'
 
@@ -21,7 +22,10 @@ export interface TrendChartProps {
 }
 
 export function TrendChart({ buckets, current, previous, previousLabel }: TrendChartProps) {
-  const [hover, setHover] = useState<number | null>(null)
+  // The mouse previews a bar; a tap (or click) keeps it chosen until tapped again or cleared.
+  const [hovered, setHovered] = useState<number | null>(null)
+  const [picked, setPicked] = useState<number | null>(null)
+  const hover = hovered ?? picked
   const W = 640
   const H = 180
   const top = 12
@@ -56,7 +60,7 @@ export function TrendChart({ buckets, current, previous, previousLabel }: TrendC
           const curH = (current[i] / max) * plotH
           const prevH = (previous[i] / max) * plotH
           return (
-            <g key={b.from} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} onClick={() => setHover(i)} className={styles.barGroup}>
+            <g key={b.from} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)} onClick={() => setPicked((p) => (p === i ? null : i))} className={styles.barGroup}>
               <rect x={left + slot * i} y={top} width={slot} height={plotH + bottom} className={styles.barHit} />
               {prevH > 0 && <path d={barPath(cx + barW * 0.15, top + plotH, barW, prevH)} className={styles.barPrev} />}
               {curH > 0 && <path d={barPath(cx - barW * 1.15, top + plotH, barW, curH)} className={styles.barCur} opacity={h === -1 || h === i ? 1 : 0.55} />}
@@ -67,13 +71,88 @@ export function TrendChart({ buckets, current, previous, previousLabel }: TrendC
           )
         })}
       </svg>
-      <div className={styles.tooltip} aria-live="polite">
-        {hover !== null
-          ? <>{rangeLabel(buckets[hover])}: <b>{lei(current[hover])}</b> · {previousLabel}: {lei(previous[hover])}</>
-          : <>Tap a bar for its figure.</>}
-      </div>
+      <Readout buckets={buckets} current={current} previous={previous} previousLabel={previousLabel} index={hover} onClear={() => { setPicked(null); setHovered(null) }} />
     </div>
   )
+}
+
+export interface ReadoutFigure { label: string; value: number; swatch?: string; muted?: boolean; negative?: boolean }
+
+/**
+ * The figures under a bar chart, the same on every chart: their own space under a rule, a title
+ * for what is shown (one bar, or the whole range), each figure labelled with its legend swatch,
+ * side by side, and an optional line below.
+ */
+export function ChartReadout({ title, hint, onClear, clearLabel, figures, children }: {
+  title: string; hint: string; onClear?: () => void; clearLabel: string; figures: ReadoutFigure[]; children?: ReactNode
+}) {
+  return (
+    <div className={styles.readout} aria-live="polite">
+      <div className={styles.readoutHead}>
+        <span>{title}</span>
+        {onClear ? <button type="button" className={styles.linkButton} onClick={onClear}>{clearLabel}</button> : <span className={styles.readoutHint}>{hint}</span>}
+      </div>
+      <div className={styles.readoutFigures} style={{ gridTemplateColumns: `repeat(${figures.length}, minmax(0, 1fr))` }}>
+        {figures.map((f) => (
+          <div key={f.label}>
+            <span className={styles.statLabel}>{f.swatch && <span className={styles.swatch} style={{ background: f.swatch }} />}{f.label}</span>
+            <span className={`${styles.readoutValue} ${f.muted ? styles.readoutPrev : ''} ${f.negative ? styles.down : ''}`}>{lei(f.value)}</span>
+          </div>
+        ))}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+/**
+ * The figures under the chart, with room of their own: what is chosen (a day, a week or the whole
+ * period), then this period's figure and the previous period's beside it, each labelled, and for one
+ * bar the change between them.
+ */
+function Readout({ buckets, current, previous, previousLabel, index, onClear }: {
+  buckets: Bucket[]; current: number[]; previous: number[]; previousLabel: string; index: number | null; onClear: () => void
+}) {
+  const one = index !== null
+  // What one bar is, from all of them: a week cut short at the month's edge is still a week.
+  const unit = barUnit(buckets)
+  const cur = one ? current[index] : current.reduce((a, b) => a + b, 0)
+  const prev = one ? previous[index] : previous.reduce((a, b) => a + b, 0)
+  const title = one ? bucketTitle(buckets[index], unit) : 'Whole period'
+  const change = cur - prev
+  const d = delta(cur, prev)
+  return (
+    <ChartReadout title={title} hint={`Tap a bar for one ${unit}`} clearLabel="Whole period" onClear={one ? onClear : undefined}
+      figures={[
+        { label: one ? 'This period' : 'So far', value: cur, swatch: 'var(--color-accent)' },
+        { label: capitalise(previousLabel), value: prev, swatch: 'var(--chart-ghost)', muted: true },
+      ]}>
+      {one && (cur > 0 || prev > 0) && (
+        <p className={styles.readoutChange}>
+          {d.direction === 'new' ? `Nothing came in the same ${unit}, ${previousLabel}.`
+            : change === 0 ? `The same as the same ${unit}, ${previousLabel}.`
+              : <><span className={`${styles.delta} ${change > 0 ? styles.up : styles.down}`}>{change > 0 ? '+' : '−'}{lei(Math.abs(change))} ({d.text})</span> on the same {unit}, {previousLabel}</>}
+        </p>
+      )}
+    </ChartReadout>
+  )
+}
+
+const daysIn = (b: Bucket) => Math.round((Date.parse(b.to) - Date.parse(b.from)) / 86_400_000) + 1
+
+/** What one bar stands for, from the longest bar: a day, a week, a month or a stretch. */
+function barUnit(buckets: Bucket[]): 'day' | 'week' | 'month' | 'stretch' {
+  const longest = Math.max(1, ...buckets.map(daysIn))
+  return longest === 1 ? 'day' : longest === 7 ? 'week' : longest >= 28 ? 'month' : 'stretch'
+}
+
+/** "Mon 23 Nov" for a day; "Week of 23 Nov", "November 2026" or "23 – 29 Nov" otherwise. */
+function bucketTitle(b: Bucket, unit: ReturnType<typeof barUnit>): string {
+  if (unit === 'day') return `${weekdayShort(b.from)} ${shortDate(b.from)}`
+  if (unit === 'week') return `Week of ${shortDate(b.from)}${b.from === b.to ? '' : ` – ${shortDate(b.to)}`}`
+  if (unit === 'month') return monthLabel(b.from)
+  if (b.from === b.to) return shortDate(b.from)
+  return b.from.slice(5, 7) === b.to.slice(5, 7) ? `${Number(b.from.slice(8, 10))} – ${shortDate(b.to)}` : `${shortDate(b.from)} – ${shortDate(b.to)}`
 }
 
 /** A bar with 4px rounded data end, square on the baseline. */
@@ -81,10 +160,6 @@ function barPath(x: number, baseY: number, w: number, h: number): string {
   const r = Math.min(4, w / 2, h)
   const t = baseY - h
   return `M${x},${baseY} V${t + r} Q${x},${t} ${x + r},${t} H${x + w - r} Q${x + w},${t} ${x + w},${t + r} V${baseY} Z`
-}
-
-function rangeLabel(b: Bucket): string {
-  return b.from === b.to ? b.from : `${b.from} – ${b.to}`
 }
 
 function capitalise(s: string) {
@@ -188,7 +263,10 @@ export function MoversChart({ rows, onSelect, prevLabel }: { rows: MoverRow[]; o
 
 /** Income and costs month by month, side by side, with what was kept in the readout. */
 export function MonthlyPair({ months, income, costs }: { months: { label: string; from: string }[]; income: number[]; costs: number[] }) {
-  const [hover, setHover] = useState<number | null>(null)
+  // As on the trend chart: the mouse previews a month; a tap keeps it chosen.
+  const [hovered, setHovered] = useState<number | null>(null)
+  const [picked, setPicked] = useState<number | null>(null)
+  const hover = hovered ?? picked
   const W = 640
   const H = 170
   const top = 12
@@ -214,7 +292,7 @@ export function MonthlyPair({ months, income, costs }: { months: { label: string
         {months.map((m, i) => {
           const cx = slot * i + slot / 2
           return (
-            <g key={m.from} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} onClick={() => setHover(i)} className={styles.barGroup}>
+            <g key={m.from} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)} onClick={() => setPicked((p) => (p === i ? null : i))} className={styles.barGroup}>
               <rect x={slot * i} y={top} width={slot} height={plotH + bottom} className={styles.barHit} />
               {income[i] > 0 && <path d={barPath(cx - barW - 1, top + plotH, barW, top + plotH - y(income[i]))} fill="var(--chart-1)" opacity={hover === null || hover === i ? 1 : 0.5} />}
               {costs[i] > 0 && <path d={barPath(cx + 1, top + plotH, barW, top + plotH - y(costs[i]))} fill="var(--chart-3)" opacity={hover === null || hover === i ? 1 : 0.5} />}
@@ -223,11 +301,20 @@ export function MonthlyPair({ months, income, costs }: { months: { label: string
           )
         })}
       </svg>
-      <div className={styles.tooltip} aria-live="polite">
-        {hover !== null
-          ? <>{months[hover].label}: <b>{lei(income[hover])}</b> in · {lei(costs[hover])} out · kept <b className={income[hover] - costs[hover] < 0 ? styles.down : undefined}>{lei(income[hover] - costs[hover])}</b></>
-          : <>Tap a month for its figures.</>}
-      </div>
+      {(() => {
+        const one = hover !== null
+        const inn = one ? income[hover] : income.reduce((a, b) => a + b, 0)
+        const out = one ? costs[hover] : costs.reduce((a, b) => a + b, 0)
+        return (
+          <ChartReadout title={one ? monthLabel(months[hover].from) : n > 1 ? `${monthLabel(months[0].from)} – ${monthLabel(months[n - 1].from)}` : 'Whole period'}
+            hint="Tap a month for its figures" clearLabel="All months" onClear={one ? () => { setPicked(null); setHovered(null) } : undefined}
+            figures={[
+              { label: 'Income', value: inn, swatch: 'var(--chart-1)' },
+              { label: 'Costs', value: out, swatch: 'var(--chart-3)' },
+              { label: 'Kept', value: inn - out, negative: inn - out < 0 },
+            ]} />
+        )
+      })()}
     </div>
   )
 }
