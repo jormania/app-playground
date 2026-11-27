@@ -232,7 +232,10 @@ export function Settings() {
           </div>
           <SettingsToggle label="Show hints" hint="Short explanations under the fields. Turn off once you know your way around; live figures still show." checked={settings.showHints} onChange={(e) => updateSettings({ showHints: e.target.checked })} />
           <SettingsToggle label="Welcome guide on opening" hint={h('The short tour of InFlow.')} checked={settings.showTour} onChange={(e) => updateSettings({ showTour: e.target.checked })} />
-          <div><Button variant="secondary" onClick={() => window.dispatchEvent(new Event('inflow:tour'))}>Show the guide now</Button></div>
+          <div className={styles.buttonRow}>
+            <Button variant="secondary" onClick={() => window.dispatchEvent(new Event('inflow:tour'))}>Show the guide now</Button>
+            <a href="#/manual" className={styles.linkButton}>Read the manual</a>
+          </div>
         </div>
       </Section>
 

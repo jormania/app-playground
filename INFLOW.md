@@ -38,6 +38,18 @@ Expected payments and costs still due show in Income and Costs whatever the peri
   nearest payment there in what Clients & work counts as kept; activity is for sorting and
   filtering.
 
+### The manual (27 Nov 2026)
+
+A book icon in the header, left of the Demo / Notion / This device tag, opens **#/manual**
+(`screens/Manual.tsx`; also *Read the manual* in Settings → Appearance & guide). Written for a
+freelancer starting out, in ten short parts with a contents bar: start here; the three kinds of
+money (service income, cost recovery, tax withheld, with a picture); every day (adding,
+expected and part payments with a picture, refunds); which feature to switch on when (a table);
+costs, profit and cash flow; tax (estimates, reserve); venues and deals (including a price that
+changes); the reports; where your data lives; a glossary. Tips are green, notes blue, things to
+watch amber; pictures are drawn at phone width. Keep it in step with the app: it states what
+the screens do, so a change to a screen named there means a line here may need changing too.
+
 ### The welcome guide
 Nine steps on first open (`components/Tour.tsx`, Release 1), at most three short points each.
 Seven carry their features' switches: insights; expected payments; venue deals; costs; printable

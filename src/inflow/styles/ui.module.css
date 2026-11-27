@@ -1417,3 +1417,92 @@ button.line::after { inset: -8px 0; }
 .dealHistory { display: grid; gap: 4px; font-size: var(--text-sm); }
 .dealHistory ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
 .dealHistory li { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; color: var(--color-muted); }
+
+/* ── The manual (#/manual) ─────────────────────────────────────────────── */
+.manualLink {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%;
+  color: var(--color-accent); text-decoration: none;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+.manualLink:hover, .manualLink[aria-current="page"] { background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
+.manualHero { display: flex; gap: var(--space-md); align-items: flex-start; margin: var(--space-sm) 0 var(--space-md); }
+.manualHeroIcon {
+  flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px;
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent); color: var(--color-accent);
+}
+.manualHeroTitle { margin: 0; font-size: var(--text-2xl, 1.5rem); letter-spacing: -0.02em; }
+.manualLede { margin: 4px 0 0; color: var(--color-muted); }
+.manualToc { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--space-md); }
+.manualTocItem {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 4px 12px 4px 6px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: var(--color-surface);
+  font: inherit; font-size: var(--text-sm); color: var(--color-ink); cursor: pointer;
+}
+.manualTocItem:hover { border-color: var(--color-accent); }
+.manualTocNum {
+  display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--color-accent); color: var(--color-on-accent, #fff); font-size: 11px; font-weight: var(--weight-bold);
+}
+.manualSection { scroll-margin-top: calc(var(--inflow-header, 0px) + 12px); display: grid; gap: var(--space-sm); line-height: 1.55; }
+.manualSection p { margin: 0; }
+.manualTitle { display: flex; align-items: center; gap: var(--space-sm); margin: 0 0 4px; font-size: var(--text-lg); }
+.manualIcon {
+  display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px;
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent); color: var(--color-accent);
+}
+.manualSub { margin: var(--space-sm) 0 0; font-size: var(--text-base, 1rem); }
+.manualSteps, .manualList { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+.manualNote {
+  display: flex; gap: var(--space-sm); align-items: flex-start; padding: 10px 12px; border-radius: var(--radius-md);
+  border-left: 4px solid; font-size: var(--text-sm);
+}
+.manualNote > svg { flex: none; margin-top: 2px; }
+.manualTip { background: color-mix(in srgb, var(--chart-1) 10%, transparent); border-color: var(--chart-1); }
+.manualTip > svg { color: var(--chart-1); }
+.manualInfo { background: color-mix(in srgb, var(--chart-2) 10%, transparent); border-color: var(--chart-2); }
+.manualInfo > svg { color: var(--chart-2); }
+.manualWarn { background: color-mix(in srgb, var(--chart-3) 12%, transparent); border-color: var(--chart-3); }
+.manualWarn > svg { color: var(--chart-3); }
+.manualDefs { display: grid; gap: var(--space-sm); margin: 0; }
+.manualDefs > div { padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border); border-top: 4px solid; }
+.manualDefs dt { font-weight: var(--weight-bold); }
+.manualDefs dd { margin: 2px 0 0; font-size: var(--text-sm); color: var(--color-muted); }
+.manualDefAccent { border-top-color: var(--chart-1) !important; }
+.manualDefAmber { border-top-color: var(--chart-3) !important; }
+.manualDefBlue { border-top-color: var(--chart-2) !important; }
+@media (min-width: 640px) { .manualDefs { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.manualSvg { width: 100%; max-width: 460px; height: auto; display: block; margin: var(--space-xs) auto; }
+.svgArrow { fill: none; stroke: var(--color-faint); stroke-width: 2; }
+.svgText { fill: var(--color-ink); font: 600 15px var(--font-sans); }
+.svgSmall { fill: var(--color-muted); font: 12px var(--font-sans); }
+.svgTextOn { fill: #fff; font: 600 15px var(--font-sans); }
+.svgSmallOn { fill: rgba(255, 255, 255, 0.85); font: 12px var(--font-sans); }
+.svgBoxMuted { fill: var(--color-surface-2); stroke: var(--color-border); }
+.svgBoxAccent { fill: var(--chart-1); }
+.svgBoxAmber { fill: color-mix(in srgb, var(--chart-3) 22%, var(--color-surface)); stroke: var(--chart-3); }
+.svgBoxBlue { fill: color-mix(in srgb, var(--chart-2) 18%, var(--color-surface)); stroke: var(--chart-2); }
+.svgBoxDashed { fill: var(--color-surface); stroke: var(--color-faint); stroke-dasharray: 6 5; }
+.manualCompare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-sm); }
+.manualCompareCol { padding: 12px; border-radius: var(--radius-md); background: var(--color-surface-2); display: grid; gap: 4px; align-content: start; font-size: var(--text-sm); }
+.manualCompareCol ul { margin: 4px 0 0; padding-left: 1.1em; display: grid; gap: 2px; }
+.manualQuestion { color: var(--color-accent); font-style: italic; }
+.manualTableWrap { overflow-x: auto; }
+.manualTable { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.manualTable th, .manualTable td { text-align: left; vertical-align: top; padding: 8px 6px; border-bottom: 1px solid var(--color-border); }
+.manualTable thead th { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted); }
+.manualTable tbody th { font-weight: var(--weight-bold); white-space: nowrap; }
+@media (max-width: 520px) {
+  .manualTable thead { display: none; }
+  .manualTable tr { display: grid; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--color-border); }
+  .manualTable th, .manualTable td { padding: 0; border: 0; }
+  .manualTable td:nth-child(2) { color: var(--color-muted); }
+  .manualTable td:nth-child(2)::before { content: 'When: '; font-weight: var(--weight-medium); }
+}
+.manualCards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-sm); }
+.manualCard { display: grid; gap: 2px; padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border); font-size: var(--text-sm); }
+.manualCard span { color: var(--color-muted); }
+.manualGlossary { display: grid; gap: 8px; margin: 0; }
+.manualGlossary > div { display: grid; grid-template-columns: 8.5em 1fr; gap: var(--space-sm); font-size: var(--text-sm); }
+.manualGlossary dt { font-weight: var(--weight-bold); }
+.manualGlossary dd { margin: 0; color: var(--color-muted); }

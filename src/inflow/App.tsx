@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { clearTrail } from './app/trail'
-import { BarChart3, LayoutDashboard, List, Plus, Receipt, Settings as Cog, Waves } from 'lucide-react'
+import { BarChart3, BookOpen, LayoutDashboard, List, Plus, Receipt, Settings as Cog, Waves } from 'lucide-react'
 import { SegmentedControl, ToastStack } from '../ds'
 import { InflowProvider, useInflow, type ProviderProps } from './app/state'
 import { CostForm, type CostPreset } from './components/CostForm'
@@ -20,6 +20,7 @@ import { Overview } from './screens/Overview'
 import { REPORT_TABS, Reports, type ReportTab } from './screens/Reports'
 import { Settings } from './screens/Settings'
 import { Import } from './screens/Import'
+import { Manual } from './screens/Manual'
 import { THEME_KEY } from './store/settings'
 import { writeJson } from '../shared/storage'
 import type { ThemeChoice } from './domain/types'
@@ -28,9 +29,9 @@ import styles from './styles/ui.module.css'
 /** Dispatched on window to reopen the welcome tour (Settings → Show the tour). */
 export const TOUR_EVENT = 'inflow:tour'
 
-type Screen = 'overview' | 'income' | 'costs' | 'reports' | 'settings' | 'import'
+type Screen = 'overview' | 'income' | 'costs' | 'reports' | 'settings' | 'import' | 'manual'
 
-const TITLE: Record<Screen, string> = { overview: 'Overview', income: 'Income', costs: 'Costs', reports: 'Reports', settings: 'Settings', import: 'Import' }
+const TITLE: Record<Screen, string> = { overview: 'Overview', income: 'Income', costs: 'Costs', reports: 'Reports', settings: 'Settings', import: 'Import', manual: 'Manual' }
 
 interface Route { screen: Screen; report: ReportTab; /** A section to land on, e.g. #/reports/insights/act. */ anchor: string; /** #/add/income or #/add/cost: open the form at once. */ add: 'income' | 'cost' | null }
 
@@ -40,7 +41,7 @@ export function parseRoute(hash: string): Route {
   const add = first === 'add' ? (second === 'cost' ? 'cost' : 'income') : null
   const screen = add ? (add === 'cost' ? 'costs' : 'income') : first
   const sub = add ? '' : second
-  const s: Screen = (['overview', 'income', 'costs', 'reports', 'settings', 'import'] as const).includes(screen as Screen) ? (screen as Screen) : 'overview'
+  const s: Screen = (['overview', 'income', 'costs', 'reports', 'settings', 'import', 'manual'] as const).includes(screen as Screen) ? (screen as Screen) : 'overview'
   const report: ReportTab = (REPORT_TABS as readonly string[]).includes(sub) ? (sub as ReportTab) : 'insights'
   return { screen: s, report, anchor, add }
 }
@@ -167,7 +168,7 @@ function Shell() {
   // Every screen names itself in the browser tab.
   useEffect(() => { document.title = `${TITLE[screen]} · InFlow` }, [screen])
   const tabs = TABS.filter((t) => t.screen !== 'costs' || settings.features.costs)
-  const showPeriod = screen !== 'settings'
+  const showPeriod = screen !== 'settings' && screen !== 'manual'
   const custom = resolvePeriod(period, today)
   const notion = settings.mode === 'notion' && !!settings.notionToken && !!settings.incomeDbId
 
@@ -176,6 +177,10 @@ function Shell() {
       <header className={styles.header} ref={headerRef}>
         <div className={styles.headerInner}>
           <div className={styles.brand}><Waves size={22} aria-hidden /> InFlow</div>
+          <a href="#/manual" className={styles.manualLink} aria-label="The InFlow manual" title="The InFlow manual: everything you need to know"
+            aria-current={screen === 'manual' ? 'page' : undefined}>
+            <BookOpen size={18} aria-hidden />
+          </a>
           <a href="#/settings" className={`${styles.modeTag} ${workspace === 'demo' ? styles.modeTagDemo : ''}`}
             title={workspace === 'demo' ? 'The demo practice. Switch to your data in Settings.' : notion ? 'Reading and writing your Notion databases' : 'Stored in this browser'}>
             {workspace === 'demo' ? 'Demo' : notion ? (offlineCopy ? 'Notion · offline copy' : 'Notion') : 'This device'}
@@ -208,7 +213,7 @@ function Shell() {
           <div className={styles.empty}>Loading…</div>
         ) : (
           <div key={`${screen}-${workspace}`} className={`${styles.screen} ${styles.screenIn}`}>
-            {workspace === 'demo' && screen !== 'settings' && (
+            {workspace === 'demo' && screen !== 'settings' && screen !== 'manual' && (
               <div className={`${styles.banner} ${styles.bannerInfo}`} role="status">
                 <span>You're exploring a demo practice. Your own data is kept apart.</span>
                 <button type="button" className={styles.linkButton} onClick={() => setWorkspace('mine')}>Switch to my data</button>
@@ -220,12 +225,13 @@ function Shell() {
             {screen === 'reports' && <Reports tab={route.report} anchor={route.anchor} onAddCost={(p) => openCost(null, p)} />}
             {screen === 'settings' && <Settings />}
             {screen === 'import' && <Import />}
+            {screen === 'manual' && <Manual />}
           </div>
         )}
       </main>
 
       {/* No floating button over Start here: its first step is the same action. */}
-      {screen !== 'settings' && screen !== 'import' && !(screen === 'overview' && data.records.length === 0) && (
+      {screen !== 'settings' && screen !== 'import' && screen !== 'manual' && !(screen === 'overview' && data.records.length === 0) && (
         <button type="button" className={`${styles.fab} ${compact ? styles.fabCompact : ''}`} onClick={() => (screen === 'costs' ? openCost(null) : open(null))}
           aria-label={screen === 'costs' ? 'Add cost' : 'Add income'}>
           <Plus size={22} aria-hidden /> <span className={styles.fabLabel}>{screen === 'costs' ? 'Add cost' : 'Add income'}</span>

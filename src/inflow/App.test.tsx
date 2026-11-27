@@ -1289,3 +1289,23 @@ describe('Import from Revolut (Release 2, experimental)', () => {
     expect(await screen.findByRole('button', { name: 'Review transactions' })).toBeTruthy()
   })
 })
+
+describe('the manual', () => {
+  it('opens from the book in the header, beside the data tag, and jumps to each part', async () => {
+    settings()
+    const user = userEvent.setup()
+    render(<App store={store} today={today} />)
+    await screen.findByTestId('period-total')
+    const book = screen.getByRole('link', { name: 'The InFlow manual' })
+    const tag = screen.getByRole('link', { name: 'Demo' })
+    expect(book.compareDocumentPosition(tag) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await user.click(book)
+    expect(await screen.findByRole('heading', { name: 'The InFlow manual' })).toBeTruthy()
+    const contents = screen.getByRole('navigation', { name: 'Contents' })
+    expect(within(contents).getAllByRole('button')).toHaveLength(10)
+    for (const part of ['Start here', 'Three kinds of money', 'Every day', 'Switch on what you need', 'Costs and profit', 'Tax', 'Venues and deals', 'Reports', 'Your data', 'Words used']) {
+      expect(screen.getByRole('heading', { name: part, level: 2 })).toBeTruthy()
+    }
+    expect(screen.queryByText(/You're exploring a demo practice/)).toBeNull()
+  })
+})
