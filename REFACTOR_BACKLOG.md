@@ -56,6 +56,38 @@ Anything under **`## Proposed`** is the agent's own idea and will not be worked
 until a human moves it up into the main list. That move is the whole approval
 ritual: cut the block, paste it above, change `proposed` to `open`.
 
+## R-056 — The suite goes red on Monday 2026-12-28, when The Long Listen's first season ends · `modernise` · `open`
+
+**Impact:** none visible. Without it, every gate goes red on 28 December. That
+includes the daily run's merge check, so every refactor PR stops until somebody
+works out that the clock caused it, not the change.
+
+**Fails when:** the clock reads Monday **2026-12-28** (ISO week 53) or any later
+date. `src/long-listen/__audit__/journal-weeks.audit.test.tsx`, *"links no season
+under way"* (line 78), then fails with `expected <a href="#/season/1"> to be null`.
+The test seeds a journey whose first week is 2026-W41, then renders `App` against
+the **real** clock. Season one is `SEASON_WEEKS = 12` weeks long
+(`src/long-listen/domain/season.ts:9`), W41 to W52, and `season().complete` turns
+true the week after W52. From then on, `screens/Journal.tsx:136` correctly shows
+the "Season one in review" link the test says is absent. The app is right and the
+test is stale.
+
+Found on the Friday read, 2026-11-27, by running the whole suite with `Date`
+shifted forward. Shifted 30 days (27 Dec) the suite was green. Shifted 31 days
+(28 Dec), 35, 400 and 800 days (into 2029), this test was the **only** failure
+out of 7,322 tests. Nothing else in the suite is waiting on a date until at least
+2029.
+
+The fix is the one its neighbour already uses: `screens-ui.audit.test.tsx:516`
+pins the clock with `vi.useFakeTimers({ toFake: ['Date'] })` and
+`vi.setSystemTime(...)`, then `vi.useRealTimers()` in `afterEach`. Pin the three
+App-rendering tests in this `describe` to a date inside season one, e.g.
+`2026-10-15T09:00:00Z` (W42, after the seeded W41/W42 activity). Fake only
+`Date`, because `findByRole` needs real timers. Keep every assertion as it is. To
+prove it, run the file with the system clock set past 2026-12-28 and check it
+still passes. Test-only. It has to land before 28 December, which is why it sits
+at the top.
+
 ## P-006 — A Sol Odyssey reflection over 2000 characters fails to save · `qol` · `done 2026-11-25`
 
 Approved 2026-11-24 and put at the top.
@@ -2442,7 +2474,7 @@ Write `src/long-listen/app/settings.test.ts`, round-tripping through jsdom's
 `localStorage` (via `npm test`, so the webstorage flag is set). Strict TS. No
 production code changes.
 
-## R-042 — An orphaned doc comment in The Long Listen's `curator/validate.js` documents the wrong function · `refactor` · `open`
+## R-042 — An orphaned doc comment in The Long Listen's `curator/validate.js` documents the wrong function · `refactor` · `dropped 2026-11-27` — comment-only drift (a misplaced JSDoc); nobody reading LONG_LISTEN.md is misled, and the suite can't tell
 
 **Impact:** none visible. A reader of the "a returning theme expands, never
 restarts" rule (LONG_LISTEN.md) finds its enforcement documented where it is
@@ -2459,7 +2491,7 @@ of its own. Editors and TS's JS inference attach only the second block to
 ("strips repeats that survive the retry …"), so the suite will stay green
 without changes.
 
-## R-043 — Two process docs say the repo is at the 12-function cap; it has been at 11 since the HLTB fold · `modernise` · `open`
+## R-043 — Two process docs say the repo is at the 12-function cap; it has been at 11 since the HLTB fold · `modernise` · `dropped 2026-11-27` — doc drift that errs safe: the stated reason is out of date but the rule it backs (no new `api/*.js` from an agent) is right, and `scripts/build-meta.test.js` enforces the real cap
 
 **Impact:** none visible. The rule an agent reads before every run states the
 real headroom.
@@ -2485,7 +2517,7 @@ Law of the Day moved to the listener's own key. That makes this item's advice
 to write no number stronger, not weaker. The stale comments that removal left
 behind are R-044.
 
-## R-044 — Three comments still describe the two Law of the Day handlers #136 deleted · `modernise` · `open`
+## R-044 — Three comments still describe the two Law of the Day handlers #136 deleted · `modernise` · `dropped 2026-11-27` — comment and doc drift about two deleted handlers; nothing imports or runs the dead paths, so nothing can break
 
 **Impact:** none visible. A reader stops looking for a server function and a
 cron that no longer exist, and stops trusting a reason for a file's shape that
