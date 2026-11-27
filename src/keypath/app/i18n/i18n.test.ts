@@ -19,9 +19,9 @@ describe('translations', () => {
     expect(translate('ro', 'notesCount', { count: 5 })).toBe('5 note')
     expect(translate('ro', 'notesCount', { count: 25 })).toBe('25 de note')
     expect(translate('ro', 'notesCount', { count: 101 })).toBe('101 note')
-    expect(translate('ro', 'pCameBack', { count: 1 })).toBe('A revenit a doua zi: o dată')
-    expect(translate('ro', 'pCameBack', { count: 3 })).toBe('A revenit a doua zi: de 3 ori')
-    expect(translate('ro', 'pCameBack', { count: 21 })).toBe('A revenit a doua zi: de 21 de ori')
+    expect(translate('ro', 'pTimes', { count: 1 })).toBe('o dată')
+    expect(translate('ro', 'pTimes', { count: 3 })).toBe('de 3 ori')
+    expect(translate('ro', 'pTimes', { count: 21 })).toBe('de 21 de ori')
   })
 
   it('writes every count token with a form for each plural the language has', () => {

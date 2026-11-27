@@ -16,6 +16,15 @@ afterEach(() => {
   Object.defineProperty(navigator, 'share', { value: undefined, configurable: true })
 })
 
+/** The value beside a label: a headline tile, or a line in the Keyboard or Settings list. */
+const valueOf = (label: string, within: ParentNode = document) =>
+  [...within.querySelectorAll('dt')].find((dt) => dt.textContent === label)?.parentElement?.querySelector('dd')?.textContent
+/** A song's figures, in the columns' order: tries, parts learnt, finished, stars. */
+const songFigures = (title: string) => {
+  const group = screen.getByRole('rowheader', { name: title }).closest('tbody')!
+  return [...group.querySelectorAll('td')].map((td) => td.getAttribute('aria-label') ?? td.textContent)
+}
+
 async function setUp() {
   const store = memoryStore()
   const profiles = new ProfileRepo(store)
@@ -43,19 +52,27 @@ describe('Progress', () => {
   it('reads a player’s log back: days, doors, songs by title, Journey steps', async () => {
     await setUp()
     // The seeded evening; the session opening Progress just started plays nothing, so it isn't a day played.
-    expect(await screen.findByText('Days played: 1')).toBeTruthy()
-    // Said as two numbers, not one: "Sessions: 9, 37 min" read as 9.37 minutes.
-    expect(screen.getByText('2 sessions · 10 min in all')).toBeTruthy()
-    // Songs, opened once and first; about nine minutes there.
-    expect(screen.getByText('opened 1× · first 1× · ~9 min')).toBeTruthy()
-    expect(screen.getByText('Ode to Joy')).toBeTruthy()
-    expect(screen.getByText('1 try · finished once · ★★★')).toBeTruthy()
-    expect(screen.getByText('1 of 10 steps done, 0 of them tested out')).toBeTruthy()
+    await screen.findByText('At a glance')
+    expect(valueOf('Days played')).toBe('1')
+    // Two numbers in two tiles, not one line: "Sessions: 9, 37 min" read as 9.37 minutes.
+    expect(valueOf('Sessions')).toBe('2')
+    expect(valueOf('Time playing')).toBe('10 min')
+    // Songs, opened once and first; about nine minutes there. A door never opened says so, not "0×".
+    expect(screen.getByText('9 min')).toBeTruthy()
+    expect(screen.getByText('opened once · the first door once')).toBeTruthy()
+    expect(screen.getAllByText('Not opened yet')).toHaveLength(3)
+    expect(songFigures('Ode to Joy')).toEqual(['1', '–', '1', '3 / 3'])
+    expect(screen.getByText('1 of 10 steps')).toBeTruthy()
+    // Games: the one played, with its best at its level; the rest named once, not as rows of zeros.
+    expect(screen.getByRole('rowheader', { name: 'Note race' })).toBeTruthy()
+    expect(screen.getByText('11 (C to G)')).toBeTruthy()
+    expect(screen.getByText('Not played yet: Rhythm echo, Chord catch, Ear check, Read and play')).toBeTruthy()
+    expect(screen.getByText('Not used yet.')).toBeTruthy()
   })
 
   it('switches to another player, who has nothing yet', async () => {
     await setUp()
-    await screen.findByText('Days played: 1')
+    await screen.findByText('At a glance')
     fireEvent.click(screen.getByRole('radio', { name: /Gabriel/ }))
     expect(await screen.findByText('Nothing yet: the log fills as soon as Gabriel plays.')).toBeTruthy()
   })
@@ -105,6 +122,27 @@ describe('Progress', () => {
   })
 })
 
+describe('Progress: setting changes, in words', () => {
+  it('names a setting and its values as Settings does, newest first, not as stored', async () => {
+    const store = memoryStore()
+    const profiles = new ProfileRepo(store)
+    const nora = await profiles.create('Nora', '🐺')
+    await profiles.setCurrent(nora.id)
+    const at = (m: number) => new Date(2025, 0, 6, 18, m).toISOString()
+    await store.set(K.log(nora.id), [
+      { type: 'session_start', at: at(0), profileId: nora.id },
+      { type: 'song_started', songId: 'starter:ode', practice: 'right', tempo: 1, mode: 'wait', at: at(1), profileId: nora.id },
+      { type: 'setting_changed', key: 'onWrong', from: 'wait', to: 'show', at: at(2), profileId: nora.id },
+      { type: 'setting_changed', key: 'keyNames', from: true, to: false, at: at(3), profileId: nora.id },
+    ] as LogRecord[])
+    history.replaceState(null, '', '#/progress')
+    render(<Shell store={store} />)
+    await screen.findByText('Changed')
+    const changes = [...document.querySelectorAll('li')].map((li) => li.textContent).filter((x) => x?.includes('→'))
+    expect(changes).toEqual(['6 JanNames on the keys: on → off', '6 JanOn a wrong note: Wait for it → Show it'])
+  })
+})
+
 describe('Progress: a long song learnt in parts', () => {
   it('shows each song’s tries and parts learnt beside it, and where a keyboard setup was left', async () => {
     const store = memoryStore()
@@ -126,7 +164,10 @@ describe('Progress: a long song learnt in parts', () => {
     await store.set(K.log(nora.id), records)
     history.replaceState(null, '', '#/progress')
     render(<Shell store={store} />)
-    expect(await screen.findByText('3 tries · 3 parts learnt')).toBeTruthy()
-    expect(screen.getByText('Keyboard setup: 1 finished · 2 left before the end, at: Allow access ×2')).toBeTruthy()
+    await screen.findByText('At a glance')
+    expect(songFigures('When the Saints Go Marching In')).toEqual(['3', '3', '–', '–'])
+    expect(valueOf('Setups finished')).toBe('1')
+    expect(valueOf('Setups left before the end')).toBe('2')
+    expect(valueOf('at “Allow access”')).toBe('2')
   })
 })

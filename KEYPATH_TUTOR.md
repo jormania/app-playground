@@ -1172,6 +1172,21 @@ left before the end four times out of six. What it changed:
   the step that stops people shows. Her first four are in the log already and show once this is
   deployed.
 
+*Progress, made readable* (the same day, from a screenshot of it: "difficult to read"). Each
+card was a run of figures in sentences ("Note race 1× (on the staff 0×), rhythm echo 0×, …"), with
+unrelated things sharing a card and settings shown as stored ("onWrong: wait → show"). Now:
+
+- *At a glance*, a song's totals and the Studio are tiles: the number large, its label under it.
+- *Doors* and the *Journey* are meters: the name, the figure on the right, the bar, a quiet line
+  under it; a door never opened says so instead of "0× · 0× · ~0 min".
+- *Songs* is a table, each song two rows: its title across the width, then tries, parts learnt,
+  finished and stars in columns, so a long title never pushes the figures off a 320 px phone.
+- *Challenges* lists the games played, with rounds and the best at each level played (the bests
+  were in the copied text only), and names the rest once: "Not played yet: …".
+- *Keyboard* and *Settings* are cards of their own, label and value on a line; where a setup was
+  left is listed under it; a setting change reads as Settings says it ("On a wrong note: Wait for
+  it → Show it"), newest first.
+
 Not built yet, on her evidence: judging how long notes are held only matters once she plays in
 time, and a second Journey chapter while she has done one step of ten.
 
