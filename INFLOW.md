@@ -43,9 +43,10 @@ Expected payments and costs still due show in Income and Costs whatever the peri
 A book icon in the header, left of the Demo / Notion / This device tag, opens **#/manual**
 (`screens/Manual.tsx`; also *Read the manual* in Settings → Appearance & guide). Written for a
 coach starting out on their own, and every example is coaching (1:1, group, workshops, retreats,
-companies and individuals). Twelve short parts with a contents bar: start here; **set up your
+companies and individuals). Thirteen short parts with a contents bar: start here; **set up your
 practice** (clients, sources, activities and venues mapped to a coaching practice); the three
-kinds of money (a picture); **sessions, packages and retainers** (a single session, a package
+kinds of money (a picture); **what is always on** (the Income tab, insights with coaching
+examples, the four printable reports); **sessions, packages and retainers** (a single session, a package
 paid upfront or in instalments, a monthly retainer, a group programme, a company's invoice; part
 payments, refunds, intro clients); a weekly and monthly routine; which feature to switch on when;
 rooms and venues (deals, break-even, a price that changes, real venue costs); costs and profit;

@@ -1302,7 +1302,7 @@ describe('the manual', () => {
     await user.click(book)
     expect(await screen.findByRole('heading', { name: 'The InFlow manual' })).toBeTruthy()
     const contents = screen.getByRole('navigation', { name: 'Contents' })
-    const parts = ['Start here', 'Set up your practice', 'Three kinds of money', 'Sessions, packages, retainers', 'A simple routine', 'Switch on what you need', 'Rooms and venues', 'Costs and profit', 'Tax', 'What the reports tell you', 'Your data', 'Words used']
+    const parts = ['Start here', 'Set up your practice', 'Three kinds of money', 'Always on: income, insights, print', 'Sessions, packages, retainers', 'A simple routine', 'Switch on what you need', 'Rooms and venues', 'Costs and profit', 'Tax', 'What the reports tell you', 'Your data', 'Words used']
     expect(within(contents).getAllByRole('button')).toHaveLength(parts.length)
     for (const part of parts) {
       expect(screen.getByRole('heading', { name: part, level: 2 })).toBeTruthy()

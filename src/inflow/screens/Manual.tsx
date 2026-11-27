@@ -6,7 +6,7 @@
  * It states what the screens do: change a screen named here, check the line here too.
  */
 import type { ReactNode } from 'react'
-import { AlertTriangle, BookOpen, CalendarClock, Coins, Database, Info, Landmark, Lightbulb, MapPin, Package, PieChart, Receipt, Settings as Cog, Sparkles, Users } from 'lucide-react'
+import { AlertTriangle, BookOpen, CalendarClock, Coins, Database, Info, Landmark, Lightbulb, List, MapPin, Package, PieChart, Printer, Receipt, Settings as Cog, Sparkles, Users } from 'lucide-react'
 import { BackBar } from '../components/BackBar'
 import styles from '../styles/ui.module.css'
 
@@ -14,6 +14,7 @@ const SECTIONS: { id: string; title: string; icon: ReactNode }[] = [
   { id: 'start', title: 'Start here', icon: <Sparkles size={16} aria-hidden /> },
   { id: 'practice', title: 'Set up your practice', icon: <Users size={16} aria-hidden /> },
   { id: 'money', title: 'Three kinds of money', icon: <Coins size={16} aria-hidden /> },
+  { id: 'core', title: 'Always on: income, insights, print', icon: <List size={16} aria-hidden /> },
   { id: 'packages', title: 'Sessions, packages, retainers', icon: <Package size={16} aria-hidden /> },
   { id: 'routine', title: 'A simple routine', icon: <CalendarClock size={16} aria-hidden /> },
   { id: 'features', title: 'Switch on what you need', icon: <Cog size={16} aria-hidden /> },
@@ -176,6 +177,7 @@ export function Manual() {
           <li><b>Look around the demo.</b> It is an invented coaching practice, so every screen is filled in. Your data is kept apart.</li>
           <li><b>Switch to your data</b> in Settings → Your data: this device, or your Notion.</li>
           <li><b>Set up your practice</b> (part 2): your clients, how they find you, where you coach.</li>
+          <li><b>Get to know the Income tab, insights and printable reports</b> (part 4): they are on from the start.</li>
           <li><b>Add a payment</b> with <i>Add income</i>: amount, client, date. Everything else is optional.</li>
         </ol>
       </Section>
@@ -203,6 +205,40 @@ export function Manual() {
       </Section>
 
       <Section {...SECTIONS[3]}>
+        <p>Three things are on from the start, and are all most coaches need in their first months.</p>
+
+        <h3 className={styles.manualSub}><List size={15} aria-hidden /> Income</h3>
+        <p>The Income tab lists every payment, newest first, grouped by month with each month’s total.</p>
+        <ul className={styles.manualList}>
+          <li><b>Search</b> by client, venue or note, and <b>filter</b> by client, source, venue, activity or status.</li>
+          <li><b>Where it came from</b> splits the period by source, client, venue or activity; tap a part to see only those payments.</li>
+          <li>Tap a payment to change it. <b>Copy</b> starts the next one from it: Ioana’s weekly session, same fee, dated today.</li>
+          <li><b>CSV</b> exports what is shown, for a spreadsheet or your accountant.</li>
+        </ul>
+
+        <h3 className={styles.manualSub}><Lightbulb size={15} aria-hidden /> Insights</h3>
+        <p>InFlow reads your payments and says, in plain words, what is worth a look. Only what applies to you shows: the best three on the Overview under <i>Worth a look</i>, all of them in Reports → Review → <i>Pain points</i>. For a coach, typically:</p>
+        <ul className={styles.manualList}>
+          <li>a regular client who has gone quiet, or one who is booking more;</li>
+          <li>individual clients who came for one session and never returned;</li>
+          <li>your quietest month, so you can plan for it next year;</li>
+          <li>a large share of income from one client, often a single company contract;</li>
+          <li>with Venue deals on, a room that lost money, or the same work paying better in another room;</li>
+          <li>with Expected payments on, money that is overdue.</li>
+        </ul>
+        <p>👍 keeps an insight on top; 👎 hides it, or every insight like it. Settings → Features brings hidden ones back.</p>
+
+        <h3 className={styles.manualSub}><Printer size={15} aria-hidden /> Printable reports</h3>
+        <p>Reports → Print has four ready reports. Each follows the period chosen at the top; <i>Print / save as PDF</i> makes a file, <i>HTML</i> keeps a copy, and <i>Adjust</i> changes the title or sections.</p>
+        <Table head={['Report', 'Print it', 'It holds']} rows={[
+          ['Month at a glance', 'At the end of each month', 'What came in, what moved, who paid most'],
+          ['Year in review', 'Once a year, before planning the next', 'The year’s shape, your best and weakest work, clients and rooms'],
+          ['Client statement', 'When a client asks what they’ve paid, e.g. a company’s HR for its coaching budget', 'That client’s payments and total, nothing about anyone else'],
+          ['For my accountant', 'Before filing, or when they ask', 'Income by source, profit, tax summary, every payment and cost'],
+        ]} />
+      </Section>
+
+      <Section {...SECTIONS[4]}>
         <p>Coaching is sold in many shapes. Record each the way the money actually moves:</p>
         <Table head={['You sell', 'Record it as', 'So that']} rows={[
           ['A single session', 'One payment, Sessions 1', 'Each session is one line'],
@@ -218,7 +254,7 @@ export function Manual() {
         <Careful>Never edit or delete a payment to undo money you paid back. Record a refund, so past months stay right.</Careful>
       </Section>
 
-      <Section {...SECTIONS[4]}>
+      <Section {...SECTIONS[5]}>
         <ul className={styles.manualList}>
           <li><b>After each session:</b> add the payment, or tap <i>Received</i> on the one you expected.</li>
           <li><b>Once a week:</b> open the Overview. Check what is overdue and what is expected this month.</li>
@@ -227,13 +263,13 @@ export function Manual() {
         <Tip>Set a monthly income target in Settings → Target and flags: the Overview then shows how far along the month is.</Tip>
       </Section>
 
-      <Section {...SECTIONS[5]}>
-        <p>InFlow starts with income, insights and printable reports. Turn the rest on in <b>Settings → Features</b> when your practice needs it:</p>
+      <Section {...SECTIONS[6]}>
+        <p>Income, insights and printable reports are always there (part 4). Turn the rest on in <b>Settings → Features</b> when your practice needs it:</p>
         <Table head={['Feature', 'Turn it on when', 'What you get']} rows={FEATURES} />
         <Note>Turning a feature off only hides it. What you recorded stays, and comes back when you turn it on.</Note>
       </Section>
 
-      <Section {...SECTIONS[6]}>
+      <Section {...SECTIONS[7]}>
         <p>With <i>Venue deals</i> on, tell InFlow how each place is paid, and it works out what every session there leaves you:</p>
         <dl className={styles.manualDefs}>
           <div className={styles.manualDefAccent}><dt>Fixed fee</dt><dd>The same price whoever comes: 200 lei an evening for the group room. Pays off when groups are full.</dd></div>
@@ -245,7 +281,7 @@ export function Manual() {
         <Note>Venue deals estimates from the deal. When you pay the venue (the retreat centre’s invoice, a month’s rent), record it with <i>+ Add a cost</i> so it counts in Profit and Cash flow. Nothing is counted twice.</Note>
       </Section>
 
-      <Section {...SECTIONS[7]}>
+      <Section {...SECTIONS[8]}>
         <p>With <i>Costs</i> on, record what you spend. Its <b>kind</b> decides where it counts:</p>
         <ul className={styles.manualList}>
           <li><b>Costs of the work</b>, paid because a session happened: the group room, a retreat venue, workbooks, a co-coach.</li>
@@ -256,7 +292,7 @@ export function Manual() {
         <Tip>Mark a cost <i>deductible</i> when it can be claimed against tax (PFA in the real system, SRL). Unsure? Ask your accountant once, and note the answer on the cost.</Tip>
       </Section>
 
-      <Section {...SECTIONS[8]}>
+      <Section {...SECTIONS[9]}>
         <p>With <i>Tax suggestions</i> on, InFlow estimates your tax from the published Romanian rules for your set-up (Settings → Tax profile: PFA in the real system, PFA on a norm, micro-SRL).</p>
         <ul className={styles.manualList}>
           <li>Each payment gets a <b>suggested</b> treatment (taxable, withheld, VAT) to confirm or change.</li>
@@ -267,7 +303,7 @@ export function Manual() {
         <Careful>These are estimates to plan with, not tax advice. Rules change every year; your accountant has the last word.</Careful>
       </Section>
 
-      <Section {...SECTIONS[9]}>
+      <Section {...SECTIONS[10]}>
         <p>The period buttons at the top (Week, Month, Year…) set what every screen covers. Each report answers one question:</p>
         <div className={styles.manualCards}>
           {[
@@ -277,13 +313,13 @@ export function Manual() {
             ['Venue deals', 'Is this room worth it, and would another deal suit me better?'],
             ['Profit', 'What do I keep after costs, month by month?'],
             ['Tax', 'How much should I have set aside by now?'],
-            ['Print', 'A report as PDF, for me or my accountant.'],
+            ['Print', 'A report as PDF, for me, a client or my accountant (part 4).'],
           ].map(([t, d]) => <div key={t} className={styles.manualCard}><b>{t}</b><span>{d}</span></div>)}
         </div>
         <Note>Watch how much of your income comes from one client: the Review flags it. A practice resting on one company contract is fragile.</Note>
       </Section>
 
-      <Section {...SECTIONS[10]}>
+      <Section {...SECTIONS[11]}>
         <ul className={styles.manualList}>
           <li><b>This device:</b> your data stays in this browser. Nothing is sent anywhere.</li>
           <li><b>Notion:</b> your data lives in your own Notion, on every device you use.</li>
@@ -292,7 +328,7 @@ export function Manual() {
         <Careful>On <i>This device</i>, clearing the browser’s data deletes your records. Download a backup every month; InFlow reminds you.</Careful>
       </Section>
 
-      <Section {...SECTIONS[11]}>
+      <Section {...SECTIONS[12]}>
         <dl className={styles.manualGlossary}>
           {[
             ['Income', 'Your coaching fees. Not money back for costs, not tax withheld.'],
