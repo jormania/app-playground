@@ -44,11 +44,12 @@ describe('Progress', () => {
     await setUp()
     // The seeded evening; the session opening Progress just started plays nothing, so it isn't a day played.
     expect(await screen.findByText('Days played: 1')).toBeTruthy()
-    expect(screen.getByText('Sessions: 2, 10 min in all')).toBeTruthy()
+    // Said as two numbers, not one: "Sessions: 9, 37 min" read as 9.37 minutes.
+    expect(screen.getByText('2 sessions · 10 min in all')).toBeTruthy()
     // Songs, opened once and first; about nine minutes there.
     expect(screen.getByText('opened 1× · first 1× · ~9 min')).toBeTruthy()
     expect(screen.getByText('Ode to Joy')).toBeTruthy()
-    expect(screen.getByText(/1 finished · 0 stopped · ★★★/)).toBeTruthy()
+    expect(screen.getByText('1 try · finished once · ★★★')).toBeTruthy()
     expect(screen.getByText('1 of 10 steps done, 0 of them tested out')).toBeTruthy()
   })
 
@@ -101,5 +102,31 @@ describe('Progress', () => {
     await setUp()
     expect(await screen.findByText(/With an Anthropic key in Settings → Claude/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Write this week’s note' })).toBeNull()
+  })
+})
+
+describe('Progress: a long song learnt in parts', () => {
+  it('shows each song’s tries and parts learnt beside it, and where a keyboard setup was left', async () => {
+    const store = memoryStore()
+    const profiles = new ProfileRepo(store)
+    const nora = await profiles.create('Nora', '🐺')
+    await profiles.setCurrent(nora.id)
+    const at = (m: number) => new Date(2025, 0, 6, 18, m).toISOString()
+    const song = 'starter:saints'
+    const records: LogRecord[] = [
+      { type: 'session_start', at: at(0), profileId: nora.id },
+      { type: 'keyboard_setup', outcome: 'left', step: 'allow', ms: 4000, at: at(1), profileId: nora.id },
+      { type: 'keyboard_setup', outcome: 'left', step: 'allow', ms: 4000, at: at(2), profileId: nora.id },
+      { type: 'keyboard_setup', outcome: 'done', step: 'play', ms: 20000, at: at(3), profileId: nora.id },
+      ...[1, 2, 3].flatMap((n): LogRecord[] => [
+        { type: 'song_started', songId: song, practice: 'right', tempo: 1, mode: 'wait', at: at(4 + n), profileId: nora.id },
+        { type: 'song_part', songId: song, practice: 'right', part: `p${n}`, passed: true, wrong: 0, at: at(4 + n), profileId: nora.id },
+      ]),
+    ]
+    await store.set(K.log(nora.id), records)
+    history.replaceState(null, '', '#/progress')
+    render(<Shell store={store} />)
+    expect(await screen.findByText('3 tries · 3 parts learnt')).toBeTruthy()
+    expect(screen.getByText('Keyboard setup: 1 finished · 2 left before the end, at: Allow access ×2')).toBeTruthy()
   })
 })

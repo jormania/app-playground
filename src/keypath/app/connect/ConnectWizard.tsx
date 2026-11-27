@@ -6,22 +6,14 @@ import type { MidiEvent } from '../../midi/types'
 import { WebMidiConnection } from '../../midi/webMidiConnection'
 import { celebrate } from '../celebrate/celebrate'
 import { useApp } from '../context'
-import { noteLabel, type StringKey } from '../i18n'
+import { noteLabel } from '../i18n'
 import { navigate } from '../router'
 import { TopBar } from '../screens/TopBar'
 import { connectKeyboard, useKeyboard } from './keyboard'
 import { rememberKeyboard } from './remember'
-import { currentStep, detectXiaomi, stateOf, STUCK_AFTER_MS, stepsFor, type SetupStep } from './setup'
+import { currentStep, detectXiaomi, SETUP_STEP_TITLE, stateOf, STUCK_AFTER_MS, stepsFor, type SetupStep } from './setup'
 import styles from './connect.module.css'
 
-const TITLE: Record<Exclude<SetupStep, 'done'>, StringKey> = {
-  browser: 'stepBrowser',
-  otg: 'stepOtg',
-  plug: 'stepPlug',
-  allow: 'stepAllow',
-  find: 'stepFind',
-  play: 'stepPlay',
-}
 
 /**
  * "Connect the keyboard": the steps from KEYPATH.md §2, one at a time, each
@@ -198,7 +190,7 @@ export function ConnectWizard() {
                     {state === 'done' ? '✓' : problem ? '!' : i + 1}
                   </span>
                   <div className={styles.stepBody}>
-                    <h2 className={styles.stepTitle}>{t(TITLE[s as Exclude<SetupStep, 'done'>])}</h2>
+                    <h2 className={styles.stepTitle}>{t(SETUP_STEP_TITLE[s as Exclude<SetupStep, 'done'>])}</h2>
                     {state === 'done' && detail(s) && <p className={styles.detail}>{detail(s)}</p>}
                     {state === 'current' && body(s)}
                   </div>

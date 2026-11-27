@@ -40,6 +40,10 @@ import styles from './songs.module.css'
 import { con, Setting } from '../console/SetupConsole'
 import type { TodayItem } from '../screens/today'
 import { TodayNext } from '../screens/TodayNext'
+import { recordingToWav } from '../studio/audioExport'
+import { saveFile } from '../studio/saveFile'
+import { TakeRepo } from '../studio/takes'
+import { useOnce } from '../useOnce'
 
 type Phase = 'setup' | 'ready' | 'playing' | 'paused' | 'report' | 'loopBreak' | 'loopDone' | 'partDone'
 /** The phases after a run, when nothing is asked of her. */
@@ -162,6 +166,10 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   // Her last try, kept until the next one starts: the keys she pressed, to hear back from the report.
   const tryRec = useRef<Recorder | null>(null)
   const [tryTake, setTryTake] = useState<Recording | null>(null)
+  /** Her try, kept in the Studio from the report (by the take's name), or the Studio full; and sending it as a sound file. */
+  const [kept, setKept] = useState<{ name: string } | 'full' | null>(null)
+  const [sending, setSending] = useState(false)
+  const [sendNote, setSendNote] = useState<string | null>(null)
   const [hearing, setHearing] = useState(false)
   const tryPlayback = useRef<Playback | null>(null)
   // "Practise bars" from the setup: which bars, and a stretch waiting for middle C to be found first.
@@ -524,6 +532,8 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
       silenceTry()
       tryRec.current = new Recorder(at)
       setTryTake(null)
+      setKept(null)
+      setSendNote(null)
       setResults(new Map())
       setStreak(0)
       setPartResult(null)
@@ -655,6 +665,35 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
   }
   useEffect(() => () => tryPlayback.current?.stop(), [])
   const hear = tryTake && tryTake.notes.length > 0 ? { playing: hearing, onToggle: hearTry } : null
+
+  // A performance to keep: her try goes into the Studio's takes, named after the song,
+  // and can be sent as a sound file (to a parent, to grandparents) straight from here.
+  const once = useOnce()
+  const keepTry = once(async () => {
+    if (!tryTake || !profileId || kept) return
+    const take = await new TakeRepo(store).keep(profileId, tryTake, { style: false, songId: song.id, songTitle: song.title })
+    if (!take) return setKept('full')
+    setKept({ name: t('studioTakeOf', { title: song.title, n: take.n }) })
+    void log.add(profileId, { type: 'studio_kept', takeId: take.id })
+  })
+  const sendTry = once(async () => {
+    if (!tryTake) return
+    setSending(true)
+    setSendNote(null)
+    try {
+      const name = kept && kept !== 'full' ? kept.name : song.title
+      const file = await recordingToWav(tryTake, name)
+      const outcome = await saveFile(file, name)
+      if (outcome === 'saved') setSendNote(t('audioSaved', { file: file.name }))
+      if (outcome === 'error') setSendNote(t('audioError'))
+      if (profileId) void log.add(profileId, { type: 'audio_sent', songId: song.id, outcome })
+    } catch {
+      setSendNote(t('audioError'))
+    } finally {
+      setSending(false)
+    }
+  })
+  const keepSend = hear ? { kept, sending, note: sendNote, onKeep: () => void keepTry(), onSend: () => void sendTry() } : null
 
   useEffect(() => {
     if (!listening) return
@@ -889,7 +928,7 @@ function Player({ song, t, settings, profileId, log, store }: PlayerProps) {
     return (
       <main className={styles.screen}>
         <TopBar title={song.title} dense />
-        <ReportView report={report} songId={song.id} coach={duoResults ? null : coach} together={duoResults} hear={hear} barLabel={(b) => barName(song, b)} onPlayAgain={playAgain} onPractiseBar={(bar) => practiseBar(bar)} next={next && { title: next.title, onOpen: () => navigate({ name: 'play', songId: next.id }) }} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} today={todayItem} />
+        <ReportView report={report} songId={song.id} coach={duoResults ? null : coach} together={duoResults} hear={hear} barLabel={(b) => barName(song, b)} onPlayAgain={playAgain} onPractiseBar={(bar) => practiseBar(bar)} next={next && { title: next.title, onOpen: () => navigate({ name: 'play', songId: next.id }) }} onAnotherSong={() => navigate({ name: 'door', door: 'songs' })} onMakeItYours={() => navigate({ name: 'studio', songId: song.id })} today={todayItem} keepSend={keepSend} />
       </main>
     )
   }

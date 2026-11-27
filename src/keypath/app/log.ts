@@ -52,6 +52,8 @@ export type LogEvent =
   | { type: 'studio_deleted'; takeId: string }
   | { type: 'studio_renamed'; takeId: string }
   | { type: 'studio_exported'; takeId: string; outcome: 'shared' | 'cancelled' | 'saved' | 'error' }
+  /** Her playing sent as a sound file: a kept take, or her try at a song straight from its report. */
+  | { type: 'audio_sent'; takeId?: string; songId?: string; outcome: 'shared' | 'cancelled' | 'saved' | 'error' }
   /** Claude answered a take with a phrase of its own (ok), or no usable answer came back. */
   | { type: 'studio_answer'; takeId: string; ok: boolean }
   /** She took Claude's answer into Songs, to learn it. */

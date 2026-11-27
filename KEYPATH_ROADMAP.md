@@ -16,6 +16,10 @@ release 5 (`KEYPATH_TUTOR.md` §9: "Audit, Long Listen style", "Quality of life"
 fixed what daily use runs into; the open items below are the same ones, waiting on the same
 things.
 
+Updated 2026-11-27, after Nora's first evening (`KEYPATH_TUTOR.md` §9): songs are her door and she
+learns long ones in parts, so song features rank first. Item 14 (held notes) waits until she plays
+in time, and a second Journey chapter until she is further along the first.
+
 The ranking is a judgement, not a measurement. Two things should re-rank it:
 - **Nora's answers** to the open questions in `KEYPATH_TUTOR.md` §8 (what she
   liked in Simply Piano and Flowkey, the one song she'd love to play, songs vs

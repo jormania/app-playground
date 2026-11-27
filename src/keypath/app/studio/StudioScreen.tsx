@@ -20,6 +20,7 @@ import { CLICK, Metronome } from './metronome'
 import { MAX_TAKE_MS, Recorder, type Recording } from './recorder'
 import { OutputChoice, useOutput } from './output'
 import { saveFile } from './saveFile'
+import { recordingToWav } from './audioExport'
 import { MAX_KEPT, MAX_NAME, TakeRepo, type Draft, type Take } from './takes'
 import { readAiKey } from '../ai'
 import { navigate } from '../router'
@@ -343,6 +344,24 @@ export function StudioScreen({ songId }: { songId?: string }) {
     if (outcome === 'error') setSaved({ id: take.id, text: t('studioMidiError') })
     if (profileId) void log.add(profileId, { type: 'studio_exported', takeId: take.id, outcome })
   }
+  /** A take as a sound file any phone plays: to send, where a .mid file wouldn't open. */
+  const [sendingId, setSendingId] = useState<string | null>(null)
+  const sendTake = async (take: Take) => {
+    if (sendingId) return
+    setSendingId(take.id)
+    try {
+      const name = nameOf(take)
+      const file = await recordingToWav(take, name)
+      const outcome = await saveFile(file, name)
+      if (outcome === 'saved') setSaved({ id: take.id, text: t('audioSaved', { file: file.name }) })
+      if (outcome === 'error') setSaved({ id: take.id, text: t('audioError') })
+      if (profileId) void log.add(profileId, { type: 'audio_sent', takeId: take.id, outcome })
+    } catch {
+      setSaved({ id: take.id, text: t('audioError') })
+    } finally {
+      setSendingId(null)
+    }
+  }
   const remove = async (take: Take) => {
     if (!profileId) return
     if (sure !== take.id) return setSure(take.id)
@@ -575,6 +594,9 @@ export function StudioScreen({ songId }: { songId?: string }) {
                         🎶 {t('studioAnswer')}
                       </Button>
                     )}
+                    <Button size="sm" variant="outline" disabled={sendingId === take.id} onClick={() => void sendTake(take)}>
+                      {sendingId === take.id ? t('audioMaking') : t('studioSendAudio')}
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => void exportTake(take)}>
                       {t('studioSaveMidi')}
                     </Button>

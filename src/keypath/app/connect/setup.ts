@@ -1,4 +1,5 @@
 import type { AccessState } from '../../midi/types'
+import type { StringKey } from '../i18n'
 
 /**
  * The connection wizard's steps (KEYPATH.md §2, the order that worked on the
@@ -6,6 +7,16 @@ import type { AccessState } from '../../midi/types'
  * someone to do a thing it can already see has been done.
  */
 export type SetupStep = 'browser' | 'otg' | 'plug' | 'allow' | 'find' | 'play' | 'done'
+
+/** Each step's name, as the wizard heads it (and Progress names where a setup was left). */
+export const SETUP_STEP_TITLE: Record<Exclude<SetupStep, 'done'>, StringKey> = {
+  browser: 'stepBrowser',
+  otg: 'stepOtg',
+  plug: 'stepPlug',
+  allow: 'stepAllow',
+  find: 'stepFind',
+  play: 'stepPlay',
+}
 
 export interface SetupFacts {
   /** From the connection, or the pre-check when Web MIDI isn't there at all. */

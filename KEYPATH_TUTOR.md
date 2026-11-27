@@ -1145,6 +1145,36 @@ the notes already had time limits; "Connect" on the setup screens reads 4 px wid
 only because of its larger tap area. A sweep of every screen above, after the fixes: no sideways
 scroll, no hidden option, no page or console error.
 
+### From Nora's first evening (2026-11-27)
+
+The first real log: one evening on her father's phone, 37 minutes. Songs took 28 of them and 54
+starts: Interstellar learnt in parts (27 of 34 parts learnt) to three stars, Twinkle finished
+eleven times, the Journey's first step, one Note race (24 at level 1), no Studio, no warm-up. She
+stayed on "Wait for it", passing the report's suggestion each time, and the keyboard setup was
+left before the end four times out of six. What it changed:
+
+- *Progress said "Sessions: 9, 37 min in all"*, which read as 9.37 minutes. Now "9 sessions ·
+  37 min in all".
+- *A long song's work didn't show beside it.* Its row said "1 finished · 0 stopped", and its parts
+  were one line for all songs together. Each song's row now has its tries and parts learnt
+  (`SongStats.partsPlayed`, `partsLearnt`), e.g. "20 tries · 12 parts learnt · finished once ·
+  ★★★" (the numbers there are an example).
+- *Keep it, and send it* (`studio/audioExport.ts`). From the report, Keep it puts her try into the
+  Studio's takes, named after the song; Send it renders it, with the phone's own voice, into a WAV
+  in an offline audio context and passes it to the share sheet (a download where there is none):
+  a performance to send to a parent or grandparent. Any take in the Studio can be sent the same
+  way, beside Save as MIDI, which most phones won't open. Logged as `audio_sent`.
+- *The next step up says what changes.* "Try “Show it” next time?" named a setting she had never
+  used; it is now "Ready to play it in time? The song keeps moving, and a wrong key just
+  flashes.", one sentence for each step of the ramp, and "Yes, let’s try".
+- *Where a keyboard setup was left* is counted per step (`keyboard.leftAt`) and shown in Progress
+  ("Keyboard setup: 2 finished · 4 left before the end, at:" and each step with its count), so
+  the step that stops people shows. Her first four are in the log already and show once this is
+  deployed.
+
+Not built yet, on her evidence: judging how long notes are held only matters once she plays in
+time, and a second Journey chapter while she has done one step of ten.
+
 ### Second audit, Long Listen style (2026-10-28)
 
 The whole app read again by area (engine and file readers, MIDI, data, every screen's flows, the

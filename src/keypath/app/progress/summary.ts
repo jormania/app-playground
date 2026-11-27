@@ -13,6 +13,9 @@ export interface SongStats {
   started: number
   finished: number
   abandoned: number
+  /** Its parts played, and learnt, short of the whole song: most of the work on a long song. */
+  partsPlayed: number
+  partsLearnt: number
   /** Best stars from a finished run; null if never finished. */
   bestStars: number | null
 }
@@ -48,7 +51,8 @@ export interface ProgressSummary {
   studio: { opened: number; recorded: number; kept: number; played: number }
   suggestions: { accepted: number; declined: number }
   settingsChanged: { key: string; from: unknown; to: unknown; at: string }[]
-  keyboard: { setupsDone: number; setupsLeft: number; lostMidSong: number }
+  /** `leftAt`: the step each unfinished setup was left on, counted, so a step that stops people shows. */
+  keyboard: { setupsDone: number; setupsLeft: number; leftAt: Record<string, number>; lostMidSong: number }
 }
 
 /** A local calendar date, the phone's own time zone. */
@@ -68,7 +72,7 @@ export function summarise(records: readonly LogRecord[]): ProgressSummary {
   const doors = Object.fromEntries(DOORS.map((d) => [d, { opens: 0, firstOpens: 0, minutes: 0 }])) as Record<Door, DoorStats>
   const songs = new Map<string, SongStats>()
   const song = (id: string) => {
-    if (!songs.has(id)) songs.set(id, { songId: id, started: 0, finished: 0, abandoned: 0, bestStars: null })
+    if (!songs.has(id)) songs.set(id, { songId: id, started: 0, finished: 0, abandoned: 0, partsPlayed: 0, partsLearnt: 0, bestStars: null })
     return songs.get(id)!
   }
   const s: ProgressSummary = {
@@ -86,7 +90,7 @@ export function summarise(records: readonly LogRecord[]): ProgressSummary {
     studio: { opened: 0, recorded: 0, kept: 0, played: 0 },
     suggestions: { accepted: 0, declined: 0 },
     settingsChanged: [],
-    keyboard: { setupsDone: 0, setupsLeft: 0, lostMidSong: 0 },
+    keyboard: { setupsDone: 0, setupsLeft: 0, leftAt: {}, lostMidSong: 0 },
   }
   const days = new Set<string>()
   let sessionMs = 0
@@ -152,7 +156,11 @@ export function summarise(records: readonly LogRecord[]): ProgressSummary {
         // The whole song is the last step of the way, not a part: it counts as finished, above.
         if (r.part === 'whole') break
         s.songs.parts.played++
-        if (r.passed) s.songs.parts.learnt++
+        song(r.songId).partsPlayed++
+        if (r.passed) {
+          s.songs.parts.learnt++
+          song(r.songId).partsLearnt++
+        }
         break
       case 'song_loop':
         s.songs.bars.practised++
@@ -198,7 +206,10 @@ export function summarise(records: readonly LogRecord[]): ProgressSummary {
         break
       case 'keyboard_setup':
         if (r.outcome === 'done') s.keyboard.setupsDone++
-        else s.keyboard.setupsLeft++
+        else {
+          s.keyboard.setupsLeft++
+          s.keyboard.leftAt[r.step] = (s.keyboard.leftAt[r.step] ?? 0) + 1
+        }
         break
       case 'keyboard_lost':
         s.keyboard.lostMidSong++

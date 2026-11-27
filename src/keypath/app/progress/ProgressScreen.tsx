@@ -13,7 +13,8 @@ import type { Profile } from '../profiles'
 import { TopBar } from '../screens/TopBar'
 import { SongLibrary } from '../songs/library'
 import { TakeRepo } from '../studio/takes'
-import { summarise, type ProgressSummary } from './summary'
+import { SETUP_STEP_TITLE } from '../connect/setup'
+import { summarise, type ProgressSummary, type SongStats } from './summary'
 import styles from './progress.module.css'
 
 const DOOR_TITLE: Record<Door, StringKey> = { songs: 'doorSongs', journey: 'doorJourney', challenges: 'doorChallenges', studio: 'doorStudio' }
@@ -96,6 +97,17 @@ export function ProgressScreen() {
   const s = data?.summary
   /** "24 Sep" (or "24 sept." in Romanian) from the summary's local YYYY-MM-DD. */
   const day = (d: string | null) => (d ? new Date(`${d}T12:00`).toLocaleDateString(settings.language === 'ro' ? 'ro-RO' : 'en-GB', { day: 'numeric', month: 'short' }) : '')
+  /** A song's line: every try, the parts learnt on it, then how its whole runs went. A long song is mostly parts. */
+  const songRow = (x: SongStats) =>
+    [
+      t('pSongTries', { count: x.started }),
+      x.partsLearnt > 0 && t('pSongPartsLearnt', { count: x.partsLearnt }),
+      x.finished > 0 && t('pSongFinished', { count: x.finished }),
+      x.abandoned > 0 && t('pSongStopped', { count: x.abandoned }),
+      x.bestStars !== null && '★'.repeat(x.bestStars),
+    ]
+      .filter(Boolean)
+      .join(' · ')
   const doneSteps = data ? JOURNEY.filter((x) => data.journey[x.id]) : []
 
   return (
@@ -149,14 +161,12 @@ export function ProgressScreen() {
                   <li key={x.songId} className={styles.songRow}>
                     <span className={styles.rowTitle}>{data.titles.get(x.songId) ?? x.songId}</span>
                     <span className={styles.rowMeta}>
-                      {t('pSongRow', { finished: x.finished, abandoned: x.abandoned })}
-                      {x.bestStars !== null && ` · ${'★'.repeat(x.bestStars)}`}
+                      {songRow(x)}
                     </span>
                   </li>
                 ))}
               </ul>
             )}
-            {s.songs.parts.played > 0 && <p className={styles.hint}>{t('pParts', { count: s.songs.parts.played, learnt: s.songs.parts.learnt })}</p>}
             {s.songs.bars.practised > 0 && <p className={styles.hint}>{t('pBars', { count: s.songs.bars.practised, clean: s.songs.bars.clean })}</p>}
             {s.songs.added > 0 && <p className={styles.hint}>{t('pAdded', { count: s.songs.added })}</p>}
           </section>
@@ -178,6 +188,19 @@ export function ProgressScreen() {
           <section className={styles.panel}>
             <p>{t('pSuggestions', { accepted: s.suggestions.accepted, declined: s.suggestions.declined })}</p>
             {s.keyboard.lostMidSong > 0 && <p>{t('pKeyboard', { count: s.keyboard.lostMidSong })}</p>}
+            {s.keyboard.setupsDone + s.keyboard.setupsLeft > 0 && (
+              <p>
+                {t('pSetups', { count: s.keyboard.setupsDone })}
+                {s.keyboard.setupsLeft > 0 &&
+                  ` · ${t('pSetupsLeft', {
+                    count: s.keyboard.setupsLeft,
+                    where: Object.entries(s.keyboard.leftAt)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([step, n]) => `${step in SETUP_STEP_TITLE ? t(SETUP_STEP_TITLE[step as keyof typeof SETUP_STEP_TITLE]) : step} ×${n}`)
+                      .join(', '),
+                  })}`}
+              </p>
+            )}
             {s.settingsChanged.length > 0 && (
               <>
                 <h2 className={styles.h2}>{t('pSettings')}</h2>

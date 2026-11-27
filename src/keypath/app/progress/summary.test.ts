@@ -58,8 +58,9 @@ describe('summarise', () => {
   it('shows what she finishes and what she abandons, song by song', () => {
     expect(s.songs).toMatchObject({ started: 3, finished: 2, abandoned: 1, bars: { practised: 2, clean: 1 }, parts: { played: 2, learnt: 1 } })
     expect(s.songs.bySong).toEqual([
-      { songId: 'starter:ode', started: 2, finished: 2, abandoned: 0, bestStars: 3 },
-      { songId: 'starter:twinkle', started: 1, finished: 0, abandoned: 1, bestStars: null },
+      { songId: 'starter:ode', started: 2, finished: 2, abandoned: 0, partsPlayed: 0, partsLearnt: 0, bestStars: 3 },
+      // Its parts are counted with it: most of the work on a long song is parts.
+      { songId: 'starter:twinkle', started: 1, finished: 0, abandoned: 1, partsPlayed: 2, partsLearnt: 1, bestStars: null },
     ])
   })
 
@@ -69,7 +70,7 @@ describe('summarise', () => {
     expect(s.studio).toEqual({ opened: 0, recorded: 1, kept: 1, played: 0 })
     expect(s.suggestions).toEqual({ accepted: 1, declined: 0 })
     expect(s.settingsChanged).toEqual([{ key: 'onWrong', from: 'wait', to: 'show', at: new Date('2026-09-21T18:04:10').toISOString() }])
-    expect(s.keyboard).toEqual({ setupsDone: 0, setupsLeft: 0, lostMidSong: 1 })
+    expect(s.keyboard).toEqual({ setupsDone: 0, setupsLeft: 0, leftAt: {}, lostMidSong: 1 })
   })
 
   it('stops a door’s time when she is back on Home, rather than at the next door', () => {
@@ -111,6 +112,18 @@ describe('summarise', () => {
     )
     expect(s.sessions).toBe(2)
     expect(s.days).toEqual(['2026-09-22'])
+  })
+
+  it('says where each keyboard setup left before the end was left', () => {
+    const k = summarise(
+      log(
+        ['2026-11-27T18:00:00', { type: 'keyboard_setup', outcome: 'left', step: 'allow', ms: 4000 }],
+        ['2026-11-27T18:05:00', { type: 'keyboard_setup', outcome: 'left', step: 'allow', ms: 9000 }],
+        ['2026-11-27T18:06:00', { type: 'keyboard_setup', outcome: 'left', step: 'plug', ms: 2000 }],
+        ['2026-11-27T18:08:00', { type: 'keyboard_setup', outcome: 'done', step: 'play', ms: 30000 }],
+      ),
+    ).keyboard
+    expect(k).toEqual({ setupsDone: 1, setupsLeft: 3, leftAt: { allow: 2, plug: 1 }, lostMidSong: 0 })
   })
 
   it('is empty, not broken, for a player with no log yet', () => {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button } from '../../../ds'
-import { Headphones, Play } from 'lucide-react'
+import { Headphones, Play, Send, Star } from 'lucide-react'
 import type { Highlight, OnWrong, Report, Timing } from '../../engine'
 import { celebrate } from '../celebrate/celebrate'
 import { useCountUp } from '../celebrate/useCountUp'
@@ -9,11 +9,15 @@ import type { StringKey } from '../i18n'
 import styles from './songs.module.css'
 import type { FactsInput } from './coach'
 import { CoachNote } from './CoachNote'
+import { MAX_KEPT } from '../studio/takes'
 import type { TodayItem } from '../screens/today'
 import { TodayNext } from '../screens/TodayNext'
 
-const ON_WRONG_LABEL: Record<OnWrong, StringKey> = { keepGoing: 'onWrongKeepGoing', show: 'onWrongShow', wait: 'onWrongWait' }
-const TIMING_LABEL: Record<Timing, StringKey> = { relaxed: 'timingRelaxed', normal: 'timingNormal', strict: 'timingStrict' }
+/**
+ * The next step up, said as what changes rather than by the setting's name:
+ * "Try “Show it”" told a player still on "Wait for it" nothing.
+ */
+const SUGGEST_TEXT: Partial<Record<OnWrong | Timing, StringKey>> = { show: 'suggestShow', keepGoing: 'suggestKeepGoing', normal: 'suggestNormal', strict: 'suggestStrict' }
 
 interface Props {
   report: Report
@@ -36,6 +40,8 @@ interface Props {
   together?: { name: string; avatar: string; hand: 'right' | 'left'; stars: number }[] | null
   /** This song as a Today item, to offer the next of Today's four. */
   today?: TodayItem
+  /** Her try, to keep in the Studio (named once kept, or the Studio full) and to send as a sound file. */
+  keepSend?: { kept: { name: string } | 'full' | null; sending: boolean; note: string | null; onKeep: () => void; onSend: () => void } | null
 }
 
 /**
@@ -43,7 +49,7 @@ interface Props {
  * report setting allows to work on, and a harder setting offered, never applied.
  * Bars are counted from 1 here; the engine counts from 0.
  */
-export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours, onPractiseBar, hear, next, coach, together, today, barLabel = (b) => String(b + 1) }: Props) {
+export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeItYours, onPractiseBar, hear, next, coach, together, today, keepSend, barLabel = (b) => String(b + 1) }: Props) {
   const { t, profile, log, updateSetting, settings } = useApp()
   const [answered, setAnswered] = useState(false)
   const notes = report.highlights.find((h) => h.kind === 'notes')
@@ -100,6 +106,18 @@ export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeI
               {hear.playing ? t('hearStop') : t('hearTry')}
             </Button>
           )}
+          {keepSend && !keepSend.kept && (
+            <Button variant="outline" onClick={keepSend.onKeep}>
+              <Star className={styles.btnIcon} size={18} aria-hidden />
+              {t('keepTry')}
+            </Button>
+          )}
+          {keepSend && (
+            <Button variant="outline" onClick={keepSend.onSend} disabled={keepSend.sending}>
+              <Send className={styles.btnIcon} size={18} aria-hidden />
+              {keepSend.sending ? t('audioMaking') : t('sendTry')}
+            </Button>
+          )}
           <Button variant="outline" onClick={onAnotherSong}>
             {t('anotherSong')}
           </Button>
@@ -111,6 +129,13 @@ export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeI
         </div>
       </div>
       <div className={styles.reportBody}>
+        {keepSend && (keepSend.kept || keepSend.note) && (
+          <p className={styles.hint} role="status">
+            {keepSend.kept === 'full' ? t('studioFull', { max: MAX_KEPT }) : keepSend.kept ? t('keptTry', { name: keepSend.kept.name }) : null}
+            {keepSend.kept && keepSend.note ? ' ' : null}
+            {keepSend.note}
+          </p>
+        )}
         <ul className={styles.highlights}>
           {report.highlights.map((h, i) => (
             <li key={h.kind} style={{ '--i': i } as React.CSSProperties}>
@@ -148,16 +173,14 @@ export function ReportView({ report, songId, onPlayAgain, onAnotherSong, onMakeI
           </div>
         )}
         {today && <TodayNext current={today} />}
-        {s && !answered && (
+        {s && SUGGEST_TEXT[s.to] && !answered && (
           <div className={styles.suggestion}>
             <p>
-              {s.setting === 'onWrong'
-                ? t('suggestOnWrong', { mode: t(ON_WRONG_LABEL[s.to]) })
-                : t('suggestTiming', { timing: t(TIMING_LABEL[s.to]).toLowerCase() })}
+              {t(SUGGEST_TEXT[s.to]!)}
             </p>
             <div className={styles.actions}>
               <Button size="sm" onClick={() => void answer(true)}>
-                {t('yesChange')}
+                {t('yesTry')}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => void answer(false)}>
                 {t('notNow')}

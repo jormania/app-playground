@@ -10,8 +10,20 @@ import { memoryStore, type KeyValueStore } from '../store'
 import { SongLibrary } from './library'
 import { PartsRepo } from './parts'
 import { SetupRepo } from './setup'
+import { TakeRepo } from '../studio/takes'
 
 vi.mock('../../App', () => ({ default: () => <div>probe screen</div> }))
+// No OfflineAudioContext here: the sound file's rendering has its own tests (studio/audioExport.test.ts).
+const sent: { name: string; title: string }[] = []
+vi.mock('../studio/audioExport', () => ({
+  recordingToWav: async (_r: unknown, name: string) => new File([new Uint8Array(44)], `${name.replace(/[^\p{L}\p{N}]+/gu, '-')}.wav`, { type: 'audio/wav' }),
+}))
+vi.mock('../studio/saveFile', () => ({
+  saveFile: async (file: File, title: string) => {
+    sent.push({ name: file.name, title })
+    return 'saved'
+  },
+}))
 
 // Stand-in for the Yamaha: the test plays into whatever the play screen is listening with.
 let yamaha: ((e: MidiEvent) => void) | null = null
@@ -490,6 +502,24 @@ describe('Play screen: practice tools', () => {
     expect(await screen.findByRole('button', { name: 'Stop listening' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Stop listening' }))
     expect(await screen.findByRole('button', { name: 'Hear your try' })).toBeTruthy()
+  })
+
+  it('keeps her try in the Studio, named after the song, and sends it as a sound file', async () => {
+    const { store, profileId } = await setUp({ onWrong: 'wait' }, '#/play/Three%20notes')
+    fireEvent.click(await screen.findByRole('button', { name: /Start/ }))
+    tap(target()!)
+    await playThrough([60, 62, 64])
+    await screen.findByText('How it went')
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
+    expect(await screen.findByText('Kept in the Studio as “Three notes, take 1”.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Keep it' })).toBeNull()
+    const [take] = await new TakeRepo(store).list(profileId)
+    expect(take).toMatchObject({ songTitle: 'Three notes', n: 1 })
+    expect(take.notes.map((n) => n.pitch)).toEqual([60, 62, 64])
+    fireEvent.click(screen.getByRole('button', { name: 'Send it' }))
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]).toMatchObject({ name: 'Three-notes-take-1.wav', title: 'Three notes, take 1' })
+    expect(await screen.findByText(/Saved as Three-notes-take-1\.wav/)).toBeTruthy()
   })
 
   it('practises any bar from the setup: middle C first, then the loop, then back to the setup', async () => {

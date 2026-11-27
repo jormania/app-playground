@@ -26,7 +26,7 @@ const report: Report = {
     { kind: 'cleanBars', bars: [0, 2] },
   ],
   toWorkOn: [{ bar: 1, missed: 0, wrong: 0, early: 1, late: 1 }],
-  suggestion: { setting: 'onWrong', to: 'wait' },
+  suggestion: { setting: 'onWrong', to: 'show' },
 }
 
 function renderReport(language: 'en' | 'ro' = 'en') {
@@ -64,11 +64,12 @@ describe('ReportView', () => {
 
   it('offers the next setting and changes it only when she says yes', async () => {
     const { log, updateSetting } = renderReport()
-    expect(screen.getByText('That went really well. Try “Wait for it” next time?')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Yes, change it' }))
-    await waitFor(() => expect(updateSetting).toHaveBeenCalledWith('onWrong', 'wait'))
-    expect((await log.read('p1')).at(-1)).toMatchObject({ type: 'suggestion', setting: 'onWrong', to: 'wait', accepted: true, songId: 'starter:ode' })
-    expect(screen.queryByRole('button', { name: 'Yes, change it' })).toBeNull()
+    // Said as what changes, not by the setting's name: "Try “Show it”" told a player on "Wait for it" nothing.
+    expect(screen.getByText('That went really well. Ready to play it in time? The song keeps moving, and a wrong key just flashes.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, let’s try' }))
+    await waitFor(() => expect(updateSetting).toHaveBeenCalledWith('onWrong', 'show'))
+    expect((await log.read('p1')).at(-1)).toMatchObject({ type: 'suggestion', setting: 'onWrong', to: 'show', accepted: true, songId: 'starter:ode' })
+    expect(screen.queryByRole('button', { name: 'Yes, let’s try' })).toBeNull()
   })
 
   it('logs “Not now” and leaves the setting alone', async () => {
