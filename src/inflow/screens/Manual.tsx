@@ -1,22 +1,26 @@
 /**
- * The manual: everything a freelancer starting out needs to know about InFlow, on one page, in
- * plain words. Opened from the book in the header (#/manual). Sections are short, with a picture
- * where a picture explains faster, tips in green, notes in blue and things to watch in amber.
+ * The manual: what a coach starting out on their own needs to know about InFlow, on one page, in
+ * plain words. Opened from the book in the header (#/manual) or Settings. Every example is a
+ * coaching practice: 1:1, group, workshops, retreats, companies and individuals. Short parts,
+ * a picture where a picture explains faster; tips green, notes blue, things to watch amber.
+ * It states what the screens do: change a screen named here, check the line here too.
  */
 import type { ReactNode } from 'react'
-import { AlertTriangle, BookOpen, CalendarClock, Coins, Database, Info, Landmark, Lightbulb, MapPin, PieChart, Receipt, Settings as Cog, Sparkles } from 'lucide-react'
+import { AlertTriangle, BookOpen, CalendarClock, Coins, Database, Info, Landmark, Lightbulb, MapPin, Package, PieChart, Receipt, Settings as Cog, Sparkles, Users } from 'lucide-react'
 import { BackBar } from '../components/BackBar'
 import styles from '../styles/ui.module.css'
 
 const SECTIONS: { id: string; title: string; icon: ReactNode }[] = [
   { id: 'start', title: 'Start here', icon: <Sparkles size={16} aria-hidden /> },
+  { id: 'practice', title: 'Set up your practice', icon: <Users size={16} aria-hidden /> },
   { id: 'money', title: 'Three kinds of money', icon: <Coins size={16} aria-hidden /> },
-  { id: 'daily', title: 'Every day', icon: <CalendarClock size={16} aria-hidden /> },
+  { id: 'packages', title: 'Sessions, packages, retainers', icon: <Package size={16} aria-hidden /> },
+  { id: 'routine', title: 'A simple routine', icon: <CalendarClock size={16} aria-hidden /> },
   { id: 'features', title: 'Switch on what you need', icon: <Cog size={16} aria-hidden /> },
+  { id: 'venues', title: 'Rooms and venues', icon: <MapPin size={16} aria-hidden /> },
   { id: 'costs', title: 'Costs and profit', icon: <Receipt size={16} aria-hidden /> },
   { id: 'tax', title: 'Tax', icon: <Landmark size={16} aria-hidden /> },
-  { id: 'venues', title: 'Venues and deals', icon: <MapPin size={16} aria-hidden /> },
-  { id: 'reports', title: 'Reports', icon: <PieChart size={16} aria-hidden /> },
+  { id: 'reports', title: 'What the reports tell you', icon: <PieChart size={16} aria-hidden /> },
   { id: 'data', title: 'Your data', icon: <Database size={16} aria-hidden /> },
   { id: 'words', title: 'Words used', icon: <BookOpen size={16} aria-hidden /> },
 ]
@@ -40,16 +44,28 @@ function Section({ id, title, icon, children }: { id: string; title: string; ico
   )
 }
 
+/** A two-column table that stacks on a phone. */
+function Table({ head, rows }: { head: [string, string, string]; rows: [string, string, string][] }) {
+  return (
+    <div className={styles.manualTableWrap}>
+      <table className={styles.manualTable}>
+        <thead><tr>{head.map((h) => <th key={h}>{h}</th>)}</tr></thead>
+        <tbody>{rows.map(([a, b, c]) => <tr key={a}><th scope="row">{a}</th><td data-label={head[1]}>{b}</td><td data-label={head[2]}>{c}</td></tr>)}</tbody>
+      </table>
+    </div>
+  )
+}
+
 /** Where the money goes: what a client pays splits into the three things InFlow keeps apart. Drawn at phone width. */
 function MoneyPicture() {
   const rows: [string, string, string, string][] = [
-    ['Service income', 'your fee for the work', '→ your account', 'svgBoxAccent'],
-    ['Cost recovery', 'money back for a cost', '→ your account', 'svgBoxAmber'],
-    ['Tax withheld', 'kept by the client', '→ paid to the state', 'svgBoxBlue'],
+    ['Service income', 'your coaching fee', '→ your account', 'svgBoxAccent'],
+    ['Cost recovery', 'e.g. the retreat venue', '→ your account', 'svgBoxAmber'],
+    ['Tax withheld', 'kept by a company', '→ paid to the state', 'svgBoxBlue'],
   ]
   return (
     <svg viewBox="0 0 340 250" className={styles.manualSvg} role="img"
-      aria-label="A client pays you. Your fee for the work is service income and reaches your account. Money back for a cost you paid is cost recovery and also reaches your account. Tax the client withheld goes to the state, already paid for you.">
+      aria-label="A client pays you. Your coaching fee is service income and reaches your account. Money back for a cost you paid, such as the retreat venue, is cost recovery and also reaches your account. Tax a company client withheld goes to the state, already paid for you.">
       <rect x="95" y="4" width="150" height="46" rx="12" className={styles.svgBoxMuted} />
       <text x="170" y="25" textAnchor="middle" className={styles.svgText}>A client</text>
       <text x="170" y="42" textAnchor="middle" className={styles.svgSmall}>pays you</text>
@@ -75,10 +91,10 @@ function MoneyPicture() {
 function ExpectedPicture() {
   return (
     <svg viewBox="0 0 340 214" className={styles.manualSvg} role="img"
-      aria-label="An expected payment of 1,000 lei. If all of it arrives, it becomes received, 1,000 lei. If only 600 lei arrives, 600 becomes received and 400 stays expected.">
+      aria-label="A company owes 1,000 lei for a team coaching day. If all of it arrives, it becomes received, 1,000 lei. If only 600 lei arrives, 600 becomes received and 400 stays expected.">
       <rect x="90" y="4" width="160" height="48" rx="12" className={styles.svgBoxDashed} />
       <text x="170" y="25" textAnchor="middle" className={styles.svgText}>Expected</text>
-      <text x="170" y="42" textAnchor="middle" className={styles.svgSmall}>1,000 lei promised</text>
+      <text x="170" y="42" textAnchor="middle" className={styles.svgSmall}>team coaching · 1,000 lei</text>
       <path d="M170 52 V 66 H 85 V 92" className={styles.svgArrow} />
       <path d="M170 66 H 255 V 92" className={styles.svgArrow} />
       <text x="85" y="84" textAnchor="end" dx="-8" className={styles.svgSmall}>all of it</text>
@@ -105,8 +121,8 @@ function ProfitCashPicture() {
         <span className={styles.manualQuestion}>“Is my work paying?”</span>
         <ul>
           <li>Income for your work</li>
-          <li>− costs of the work (room, materials)</li>
-          <li>− running costs (software, phone)</li>
+          <li>− costs of the work (the group room, workbooks)</li>
+          <li>− running costs (Zoom, supervision)</li>
           <li>= what the work leaves you</li>
         </ul>
       </div>
@@ -116,7 +132,7 @@ function ProfitCashPicture() {
         <ul>
           <li>Everything that came in</li>
           <li>− everything that went out</li>
-          <li>incl. a laptop, loan payments, what you took for yourself</li>
+          <li>incl. a laptop for online sessions, a coaching certification, what you took for yourself</li>
           <li>= what is in the bank</li>
         </ul>
       </div>
@@ -124,15 +140,13 @@ function ProfitCashPicture() {
   )
 }
 
-const FEATURE_TABLE: [string, string, string][] = [
-  ['Expected payments', 'You invoice and wait to be paid', 'Money promised but not in yet; overdue flags; one tap to mark it received'],
-  ['Costs, P&L and cash flow', 'You spend money on the work', 'What you keep after costs; where the money went'],
-  ['Tax suggestions', 'You want to know what to set aside', 'Taxable or not, tax withheld, VAT, a reserve to put aside'],
-  ['Venue deals', 'You rent rooms or share takings', 'What each room really leaves you per session'],
-  ['Foreign currencies', 'Clients pay in euro or dollars', 'Converted to lei at the day’s rate'],
-  ['Refunds', 'You sometimes pay a client back', 'A refund against the payment it came from'],
-  ['Insights', 'On from the start', 'Pain points and wins, in plain words'],
-  ['Printable reports', 'On from the start', 'A report to save as PDF, for you or your accountant'],
+const FEATURES: [string, string, string][] = [
+  ['Expected payments', 'You invoice companies, sell packages in instalments or have retainers', 'Money owed but not in yet; overdue flags; Received in one tap'],
+  ['Venue deals', 'You rent a room for group sessions, share takings with a studio, or run retreats', 'What each room leaves you per session; when a group breaks even'],
+  ['Costs, P&L and cash flow', 'You pay for rooms, retreat venues, supervision or software', 'What you keep after costs; where the money went'],
+  ['Tax suggestions', 'You want to know what to set aside', 'Taxable or not, tax withheld, VAT, a reserve per payment'],
+  ['Foreign currencies', 'Clients abroad pay for online coaching in euro or pounds', 'Converted to lei at the day’s rate'],
+  ['Refunds', 'A client stops a package early and you pay back what’s unused', 'A refund against the payment it came from'],
 ]
 
 export function Manual() {
@@ -144,7 +158,7 @@ export function Manual() {
         <span className={styles.manualHeroIcon}><BookOpen size={22} aria-hidden /></span>
         <div>
           <h1 className={styles.manualHeroTitle}>The InFlow manual</h1>
-          <p className={styles.manualLede}>Everything you need to know to keep track of your freelance money, in ten short parts. Read it once from the top, or jump to what you need.</p>
+          <p className={styles.manualLede}>For coaches running their own practice: what InFlow does, how to set it up for the way you work, and what to look at each week. Read it once, then come back to the part you need.</p>
         </div>
       </header>
 
@@ -157,126 +171,144 @@ export function Manual() {
       </nav>
 
       <Section {...SECTIONS[0]}>
-        <p>InFlow keeps track of <b>the money your work brings in</b>: who paid, for what, when, and what is left for you. It is for freelancers in Romania: coaches, trainers, facilitators, consultants, anyone paid per session, project or package.</p>
+        <p>InFlow tracks <b>what your coaching earns</b>: who paid, for which kind of work, where, and what is left after costs and tax. It is not accounting software and not tax advice: it shows you your practice clearly, and your accountant files the taxes.</p>
         <ol className={styles.manualSteps}>
-          <li><b>Look around the demo.</b> InFlow opens on an invented practice so you can see every screen filled in. Your own data is kept apart.</li>
-          <li><b>Switch to your data</b> in Settings → Your data. Choose this device, or your Notion if you use it.</li>
-          <li><b>Add your first payment</b> with the green <i>Add income</i> button: the amount, who paid and when. That’s all it needs.</li>
-          <li><b>Switch on what you need</b> (part 4) when you need it, not before.</li>
+          <li><b>Look around the demo.</b> It is an invented coaching practice, so every screen is filled in. Your data is kept apart.</li>
+          <li><b>Switch to your data</b> in Settings → Your data: this device, or your Notion.</li>
+          <li><b>Set up your practice</b> (part 2): your clients, how they find you, where you coach.</li>
+          <li><b>Add a payment</b> with <i>Add income</i>: amount, client, date. Everything else is optional.</li>
         </ol>
-        <Tip>Add payments the day they arrive. Two minutes now saves an evening at the end of the year.</Tip>
-        <Note>InFlow is not accounting software and not tax advice. It helps you see your money clearly; your accountant files your taxes.</Note>
       </Section>
 
       <Section {...SECTIONS[1]}>
-        <p>Not everything a client sends you is the same kind of money. InFlow keeps three things apart, so your figures never mix them up:</p>
-        <MoneyPicture />
-        <dl className={styles.manualDefs}>
-          <div className={styles.manualDefAccent}><dt>Service income</dt><dd>What you charged for your work. This is your <b>income</b> everywhere in InFlow: the Overview, reports, tax.</dd></div>
-          <div className={styles.manualDefAmber}><dt>Cost recovery</dt><dd>A client paying you back for something you paid for them (a room, train tickets). Mark the payment’s activity as <i>Reimbursement</i>. It is not income: it only balances a cost.</dd></div>
-          <div className={styles.manualDefBlue}><dt>Tax withheld</dt><dd>Some clients (often companies) keep part of your fee and pay it to the tax office for you. Enter the full fee and the tax withheld: InFlow counts the tax as already paid, not as money you received.</dd></div>
-        </dl>
-        <Tip>If a client pays 1,000 lei and keeps 100 lei as tax, enter 1,000 lei with 100 lei withheld. Your account shows 900 lei arrived; your income is still 1,000.</Tip>
+        <p>Four lists describe your practice. Set them up once (Settings → Clients, sources &amp; venues, or with <i>+ New</i> straight from a payment); every report is built from them.</p>
+        <Table head={['In InFlow', 'In your practice', 'Why it matters']} rows={[
+          ['Clients', 'Ioana (an individual), Nordbank (a company)', 'A client’s kind and country decide the VAT suggestion'],
+          ['Sources', 'Referrals, your website, a coaching platform, an agency', 'Shows which channel brings the paying clients; a source can be set to withhold tax'],
+          ['Activity', '1:1 coaching, group coaching, workshop, retreat, speaking', 'Compares what each kind of work leaves you per session and per hour'],
+          ['Venues', 'Online, the room you rent for groups, a retreat centre, a company’s office', 'Shows what each room costs you, and when a group session breaks even'],
+        ]} />
+        <Tip>Set each client’s kind (individual or company) and country once, and InFlow suggests the VAT treatment for their payments. If a company always withholds tax, set the source it comes through to <i>Withheld at source</i>, and its payments arrive with the tax suggested.</Tip>
       </Section>
 
       <Section {...SECTIONS[2]}>
-        <h3 className={styles.manualSub}>Adding a payment</h3>
-        <p>Amount, client and date come first; everything else on the form is optional. A known client fills in the rest from their last payment. Fields like <i>Sessions</i> and <i>Hours</i> make the reports smarter (what a session or an hour leaves you) but you can skip them.</p>
-        <h3 className={styles.manualSub}>Money you are waiting for</h3>
-        <p>With <i>Expected payments</i> on, record an invoice as <b>expected</b>. When the money arrives, tap <i>Received</i>. If only part arrives, tap <i>Part…</i>: the part becomes received and the rest stays expected.</p>
-        <ExpectedPicture />
-        <h3 className={styles.manualSub}>Paying a client back</h3>
-        <p>With <i>Refunds</i> on, open the payment and choose <i>Refund</i>. The refund counts in the month the money went back. The original payment never changes.</p>
-        <Careful>Don’t edit or delete a payment to “undo” money you gave back. Record a refund instead, so last month’s figures stay right.</Careful>
+        <p>Not everything a client sends is income. InFlow keeps three things apart, so your figures never mix them:</p>
+        <MoneyPicture />
+        <dl className={styles.manualDefs}>
+          <div className={styles.manualDefAccent}><dt>Service income</dt><dd>Your coaching fee. This is <b>income</b> everywhere in InFlow.</dd></div>
+          <div className={styles.manualDefAmber}><dt>Cost recovery</dt><dd>A client paying you back for a cost: the venue of their team retreat, your train to their offsite. Choose the activity <i>Reimbursement</i>. Not income.</dd></div>
+          <div className={styles.manualDefBlue}><dt>Tax withheld</dt><dd>Part of your fee a company keeps and pays to the tax office for you. Enter the full fee and the amount withheld.</dd></div>
+        </dl>
+        <Tip>Nordbank pays 1,000 lei for an executive coaching session and keeps 100 lei as tax: enter 1,000 lei with 100 lei withheld. 900 lei arrive; your income is 1,000.</Tip>
       </Section>
 
       <Section {...SECTIONS[3]}>
-        <p>InFlow starts simple: income, insights and printable reports. Everything else is a switch in <b>Settings → Features</b>, or in the welcome guide. Turn one on when it matches your work:</p>
-        <div className={styles.manualTableWrap}>
-          <table className={styles.manualTable}>
-            <thead><tr><th>Feature</th><th>Turn it on when…</th><th>What you get</th></tr></thead>
-            <tbody>{FEATURE_TABLE.map(([f, when, what]) => <tr key={f}><th scope="row">{f}</th><td>{when}</td><td>{what}</td></tr>)}</tbody>
-          </table>
-        </div>
-        <Note>Turning a feature off hides it; it never deletes what you recorded. Turn it back on and everything is there.</Note>
+        <p>Coaching is sold in many shapes. Record each the way the money actually moves:</p>
+        <Table head={['You sell', 'Record it as', 'So that']} rows={[
+          ['A single session', 'One payment, Sessions 1', 'Each session is one line'],
+          ['A 6-session package, paid upfront', 'One payment, Sessions 6', 'Per-session figures divide it by 6'],
+          ['A package paid in 3 instalments', 'Three expected payments, each marked Received when it arrives', 'You always see what is still owed'],
+          ['A monthly retainer', 'One payment a month, marked Recurring', 'Next month’s is suggested as expected'],
+          ['A group programme', 'One payment per participant, or one with People per session', 'Venue deals can show when the group covers the room'],
+          ['A company’s team coaching day', 'One expected payment for the invoice', 'Overdue invoices are flagged'],
+        ]} />
+        <ExpectedPicture />
+        <p>When only part of an invoice arrives, tap <i>Part…</i>: the part is received, the rest stays expected. When a client stops a package early, record a <b>refund</b> for the unused sessions; the original payment stays as it was.</p>
+        <Note>A free or reduced first session counts too: InFlow lists individual clients who came once, so you can follow up and offer a package.</Note>
+        <Careful>Never edit or delete a payment to undo money you paid back. Record a refund, so past months stay right.</Careful>
       </Section>
 
       <Section {...SECTIONS[4]}>
-        <p>With <i>Costs</i> on, record what you spend: the room you hired, materials, software, your phone, the accountant. Each cost has a <b>kind</b>, and the kind decides where it counts:</p>
         <ul className={styles.manualList}>
-          <li><b>Costs of the work</b>: you only pay them because a session happened (the room, materials, a co-facilitator).</li>
-          <li><b>Running costs</b>: you pay them anyway (software, phone, insurance, rent).</li>
-          <li><b>Equipment, loans, money you take for yourself</b>: they move cash but aren’t a cost of the work, so they show in Cash flow, not in profit.</li>
+          <li><b>After each session:</b> add the payment, or tap <i>Received</i> on the one you expected.</li>
+          <li><b>Once a week:</b> open the Overview. Check what is overdue and what is expected this month.</li>
+          <li><b>Once a month:</b> read the Review (what grew, what slipped), put the suggested tax reserve aside, and download a backup if your data is on this device.</li>
         </ul>
-        <ProfitCashPicture />
-        <Tip>Mark a cost as <i>deductible</i> when you can claim it against tax (PFA in the real system, SRL). If unsure, ask your accountant once and keep the answer in the cost’s notes.</Tip>
+        <Tip>Set a monthly income target in Settings → Target and flags: the Overview then shows how far along the month is.</Tip>
       </Section>
 
       <Section {...SECTIONS[5]}>
-        <p>With <i>Tax suggestions</i> on, InFlow estimates the tax on your income from the published Romanian rules for your situation (Settings → Tax profile: PFA in the real system, PFA on a norm, micro-SRL).</p>
-        <ul className={styles.manualList}>
-          <li>Each payment gets a <b>suggested</b> treatment (taxable or not, VAT) that you confirm or change.</li>
-          <li>A <b>reserve</b> is suggested for each taxable payment: money to put aside so the tax bill is no surprise.</li>
-          <li>The <b>Tax</b> report shows the year so far, what is still to set aside, and the deadlines.</li>
-        </ul>
-        <Careful>These are estimates to plan with, not tax advice. Rules change every year; your accountant has the final word.</Careful>
-        <Tip>Move the suggested reserve to a separate account the day a payment arrives. It’s the simplest way never to spend your tax.</Tip>
+        <p>InFlow starts with income, insights and printable reports. Turn the rest on in <b>Settings → Features</b> when your practice needs it:</p>
+        <Table head={['Feature', 'Turn it on when', 'What you get']} rows={FEATURES} />
+        <Note>Turning a feature off only hides it. What you recorded stays, and comes back when you turn it on.</Note>
       </Section>
 
       <Section {...SECTIONS[6]}>
-        <p>A <b>venue</b> is where the work happens: a room, a studio, a client’s office, or online. With <i>Venue deals</i> on, tell InFlow how each room is paid and it works out what each session really leaves you.</p>
+        <p>With <i>Venue deals</i> on, tell InFlow how each place is paid, and it works out what every session there leaves you:</p>
         <dl className={styles.manualDefs}>
-          <div className={styles.manualDefAccent}><dt>Fixed fee</dt><dd>You pay the same per session, however many people come. Good when sessions are full.</dd></div>
-          <div className={styles.manualDefAmber}><dt>Revenue share</dt><dd>The venue takes a percentage of what each session brings in. Safer when you’re not sure who will come.</dd></div>
-          <div className={styles.manualDefBlue}><dt>No cost</dt><dd>Online, the client’s office, or an agency pays for the room.</dd></div>
+          <div className={styles.manualDefAccent}><dt>Fixed fee</dt><dd>The same price whoever comes: 200 lei an evening for the group room. Pays off when groups are full.</dd></div>
+          <div className={styles.manualDefAmber}><dt>Revenue share</dt><dd>The venue keeps a percentage: a studio taking 30% of your workshop tickets. Safer while groups are small.</dd></div>
+          <div className={styles.manualDefBlue}><dt>No cost</dt><dd>Online sessions, a company’s own office, or a programme where the organiser pays the room.</dd></div>
         </dl>
-        <h3 className={styles.manualSub}>When a venue’s price changes</h3>
-        <p>Edit the venue (Settings → Clients, sources &amp; venues) and set the new deal. InFlow asks <i>from when</i> it applies: payments from that date move to the new price; earlier ones keep the old one. Reports → Venue deals then shows each price with its dates.</p>
-        <Note>Venue deals <b>estimates</b> from the deal you set. When you actually pay the venue (an invoice, a month’s rent), record it with <i>+ Add a cost</i>: it then counts in Profit and Cash flow, and nothing is counted twice.</Note>
+        <p>Enter <i>People per session</i> on group payments and Venue deals shows how many people a session needs to cover the room, and what a different deal would have left you.</p>
+        <p><b>When a price changes</b> (the group room goes from 150 to 200 lei on 1 July): edit the venue and set the new deal <i>from</i> 1 July. Earlier sessions keep the old price.</p>
+        <Note>Venue deals estimates from the deal. When you pay the venue (the retreat centre’s invoice, a month’s rent), record it with <i>+ Add a cost</i> so it counts in Profit and Cash flow. Nothing is counted twice.</Note>
       </Section>
 
       <Section {...SECTIONS[7]}>
-        <p>The period buttons at the top (Week, Month, Year…) set what every screen shows.</p>
-        <div className={styles.manualCards}>
-          {[
-            ['Overview', 'How this period is going: what came in, against your target and the period before.'],
-            ['Review', 'The story of the period: what moved, who carries your income, pain points and wins.'],
-            ['Clients & work', 'Which clients and kinds of work leave you the most, per session and per hour.'],
-            ['Venue deals', 'What each room leaves you, and what a different deal would have left.'],
-            ['Profit', 'Profit and cash flow, month by month.'],
-            ['Tax', 'The year’s estimate, what to set aside, the deadlines.'],
-            ['Print', 'Build a report and save it as PDF for yourself or your accountant.'],
-          ].map(([t, d]) => <div key={t} className={styles.manualCard}><b>{t}</b><span>{d}</span></div>)}
-        </div>
-        <Tip>Tap any bar in a chart to see its figures. In the Review, tap a client, venue or kind of work to see those payments.</Tip>
+        <p>With <i>Costs</i> on, record what you spend. Its <b>kind</b> decides where it counts:</p>
+        <ul className={styles.manualList}>
+          <li><b>Costs of the work</b>, paid because a session happened: the group room, a retreat venue, workbooks, a co-coach.</li>
+          <li><b>Running costs</b>, paid anyway: video calls and booking apps, supervision, insurance, your coaching association.</li>
+          <li><b>Equipment, a certification, money you take for yourself</b>: they move cash, so they show in Cash flow, not in profit.</li>
+        </ul>
+        <ProfitCashPicture />
+        <Tip>Mark a cost <i>deductible</i> when it can be claimed against tax (PFA in the real system, SRL). Unsure? Ask your accountant once, and note the answer on the cost.</Tip>
       </Section>
 
       <Section {...SECTIONS[8]}>
+        <p>With <i>Tax suggestions</i> on, InFlow estimates your tax from the published Romanian rules for your set-up (Settings → Tax profile: PFA in the real system, PFA on a norm, micro-SRL).</p>
         <ul className={styles.manualList}>
-          <li><b>This device:</b> your data stays in this browser, on this phone or computer. Nothing is sent anywhere.</li>
-          <li><b>Notion:</b> your data lives in your own Notion databases, on every device you use.</li>
-          <li><b>Backup:</b> Settings → Backup &amp; export downloads everything as one file. A restore can be undone.</li>
-          <li><b>The demo</b> is kept apart from your data. Clear it or bring it back in Settings.</li>
+          <li>Each payment gets a <b>suggested</b> treatment (taxable, withheld, VAT) to confirm or change.</li>
+          <li>Each taxable payment gets a <b>reserve</b>: the money to put aside for its tax.</li>
+          <li>The <b>Tax</b> report shows the year so far and what is still to set aside.</li>
         </ul>
-        <Careful>On <i>This device</i>, clearing the browser’s data deletes your records. Download a backup once a month; InFlow reminds you.</Careful>
+        <Tip>Move the reserve to a separate account the day the money arrives: the tax bill is then never a surprise.</Tip>
+        <Careful>These are estimates to plan with, not tax advice. Rules change every year; your accountant has the last word.</Careful>
       </Section>
 
       <Section {...SECTIONS[9]}>
+        <p>The period buttons at the top (Week, Month, Year…) set what every screen covers. Each report answers one question:</p>
+        <div className={styles.manualCards}>
+          {[
+            ['Overview', 'How is this month going, and what is owed to me?'],
+            ['Review', 'What grew, what slipped, and who carries my income?'],
+            ['Clients & work', 'Which clients and which kind of coaching leave me most, per session and per hour?'],
+            ['Venue deals', 'Is this room worth it, and would another deal suit me better?'],
+            ['Profit', 'What do I keep after costs, month by month?'],
+            ['Tax', 'How much should I have set aside by now?'],
+            ['Print', 'A report as PDF, for me or my accountant.'],
+          ].map(([t, d]) => <div key={t} className={styles.manualCard}><b>{t}</b><span>{d}</span></div>)}
+        </div>
+        <Note>Watch how much of your income comes from one client: the Review flags it. A practice resting on one company contract is fragile.</Note>
+      </Section>
+
+      <Section {...SECTIONS[10]}>
+        <ul className={styles.manualList}>
+          <li><b>This device:</b> your data stays in this browser. Nothing is sent anywhere.</li>
+          <li><b>Notion:</b> your data lives in your own Notion, on every device you use.</li>
+          <li><b>Backup:</b> Settings → Backup &amp; export saves everything as one file. A restore can be undone.</li>
+        </ul>
+        <Careful>On <i>This device</i>, clearing the browser’s data deletes your records. Download a backup every month; InFlow reminds you.</Careful>
+      </Section>
+
+      <Section {...SECTIONS[11]}>
         <dl className={styles.manualGlossary}>
           {[
-            ['Income', 'What you charged for your work (service income). Not money back for costs, not tax withheld.'],
-            ['Cost recovery', 'Money a client paid you back for a cost. Balances the cost; not income.'],
-            ['Expected', 'Money promised but not in yet. Counted nowhere until received.'],
-            ['Withheld tax', 'Tax a client paid to the state for you, out of your fee.'],
-            ['Reserve', 'Money to put aside for tax, suggested for each taxable payment.'],
-            ['Deductible', 'A cost you can claim against tax (in the real system or as an SRL).'],
-            ['P&L', 'Profit and loss: income less the costs of earning it.'],
-            ['Cash flow', 'All money in and out, including equipment and what you take for yourself.'],
-            ['Session', 'One sitting of the work. A 4-session package is 4.'],
+            ['Income', 'Your coaching fees. Not money back for costs, not tax withheld.'],
+            ['Cost recovery', 'A client paying you back for a cost, like a retreat venue.'],
+            ['Expected', 'Money owed but not in yet. Counted nowhere until received.'],
+            ['Tax withheld', 'Tax a company paid to the state for you, out of your fee.'],
+            ['Reserve', 'Money to put aside for the tax on a payment.'],
+            ['Session', 'One coaching session. A 6-session package is 6.'],
+            ['Recurring', 'A payment that repeats, like a monthly retainer.'],
             ['Venue deal', 'How a room is paid: a fixed fee, a share of takings, or nothing.'],
+            ['Deductible', 'A cost you can claim against tax.'],
+            ['P&L', 'Profit and loss: income less the costs of earning it.'],
+            ['Cash flow', 'All money in and out, equipment and your own drawings included.'],
           ].map(([w, d]) => <div key={w}><dt>{w}</dt><dd>{d}</dd></div>)}
         </dl>
-        <p className={styles.hint}>Most fields also have a short hint under them; Settings → Appearance &amp; guide turns those hints on or off, and replays the welcome guide.</p>
+        <p className={styles.hint}>Most fields have a short hint under them; Settings → Appearance &amp; guide turns hints on or off and replays the welcome guide.</p>
       </Section>
     </>
   )

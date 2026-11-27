@@ -42,13 +42,16 @@ Expected payments and costs still due show in Income and Costs whatever the peri
 
 A book icon in the header, left of the Demo / Notion / This device tag, opens **#/manual**
 (`screens/Manual.tsx`; also *Read the manual* in Settings → Appearance & guide). Written for a
-freelancer starting out, in ten short parts with a contents bar: start here; the three kinds of
-money (service income, cost recovery, tax withheld, with a picture); every day (adding,
-expected and part payments with a picture, refunds); which feature to switch on when (a table);
-costs, profit and cash flow; tax (estimates, reserve); venues and deals (including a price that
-changes); the reports; where your data lives; a glossary. Tips are green, notes blue, things to
-watch amber; pictures are drawn at phone width. Keep it in step with the app: it states what
-the screens do, so a change to a screen named there means a line here may need changing too.
+coach starting out on their own, and every example is coaching (1:1, group, workshops, retreats,
+companies and individuals). Twelve short parts with a contents bar: start here; **set up your
+practice** (clients, sources, activities and venues mapped to a coaching practice); the three
+kinds of money (a picture); **sessions, packages and retainers** (a single session, a package
+paid upfront or in instalments, a monthly retainer, a group programme, a company's invoice; part
+payments, refunds, intro clients); a weekly and monthly routine; which feature to switch on when;
+rooms and venues (deals, break-even, a price that changes, real venue costs); costs and profit;
+tax; what each report answers; your data; a glossary. Tips green, notes blue, cautions amber;
+tables stack on a phone with each value labelled; pictures drawn at phone width. It states what
+the screens do, so a change to a screen named there may need a line changed here too.
 
 ### The welcome guide
 Nine steps on first open (`components/Tour.tsx`, Release 1), at most three short points each.
