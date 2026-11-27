@@ -57,12 +57,20 @@ export function percent(fraction: number, digits = 0): string {
   return `${(fraction * 100).toFixed(digits)}%`
 }
 
-/** "+12%" / "−8%" / "new" when there was nothing to compare against. */
+/**
+ * "+12%" / "−8%" / "new" when there was nothing to compare against. Under 1% the figure keeps one
+ * decimal ("+0.4%"), so a real change never reads as none; "±0%" only when nothing changed. Below
+ * 0.5% the direction stays `flat`, so summaries still call it about the same.
+ */
 export function delta(current: number, previous: number): { text: string; direction: 'up' | 'down' | 'flat' | 'new' } {
   if (previous <= 0) return current > 0 ? { text: 'new', direction: 'new' } : { text: '—', direction: 'flat' }
   const d = (current - previous) / previous
-  if (Math.abs(d) < 0.005) return { text: '±0%', direction: 'flat' }
-  return { text: `${d > 0 ? '+' : '−'}${Math.round(Math.abs(d) * 100)}%`, direction: d > 0 ? 'up' : 'down' }
+  if (d === 0) return { text: '±0%', direction: 'flat' }
+  const sign = d > 0 ? '+' : '−'
+  const pct = Math.abs(d) * 100
+  // 0.95% and above rounds to a whole 1%, as larger changes do.
+  const text = pct < 0.95 ? `${sign}${pct < 0.05 ? '<0.1' : pct.toFixed(1)}%` : `${sign}${Math.round(pct)}%`
+  return { text, direction: Math.abs(d) < 0.005 ? 'flat' : d > 0 ? 'up' : 'down' }
 }
 
 /**

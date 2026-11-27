@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MonthlyPair, TrendChart } from './charts'
+import { MonthlyPair, MoversChart, TrendChart } from './charts'
 
 afterEach(cleanup)
 
@@ -63,5 +63,30 @@ describe('the income and costs chart\'s readout', () => {
     expect(kept.className).toMatch(/down/)
     await user.click(screen.getByRole('button', { name: 'All months' }))
     expect(screen.getByText('October 2026 – November 2026')).toBeTruthy()
+  })
+})
+
+describe('main movers', () => {
+  const rows = [
+    { key: 'a', name: 'Mindful Leaders Collective Romania', tag: 'Client', change: -7000, current: 0, previous: 7000 },
+    { key: 'b', name: 'Workshop', tag: 'Activity', change: -4800, current: 4900, previous: 9700 },
+    { key: 'c', name: 'Studio Tulp', tag: 'Client', change: 2500, current: 4000, previous: 1500 },
+  ]
+  it('groups what fell and what rose, bigger first, each with its name in full, change, kind and before → now', () => {
+    render(<MoversChart rows={rows} prevLabel="the month before" />)
+    const groups = screen.getAllByRole('group')
+    expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual(['Fell', 'Rose'])
+    expect(groups[0].textContent).toMatch(/^Fell.*Mindful Leaders Collective Romania.*−7k.*Client · 7k → 0.*Workshop.*−4.8k.*Activity · 9.7k → 4.9k/)
+    expect(groups[1].textContent).toMatch(/Studio Tulp.*\+2.5k.*Client · 1.5k → 4k/)
+  })
+})
+
+describe('a change under 1% is shown, not rounded away', () => {
+  it('+50 lei on 13,887 reads +0.4%', async () => {
+    const user = userEvent.setup()
+    const weeks = [{ from: '2026-11-09', to: '2026-11-15', label: '9 Nov' }]
+    const { container } = render(<TrendChart buckets={weeks} current={[13937]} previous={[13887]} previousLabel="the month before" />)
+    await user.click(container.querySelectorAll('g[class]')[0])
+    expect(screen.getByText(/\+50 lei \(\+0\.4%\)/)).toBeTruthy()
   })
 })

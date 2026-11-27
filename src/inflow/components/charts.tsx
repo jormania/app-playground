@@ -229,34 +229,52 @@ export function SplitBar({ parts, total }: { parts: SplitPart[]; total: number }
   )
 }
 
-export interface MoverRow { key: string; name: string; tag: string; change: number; current: number; previous: number }
+export interface MoverRow {
+  key: string
+  name: string
+  /** What it is: "Client", "Venue", "Activity". */
+  tag: string
+  change: number
+  current: number
+  previous: number
+}
 
 /**
- * What moved most: bars either side of a zero line, rises in the series
- * green, drops in amber (the two poles; no hue at the midpoint). The figure
- * and the name are text, so the direction never rests on colour alone.
+ * What moved most, read at a glance: grouped into what fell and what rose (the bigger movement
+ * first), each row its name in full (wrapping, never cut), the change beside it, what it is with
+ * before → now under it, and a thin bar the width of the change across the row. Rises are green,
+ * drops amber; the sign and the heading say the direction too, never colour alone.
  */
 export function MoversChart({ rows, onSelect, prevLabel }: { rows: MoverRow[]; onSelect?: (key: string) => void; prevLabel: string }) {
   if (!rows.length) return <p className={styles.hint}>Nothing moved against {prevLabel}.</p>
   const max = Math.max(...rows.map((r) => Math.abs(r.change)), 1)
   const Row = onSelect ? 'button' : 'div'
+  const fell = rows.filter((r) => r.change < 0).sort((a, b) => a.change - b.change)
+  const rose = rows.filter((r) => r.change > 0).sort((a, b) => b.change - a.change)
+  const groups = [{ id: 'fell', title: 'Fell', rows: fell }, { id: 'rose', title: 'Rose', rows: rose }]
+    .filter((g) => g.rows.length)
+    .sort((a, b) => Math.abs(b.rows[0].change) - Math.abs(a.rows[0].change))
   return (
     <div className={styles.movers}>
-      {rows.map((r) => {
-        const w = `${(Math.abs(r.change) / max) * 100}%`
-        const up = r.change > 0
-        return (
-          <Row key={r.key} className={styles.mover} {...(onSelect ? { type: 'button' as const, onClick: () => onSelect(r.key) } : {})}
-            title={`${r.name}: ${lei(r.current)} now, ${lei(r.previous)} ${prevLabel}`}>
-            <span className={styles.moverName}>{r.name}<span className={styles.moverTag}>{r.tag}</span></span>
-            <span className={styles.moverTrack} aria-hidden>
-              <span className={styles.moverHalf}>{!up && <span className={styles.moverDown} style={{ width: w }} />}</span>
-              <span className={styles.moverHalf}>{up && <span className={styles.moverUp} style={{ width: w }} />}</span>
-            </span>
-            <span className={`${styles.moverValue} ${up ? styles.up : styles.down}`}>{up ? '+' : '−'}{compact(Math.abs(r.change))}</span>
-          </Row>
-        )
-      })}
+      {groups.map((g) => (
+        <div key={g.id} className={styles.moverGroup} role="group" aria-label={g.title}>
+          <h3 className={styles.moverGroupTitle}>{g.title}</h3>
+          {g.rows.map((r) => {
+            const up = r.change > 0
+            return (
+              <Row key={r.key} className={styles.mover} {...(onSelect ? { type: 'button' as const, onClick: () => onSelect(r.key) } : {})}
+                title={`${r.name}: ${lei(r.current)} now, ${lei(r.previous)} ${prevLabel}`}>
+                <span className={styles.moverName}>{r.name}</span>
+                <span className={`${styles.moverValue} ${up ? styles.up : styles.down}`}>{up ? '+' : '−'}{compact(Math.abs(r.change))}</span>
+                <span className={styles.moverMeta}>{r.tag} · {compact(r.previous)} → {compact(r.current)}</span>
+                <span className={styles.moverTrack} aria-hidden>
+                  <span className={up ? styles.moverUp : styles.moverDown} style={{ width: `${(Math.abs(r.change) / max) * 100}%` }} />
+                </span>
+              </Row>
+            )
+          })}
+        </div>
+      ))}
     </div>
   )
 }

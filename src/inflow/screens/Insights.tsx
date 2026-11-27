@@ -17,7 +17,6 @@ import { DIMENSION_NOUN, type Dimension } from '../lib/analytics'
 import type { FeatureKey } from '../domain/types'
 import { insights } from '../lib/insights'
 import { useInsightFeedback } from '../app/insightFeedback'
-import { compact } from '../lib/money'
 import styles from '../styles/ui.module.css'
 
 const HIGHLIGHT_ICON: Record<HighlightKind, typeof Copy> = { in: Wallet, kept: PiggyBank, top: Trophy, up: ArrowUpRight, down: ArrowDownRight, look: AlertTriangle }
@@ -151,7 +150,7 @@ export function ReviewReport() {
           <span className={styles.panelSub}>vs {prev.label}</span>
         </div>
         <MoversChart prevLabel={prev.label}
-          rows={moved.map((m) => ({ key: `${m.dim}:${m.id}`, name: m.name, tag: `${DIMENSION_NOUN[m.dim]} · ${compact(m.previous)} → ${compact(m.current)}`, change: m.change, current: m.current, previous: m.previous }))}
+          rows={moved.map((m) => ({ key: `${m.dim}:${m.id}`, name: m.name, tag: DIMENSION_NOUN[m.dim], change: m.change, current: m.current, previous: m.previous }))}
           onSelect={(k) => { const [dm, id] = k.split(':'); open({ [DIM_FILTER[dm as Dimension]]: id }) }} />
       </section>
 
