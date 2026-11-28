@@ -52,7 +52,15 @@ wording is gone.)
 | `qol` | Small user-visible improvement | no — proposes only |
 | `visual` | SVG, icons, spacing, motion, empty states | no — proposes only |
 
-Anything under **`## Proposed`** is the agent's own idea and will not be worked
+Anything under **`
+
+## R-057 — KeyPath's "PIN … can be forgotten" test fails about once in a few hundred runs · `modernise` · `open`
+
+**Impact:** none visible. Without it, an unrelated PR's gates, or the daily merge check, go red at random.
+
+**Fails when:** the random salt or SHA-256 hash stored for the PIN happens to contain the four hex characters `1234`. `src/keypath/app/Shell.test.tsx:176` asserts `JSON.stringify(nora.pin)` does not contain `'1234'`, but that string is hex, which can spell it. Seen once on 2026-11-28 (`"salt":"8b97fae1-…"`); passes on re-run. Fix: assert on the shape instead, e.g. that `nora.pin` has only `salt` and `hash` keys and no `pin`/`digits` field, or use a PIN of non-hex characters such as `'7392'`-style digits plus `JSON.stringify` check against a delimiter-bound string. Test-only.
+
+## Proposed`** is the agent's own idea and will not be worked
 until a human moves it up into the main list. That move is the whole approval
 ritual: cut the block, paste it above, change `proposed` to `open`.
 
@@ -1183,6 +1191,8 @@ Remaining: the React 19 family (runtime and types together), last, as this item 
 **React 19 done 2026-11-25 — `react` / `react-dom` 18.3.1 → 19.3.1, `@types/react` 18.3.31 → 19.3.2, `@types/react-dom` 18.3.7 → 19.3.0** (runtime and types together, as this item asked). It needed **no source change**: `npm run typecheck` clean across every path, suite 6799 across 520 files, `eslint .` clean, build green, and `npm ls react` shows one deduped copy (no peer conflicts in react-query, testing-library, speed-insights, lucide-react, react-markdown or recharts 2.15). `dist/` 12412 → 12492 KB. Checked against react.dev's React 19 upgrade guide, which was reachable this time: no `propTypes`/`defaultProps` on function components, no legacy context, string refs, `createFactory`, `ReactDOM.render`/`hydrate`/`findDOMNode`/`unmountComponentAtNode`, `react-dom/test-utils`, `react-is` or `javascript:` URLs anywhere in `src/`. The one silent runtime change that typecheck can't see in the JSX apps is that a ref callback's return value is now a cleanup. The only arrow ref callback with an expression body (`src/loom/components/ThreadList.jsx:70`) returns `undefined`. The three error boundaries (Daily Stoic, Lexi5, KeyPath) are class components and still supported. **Not checked: behaviour the suite does not cover**: render errors now go to `window.reportError` instead of being re-thrown, and Strict Mode's double render reuses `useMemo` results.
 
 **`jsdom` done 2026-11-26 — 30.1.2 → 31.0.1** (floor raised in `package.json`; a major behind again, so a run by the 2026-11-24 rule). `engines` is unchanged (`^22.22.2 || ^24.15.0 || >=26.0.0`), so no Node-floor change this time. Suite 7041 across 539 files, typecheck clean; dev-only, nothing in `dist/` or any handler changes. jsdom ships no changelog in the package, so release notes were not read; what is verified is the engines field, the suite and typecheck. Left in the table: `vitest` 5, `typescript` 7, `tailwindcss` 4 + `tailwind-merge` 3, `recharts` 3, `happy-dom` 21, `sharp` 0.35.
+
+**`happy-dom` done 2026-11-28 — 20.14.6 → 21.0.4** (floor raised in `package.json`; a major behind). The 139 test files carrying a `@vitest-environment happy-dom` pragma pass unchanged: suite 7349 across 561 files, typecheck clean; dev-only, nothing in `dist/` or any handler changes. Its `engines` is `node >=20`, so no Node-floor change. Release notes not read; what is verified is the engines field, the suite and typecheck. Left in the table: `vitest` 5, `typescript` 7, `tailwindcss` 4 + `tailwind-merge` 3, `recharts` 3, `sharp` 0.35.
 
 **What's still left is the 2026-10-02 table** and later re-measurements, each its own run: `vitest` 5, `typescript` 7, `tailwindcss` 4 + `tailwind-merge` 3, `recharts` 3, `jsdom` 31, `happy-dom` 21, `sharp` 0.35 (`vite-plugin-pwa` 2 is R-046).
 
