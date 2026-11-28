@@ -2,7 +2,7 @@
 // The Journal audit (15 October 2026): a work stays in its programme's week,
 // a concert still to come isn't "heard live", and the week says no counts.
 import { createElement } from 'react'
-import { afterEach, beforeEach, describe, it, expect } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import App from '../App'
 import { Repo, memoryStore } from '../store/repo'
@@ -46,6 +46,13 @@ async function seeded() {
 }
 
 describe('the Journal, week by week', () => {
+  // App reads the real clock; season one ends with 2026-W52, after which the Journal rightly links the review.
+  // Only Date is faked, so findByRole's waits still run.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-15T09:00:00Z'))
+  })
+  afterEach(() => { vi.useRealTimers() })
   it('lists a work under its programme’s week, however late it was heard, as one line', async () => {
     const { repo, p, first } = await seeded()
     render(createElement(App, { repo, curator: plain() }))

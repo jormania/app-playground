@@ -56,7 +56,7 @@ Anything under **`## Proposed`** is the agent's own idea and will not be worked
 until a human moves it up into the main list. That move is the whole approval
 ritual: cut the block, paste it above, change `proposed` to `open`.
 
-## R-056 — The suite goes red on Monday 2026-12-28, when The Long Listen's first season ends · `modernise` · `open`
+## R-056 — The suite goes red on Monday 2026-12-28, when The Long Listen's first season ends · `modernise` · `done 2026-11-28`
 
 **Impact:** none visible. Without it, every gate goes red on 28 December. That
 includes the daily run's merge check, so every refactor PR stops until somebody
