@@ -29,9 +29,11 @@ export function Ring({ value, max }: { value: number; max: number }) {
  * shows the Today message: never a count of misses, only "Practised today" or
  * an invitation. The series page keeps the honest calendar count.
  */
-export function SeriesBand({ def, done, started, pace, name = false }: {
+export function SeriesBand({ def, done, skipped = 0, started, pace, name = false }: {
   def: SeriesDef
   done: number
+  /** Days skipped by choice: settled, so the pace counts them, but the ring shows only what was practised. */
+  skipped?: number
   started?: string
   pace?: Pace | null
   name?: boolean
@@ -43,8 +45,8 @@ export function SeriesBand({ def, done, started, pace, name = false }: {
       <div className={s.journeyHead}>
         {name && <span className={cx(s.entrySource, s.titleTag)}>{def.name}{def.kind === 'custom' && <YoursTag kind="series" />}</span>}
         <span className={s.journeyKicker}>{done >= def.length ? 'Every practice done' : `${done} of ${def.length} ${unit}s done`}</span>
-        {started && <span className={s.journeyStarted}>Started {fmt(started)}</span>}
-        {pace && done < def.length && <span className={s.pacePill}>{name ? pace.today : pace.label}</span>}
+        {started && <span className={s.journeyStarted}>Started {fmt(started)}{skipped ? ` · ${skipped} skipped` : ''}</span>}
+        {pace && done + skipped < def.length && <span className={s.pacePill}>{name ? pace.today : pace.label}</span>}
       </div>
     </div>
   )

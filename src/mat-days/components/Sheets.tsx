@@ -5,7 +5,7 @@ import { ModalFooter } from '../../ds/components/ModalFooter'
 import type { PracticeEntry, Session } from '../domain/types'
 import { useMatDays } from '../app/state'
 import { localDate, newEntry, summarise, thisWeek } from '../lib/practice'
-import { doneDays, linkedSessions, seriesOfSession } from '../lib/series'
+import { doneDays, skippedDays, linkedSessions, seriesOfSession } from '../lib/series'
 import { FEELS, GOOD_FOR_AREAS, GOOD_FOR_GOALS, learnFromPractice, shortTitle } from '../lib/today'
 import { WeekRing } from './WeekRing'
 import { Chip, RepeatRating } from './ui'
@@ -19,7 +19,7 @@ function seriesLine(session: Session, entry: PracticeEntry, state: ReturnType<ty
     const linked = linkedSessions(def, state.sessions, progress)
     const done = doneDays(def, progress, linked, [entry, ...state.history.filter((h) => h.id !== entry.id)], state.sessions)
     if (!done.has(day)) continue
-    const left = def.length - done.size
+    const left = def.length - done.size - skippedDays(def, progress, done).size
     return left > 0 ? `${def.name} · ${def.unit} ${day} done, ${left} to go` : `${def.name} · every ${def.unit.toLowerCase()} done`
   }
   return null

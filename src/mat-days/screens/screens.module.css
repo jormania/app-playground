@@ -924,3 +924,18 @@ button.calendarDay { border: 0; padding: 0; font: inherit; font-size: var(--text
 .mine { border-color: color-mix(in srgb, var(--sf-lavender-ink) 45%, var(--color-border)); }
 .mine:hover { border-color: var(--sf-lavender-ink); }
 .titleTag { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; }
+
+/* A day skipped by choice: settled but not practised. Quieter than done, never alarming. */
+.daySkipped { background: color-mix(in srgb, var(--color-muted) 10%, transparent); color: var(--color-muted); }
+.daySkipped .dayTheme { text-decoration: line-through; text-decoration-thickness: 1px; }
+.dayTagSkipped { color: var(--color-muted); }
+.tagRow { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-xs); }
+
+/* My Practice calendar: a day with only a skipped series day is outlined, not filled;
+   a practice day that also had a skip carries a small mark. */
+.calendarSkip { background: transparent; outline: 1.5px dashed color-mix(in srgb, var(--color-muted) 70%, transparent); outline-offset: -3px; color: var(--color-muted); }
+.calendarAlsoSkip { position: relative; }
+.calendarAlsoSkip::after { content: ''; position: absolute; bottom: 4px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: currentColor; opacity: 0.6; }
+.skipRow { display: flex; gap: var(--space-sm); align-items: flex-start; padding-top: var(--space-sm); border-top: 1px solid var(--color-border); color: var(--color-muted); text-decoration: none; }
+.skipRow > span { display: grid; gap: 2px; }
+.skipTheme { font-family: var(--font-display); font-size: var(--text-md); color: var(--color-text); }

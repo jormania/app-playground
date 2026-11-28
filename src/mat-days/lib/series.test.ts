@@ -3,7 +3,7 @@ import { BUILT_IN_SERIES } from '../data/series'
 import type { PracticeEntry, SeriesDef, SeriesProgress, Session } from '../domain/types'
 import {
   belongsTo, customSeries, dayTheme, dayOf, daySearchUrl, doneDays, finishProgress, linkedSessions, nextDay, pace,
-  seriesOfSession, startProgress, toggleDay,
+  seriesOfSession, startProgress, toggleDay, skipDay, skippedDays, allSkips,
 } from './series'
 
 const move = BUILT_IN_SERIES.find((d) => d.id === 'move-2022')!
@@ -90,6 +90,34 @@ describe('progress through a run', () => {
   it('keeps your links across restarts', () => {
     const p = { ...startProgress(move, '2026-01-01'), links: { 4: 'x' } }
     expect(startProgress(move, '2026-02-01', p).links).toEqual({ 4: 'x' })
+  })
+})
+
+describe('skipping a day', () => {
+  const run = startProgress(move, '2026-11-18')
+  const linked = new Map<number, Session>()
+  it('moves the series on, and a skipped day practised later counts as done', () => {
+    let p = toggleDay(run, 7, '2026-11-25', true)
+    for (let d = 1; d < 7; d++) p = toggleDay(p, d, '2026-11-20', true)
+    p = skipDay(p, 8, '2026-11-28', true)
+    let done = doneDays(move, p, linked, [])
+    expect(nextDay(move, done, skippedDays(move, p, done))).toBe(9)
+    expect(pace(move, p, done.size + skippedDays(move, p, done).size, '2026-11-26').delta).toBe(0)
+    p = toggleDay(p, 8, '2026-11-29', true)
+    done = doneDays(move, p, linked, [])
+    expect(skippedDays(move, p, done).size).toBe(0)
+    p = skipDay(toggleDay(p, 8, '', false), 8, '', false)
+    done = doneDays(move, p, linked, [])
+    expect(nextDay(move, done, skippedDays(move, p, done))).toBe(8)
+  })
+  it('keeps skips in the run record when a run ends or restarts, for the calendar', () => {
+    const p = skipDay(run, 8, '2026-11-28', true)
+    const restarted = startProgress(move, '2026-12-01', p, 7)
+    expect(restarted.skippedDays).toEqual({})
+    expect(restarted.runs.at(-1)?.skippedDays).toEqual({ 8: '2026-11-28' })
+    expect(allSkips([move], { [move.id]: restarted })).toEqual([{ date: '2026-11-28', def: move, day: 8 }])
+    const finished = finishProgress(p, 'completed', '2026-12-20', 29)
+    expect(allSkips([move], { [move.id]: finished })).toHaveLength(1)
   })
 })
 

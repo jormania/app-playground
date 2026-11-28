@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowLeft, Check, ExternalLink, Flag, Link2, Plus, RotateCcw, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Check, ExternalLink, Flag, Link2, Plus, RotateCcw, SkipForward, Trash2, X } from 'lucide-react'
 import { Button, ConfirmModal, Field, Modal, SegmentedControl } from '../../ds'
 import { hrefOf, navigate } from '../app/router'
 import { useMatDays } from '../app/state'
@@ -9,7 +9,7 @@ import type { SeriesDef, SeriesProgress, Session } from '../domain/types'
 import { fold } from '../lib/filter'
 import { localDate, newEntry, teaser } from '../lib/practice'
 import {
-  customSeries, dayTheme, daySearchUrl, doneDays, finishProgress, linkedSessions, nextDay, pace, practisedToday, startProgress, toggleDay, inRun, runStart, dayOf, belongsTo } from '../lib/series'
+  customSeries, dayTheme, daySearchUrl, doneDays, finishProgress, linkedSessions, nextDay, pace, practisedToday, skipDay, skippedDays, startProgress, toggleDay, inRun, runStart, dayOf, belongsTo } from '../lib/series'
 import { cx } from '../../ds/lib/cx'
 import { repeatLabel } from '../domain/vocabulary'
 import { shortTitle } from '../lib/today'
@@ -27,13 +27,14 @@ export function useSeries(def: SeriesDef) {
   return useMemo(() => {
     const linked = linkedSessions(def, sessions, progress)
     const done = doneDays(def, progress, linked, history, sessions)
-    const next = nextDay(def, done)
+    const skipped = skippedDays(def, progress, done)
+    const next = nextDay(def, done, skipped)
     const today = localDate()
     const p = progress && progress.status === 'active'
-      ? pace(def, { ...progress, startedAt: runStart(progress, done) }, done.size, today, practisedToday(def, progress, linked, history, today))
+      ? pace(def, { ...progress, startedAt: runStart(progress, done) }, done.size + skipped.size, today, practisedToday(def, progress, linked, history, today))
       : null
     const started = progress ? runStart(progress, done) : undefined
-    return { progress, linked, done, next, pace: p, started }
+    return { progress, linked, done, skipped, next, pace: p, started }
   }, [def, sessions, history, progress])
 }
 
@@ -44,7 +45,7 @@ export function useSeries(def: SeriesDef) {
  */
 export function useDayActions(def: SeriesDef) {
   const { saveProgress, savePractice, deletePractices, history, toast, sessions } = useMatDays()
-  const { progress, linked, done } = useSeries(def)
+  const { progress, linked, done, skipped } = useSeries(def)
   const mark = (day: number) => {
     if (!progress || progress.status !== 'active') return
     const session = linked.get(day)
@@ -53,7 +54,7 @@ export function useDayActions(def: SeriesDef) {
     } else {
       saveProgress(toggleDay(progress, day, localDate(), true))
     }
-    const left = def.length - done.size - (done.has(day) ? 0 : 1)
+    const left = def.length - done.size - skipped.size - (done.has(day) || skipped.has(day) ? 0 : 1)
     toast(left > 0 ? `${def.unit} ${day} done · ${left} to go${session ? ' · in My Practice too' : ''}` : `Every ${def.unit.toLowerCase()} of ${def.name} done`, 'success')
   }
   const unmark = (day: number) => {
@@ -66,7 +67,19 @@ export function useDayActions(def: SeriesDef) {
     const ids = history.filter((e) => copies.has(e.sessionId) && inRun(progress, e.date)).map((e) => e.id)
     deletePractices(ids, ids.length > 1 ? `${def.unit} ${day} unticked: ${ids.length} practices removed` : `${def.unit} ${day} unticked`)
   }
-  return { mark, unmark }
+  // Skipping is a choice, kept with its date: the series moves on, and My Practice
+  // shows the day as skipped rather than missed. Practising it later still counts.
+  const skip = (day: number) => {
+    if (!progress || progress.status !== 'active') return
+    saveProgress(skipDay(progress, day, localDate(), true))
+    toast(`${def.unit} ${day} skipped. You can still come back to it.`)
+  }
+  const unskip = (day: number) => {
+    if (!progress || progress.status !== 'active') return
+    saveProgress(skipDay(progress, day, localDate(), false))
+    toast(`${def.unit} ${day} is open again`)
+  }
+  return { mark, unmark, skip, unskip }
 }
 
 /**
@@ -128,7 +141,7 @@ function Bar({ value, max }: { value: number; max: number }) {
 }
 
 function SeriesCard({ def }: { def: SeriesDef }) {
-  const { progress, done, linked, next, pace: p } = useSeries(def)
+  const { progress, done, skipped, linked, next, pace: p } = useSeries(def)
   const status = progress?.status
   return (
     <a href={hrefOf({ name: 'seriesDetail', id: def.id })} className={cx(s.collection, status === 'active' && s.seriesActive, def.kind === 'custom' && s.mine)}>
@@ -138,7 +151,7 @@ function SeriesCard({ def }: { def: SeriesDef }) {
       {status === 'active' ? (
         <>
           <Bar value={done.size} max={def.length} />
-          <span className={s.muted}>{done.size} of {def.length} done{next ? ` · next: ${def.unit} ${next}` : ''}</span>
+          <span className={s.muted}>{done.size} of {def.length} done{skipped.size ? ` · ${skipped.size} skipped` : ''}{next ? ` · next: ${def.unit} ${next}` : ''}</span>
           {p && <span className={s.paceNote}>{p.label}</span>}
         </>
       ) : status === 'completed' ? (
@@ -248,11 +261,12 @@ function SessionPicker({ onPick, onClose, def, day }: { onPick: (s: Session) => 
 
 function DaySheet({ def, day, onClose }: { def: SeriesDef; day: number; onClose: () => void }) {
   const { saveProgress, markLaunched, seriesDefs } = useMatDays()
-  const { progress, linked, done } = useSeries(def)
-  const { mark, unmark } = useDayActions(def)
+  const { progress, linked, done, skipped } = useSeries(def)
+  const { mark, unmark, skip, unskip } = useDayActions(def)
   const [picking, setPicking] = useState(false)
   const session = linked.get(day)
   const isDone = done.has(day)
+  const isSkipped = skipped.has(day)
   const active = progress?.status === 'active'
   const label = `${def.unit} ${day}`
 
@@ -289,6 +303,11 @@ function DaySheet({ def, day, onClose }: { def: SeriesDef; day: number; onClose:
                 title="Tap to untick" onClick={() => { unmark(day); onClose() }}><Check size={14} strokeWidth={2.4} /> Done {fmtShort(done.get(day)!)}</button>
             : <button type="button" className={s.dayTag} aria-label={`Mark ${label} done`}
                 title={session ? 'Also recorded in My Practice, dated today' : 'Ticked on the series only'} onClick={() => { mark(day); onClose() }}><Check size={14} strokeWidth={2.4} /> Mark done</button>)}
+          {active && !isDone && (isSkipped
+            ? <button type="button" className={cx(s.dayTag, s.dayTagSkipped)} aria-label={`Unskip ${label}, skipped ${fmt(skipped.get(day)!)}`}
+                title="Tap to open it again" onClick={() => { unskip(day); onClose() }}><SkipForward size={14} strokeWidth={2.2} /> Skipped {fmtShort(skipped.get(day)!)}</button>
+            : <button type="button" className={s.dayTag} aria-label={`Skip ${label}`}
+                title="Move on without it; kept in My Practice as skipped" onClick={() => { skip(day); onClose() }}><SkipForward size={14} strokeWidth={2.2} /> Skip</button>)}
         </div>
         {!active && <p className={s.muted}>Start the series to tick {def.unit.toLowerCase()}s off.</p>}
         <div className={s.row} style={{ justifyContent: 'space-between' }}>
@@ -314,8 +333,8 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast }: {
   deleteSeriesDef: (id: string) => void
   toast: (m: string, t?: 'success' | 'neutral' | 'danger') => void
 }) {
-  const { progress, linked, done, next, pace: p, started } = useSeries(def)
-  const { mark } = useDayActions(def)
+  const { progress, linked, done, skipped, next, pace: p, started } = useSeries(def)
+  const { mark, skip } = useDayActions(def)
   const [day, setDay] = useState<number | null>(null)
   const [confirm, setConfirm] = useState<null | 'abandon' | 'complete' | 'restart' | 'delete'>(null)
   const today = localDate()
@@ -347,21 +366,27 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast }: {
 
       {status === 'active' ? (
         <section className={s.journey} aria-label="Where you are">
-          <SeriesBand def={def} done={done.size} started={started ?? progress!.startedAt} pace={p} />
+          <SeriesBand def={def} done={done.size} skipped={skipped.size} started={started ?? progress!.startedAt} pace={p} />
 
           {next ? (
             <section className={s.upNext} aria-label={`Up next: ${def.unit} ${next}`}>
               {/* The same block as Today's "Your next practice"; progress and pace are in the header above. */}
               <span className={s.todayKicker}>Up next</span>
               <NextDay def={def} day={next} session={nextSession} withSeries={false} actionsBeside
-                secondary={<button type="button" className={s.dayTag} aria-label={`Mark ${def.unit} ${next} done`}
-                  title={nextSession ? 'Also recorded in My Practice, dated today' : 'Ticked on the series only'}
-                  onClick={() => mark(next)}><Check size={14} strokeWidth={2.4} /> Mark done</button>} />
+                secondary={<span className={s.tagRow}>
+                  <button type="button" className={s.dayTag} aria-label={`Mark ${def.unit} ${next} done`}
+                    title={nextSession ? 'Also recorded in My Practice, dated today' : 'Ticked on the series only'}
+                    onClick={() => mark(next)}><Check size={14} strokeWidth={2.4} /> Mark done</button>
+                  <button type="button" className={s.dayTag} aria-label={`Skip ${def.unit} ${next}`}
+                    title="Move on without it; kept in My Practice as skipped" onClick={() => skip(next)}><SkipForward size={14} strokeWidth={2.2} /> Skip</button>
+                </span>} />
             </section>
           ) : (
             <div className={s.upNext}>
               <span className={s.upNextLabel}>Well practised</span>
-              <span className={s.upNextMeta}>All {def.length} {unit}s are done. Complete the series to file it under your finished runs.</span>
+              <span className={s.upNextMeta}>{skipped.size
+                ? `Every ${unit} is done or skipped (${skipped.size} skipped). Complete the series to file it under your finished runs.`
+                : `All ${def.length} ${unit}s are done. Complete the series to file it under your finished runs.`}</span>
               <div className={s.upNextActions}><Button onClick={() => setConfirm('complete')}><Flag size={16} /> Complete series</Button></div>
             </div>
           )}
@@ -387,16 +412,17 @@ function SeriesDetailInner({ def, saveProgress, deleteSeriesDef, toast }: {
           const linkedSession = linked.get(d)
           return (
             <button key={d} type="button" onClick={() => setDay(d)}
-              className={cx(s.dayTile, done.has(d) && s.dayDone, status === 'active' && d === next && s.dayNext, !linkedSession && s.dayUnlinked)}
-              aria-label={`${def.unit} ${d}${done.has(d) ? ', done' : ''}${d === next && status === 'active' ? ', next' : ''}${linkedSession ? `, ${linkedSession.title}` : ', not in library'}`}>
+              className={cx(s.dayTile, done.has(d) && s.dayDone, skipped.has(d) && s.daySkipped, status === 'active' && d === next && s.dayNext, !linkedSession && s.dayUnlinked)}
+              aria-label={`${def.unit} ${d}${done.has(d) ? ', done' : ''}${skipped.has(d) ? ', skipped' : ''}${d === next && status === 'active' ? ', next' : ''}${linkedSession ? `, ${linkedSession.title}` : ', not in library'}`}>
               <span className={s.dayNum}>{d}</span>
               {linkedSession && <span className={s.dayTheme}>{dayTheme(linkedSession.title, def) || `${linkedSession.durationMinutes} min`}</span>}
               {done.has(d) && <Check size={12} strokeWidth={2.4} />}
+              {skipped.has(d) && <SkipForward size={12} strokeWidth={2.2} />}
             </button>
           )
         })}
       </div>
-      <p className={s.entryMeta} style={{ marginTop: 'var(--space-sm)' }}>Tap any {unit} to start it or tick it off. A dashed outline means its video isn’t in your library yet.</p>
+      <p className={s.entryMeta} style={{ marginTop: 'var(--space-sm)' }}>Tap any {unit} to start it, tick it off or skip it. A dashed outline means its video isn’t in your library yet.</p>
 
       {earlier.length > 0 && (
         <>

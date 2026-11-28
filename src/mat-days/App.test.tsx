@@ -126,7 +126,7 @@ describe('a session, end to end', () => {
     await go('#/practice')
     // In the history list once; the calendar day opens the same practice with its note.
     expect((await screen.findAllByText(/Hips felt open/)).length).toBe(1)
-    await user.click(screen.getByRole('gridcell', { name: /show what you practised/ }))
+    await user.click(screen.getByRole('gridcell', { name: /show the day/ }))
     expect(within(await screen.findByRole('dialog')).getByText(/Hips felt open/)).toBeTruthy()
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /close/i }))
 
@@ -285,6 +285,13 @@ describe('series', () => {
     // Nothing is in the library yet, so Day 1 is a YouTube search, never a guessed video.
     expect(screen.getByRole('link', { name: /Find Day 1 on YouTube/ }).getAttribute('href')).toContain('MOVE%20Day%201')
     await user.click(screen.getByRole('button', { name: /Mark Day 1 done/ }))
+    expect(await screen.findByRole('region', { name: 'Up next: Day 2' })).toBeTruthy()
+    // Skipping is a choice: the series moves on, the day is marked, and it can be undone.
+    await user.click(screen.getByRole('button', { name: 'Skip Day 2' }))
+    expect(await screen.findByRole('region', { name: 'Up next: Day 3' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Day 2, skipped/ })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: /Day 2, skipped/ }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /Unskip Day 2/ }))
     expect(await screen.findByRole('region', { name: 'Up next: Day 2' })).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /Day 5, not in library/ }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Mark Day 5 done' }))

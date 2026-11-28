@@ -11,7 +11,7 @@ import { seedFromText, seededRandom } from '../lib/seeded'
 import { PHYSICAL_FOCUS } from '../domain/vocabulary'
 import { StartPractice } from '../components/StartPractice'
 import type { SeriesDef } from '../domain/types'
-import { doneDays, linkedSessions, nextDay } from '../lib/series'
+import { doneDays, linkedSessions, nextDay, skippedDays } from '../lib/series'
 import { useSeries } from './Series'
 import { hrefOf } from '../app/router'
 import { backupNudge, daysAway, dueForRepeat, gentleReturn, isUnavailable, momentOf, RETURN_AFTER_DAYS, shortTitle } from '../lib/today'
@@ -23,7 +23,7 @@ import { SeriesBand } from '../components/SeriesBand'
 import s from './screens.module.css'
 
 function ContinueSeries({ def, primary = false, soft = false }: { def: SeriesDef; primary?: boolean; soft?: boolean }) {
-  const { done, next, linked, pace, started } = useSeries(def)
+  const { done, skipped, next, linked, pace, started } = useSeries(def)
   if (!next) return null
   const day = linked.get(next)
   const open = <a className={s.textLink} href={hrefOf({ name: 'seriesDetail', id: def.id })}>Open series</a>
@@ -32,7 +32,7 @@ function ContinueSeries({ def, primary = false, soft = false }: { def: SeriesDef
   if (primary) {
     return (
       <section className={s.journey} aria-label="Your next practice">
-        <SeriesBand def={def} done={done.size} started={started} pace={pace} name />
+        <SeriesBand def={def} done={done.size} skipped={skipped.size} started={started} pace={pace} name />
         <div className={s.upNext}>
           <span className={s.todayKicker}>Your next practice</span>
           <NextDay def={def} day={next} session={day} withSeries={false} secondary={open} actionsBeside />
@@ -194,7 +194,8 @@ export function Discover() {
   // A series with a day left leads Today; one that's all done waits on the Series tab to be completed.
   const withNext = activeSeries.filter((d) => {
     const p = seriesProgress[d.id]
-    return nextDay(d, doneDays(d, p, linkedSessions(d, sessions, p), history, sessions)) != null
+    const done = doneDays(d, p, linkedSessions(d, sessions, p), history, sessions)
+    return nextDay(d, done, skippedDays(d, p, done)) != null
   })
   const [lead, ...otherSeries] = withNext
   const leadHasNext = !!lead && !returning

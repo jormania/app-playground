@@ -108,6 +108,8 @@ export interface SeriesRun {
   endedAt: string
   status: 'completed' | 'abandoned'
   daysDone: number
+  /** Days you chose to skip in that run: day → date skipped. Kept so My Practice still shows them. */
+  skippedDays?: Record<string, string>
 }
 
 /** Your journey through one series. One record per series; earlier attempts sit in `runs`. */
@@ -119,6 +121,12 @@ export interface SeriesProgress {
   endedAt?: string
   /** Days ticked by hand in this run: day → date. Linked sessions in practice history count too. */
   manualDays: Record<string, string>
+  /**
+   * Days you chose to skip in this run: day → date. A skip is a decision, not a
+   * miss: the day counts as settled, so the series moves on to the next one. A
+   * skipped day you practise after all counts as done instead.
+   */
+  skippedDays?: Record<string, string>
   /** Sessions you linked to a day yourself: day → session id. */
   links: Record<string, string>
   runs: SeriesRun[]

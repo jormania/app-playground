@@ -9,6 +9,17 @@ Strict TypeScript on `src/ds/`. Entry: `mat-days-react.html` → `src/mat-days/m
 Listed in `apps-registry.js` (index.html card and The Cabinet) from Release 1.
 The release number shows at the foot of Settings (`app/release.ts`).
 
+## Skipping a day
+
+A series day can be skipped on purpose (Up next, or the day's sheet). A skip is a
+decision, not a miss: `SeriesProgress.skippedDays` keeps day → date, the day
+counts as settled (`nextDay` passes over it, the pace counts it, a series whose
+days are all done or skipped can be completed), and the ring still shows only
+what was practised. Practising a skipped day later counts it as done. Skips move
+into the run record when a run ends or restarts, so My Practice's calendar keeps
+them: a skip-only day has a dashed outline, a practice day that also had a skip
+carries a small dot, and the day sheet lists "Skipped · series · Day N".
+
 ## Renamed — Stillflow is now Mat Days
 
 The app was called Stillflow until 2026-11-27; the name sat too close to InFlow.

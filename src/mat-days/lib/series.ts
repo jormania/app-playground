@@ -99,9 +99,28 @@ export function doneDays(
   return out
 }
 
-export function nextDay(def: SeriesDef, done: Map<number, string>): number | null {
-  for (let d = 1; d <= def.length; d++) if (!done.has(d)) return d
+/** Days skipped in this run and not practised since: day → date skipped. */
+export function skippedDays(def: SeriesDef, progress: SeriesProgress | undefined, done: Map<number, string>): Map<number, string> {
+  const out = new Map<number, string>()
+  if (!progress || progress.status === 'idle') return out
+  for (const [day, date] of Object.entries(progress.skippedDays ?? {})) {
+    const d = Number(day)
+    if (d >= 1 && d <= def.length && !done.has(d)) out.set(d, date)
+  }
+  return out
+}
+
+/** The first day neither done nor skipped. */
+export function nextDay(def: SeriesDef, done: Map<number, string>, skipped?: Map<number, string>): number | null {
+  for (let d = 1; d <= def.length; d++) if (!done.has(d) && !skipped?.has(d)) return d
   return null
+}
+
+export function skipDay(p: SeriesProgress, day: number, date: string, skip: boolean): SeriesProgress {
+  const skippedDays = { ...(p.skippedDays ?? {}) }
+  if (skip) skippedDays[day] = date
+  else delete skippedDays[day]
+  return { ...p, skippedDays }
 }
 
 export interface Pace {
@@ -182,12 +201,39 @@ export function daySearchUrl(def: SeriesDef, day: number): string {
 export function startProgress(def: SeriesDef, today: string, previous?: SeriesProgress, doneCountBefore = 0): SeriesProgress {
   const runs = previous ? [...previous.runs] : []
   // A run still active when restarted is recorded as abandoned, so nothing is lost.
-  if (previous?.status === 'active') runs.push({ startedAt: previous.startedAt, endedAt: today, status: 'abandoned', daysDone: doneCountBefore })
-  return { seriesId: def.id, status: 'active', startedAt: today, manualDays: {}, links: previous?.links ?? {}, runs }
+  if (previous?.status === 'active') runs.push({ startedAt: previous.startedAt, endedAt: today, status: 'abandoned', daysDone: doneCountBefore, ...skipsOf(previous) })
+  return { seriesId: def.id, status: 'active', startedAt: today, manualDays: {}, skippedDays: {}, links: previous?.links ?? {}, runs }
 }
 
 export function finishProgress(p: SeriesProgress, status: 'completed' | 'abandoned', today: string, daysDone: number): SeriesProgress {
-  return { ...p, status, endedAt: today, runs: [...p.runs, { startedAt: p.startedAt, endedAt: today, status, daysDone }] }
+  return { ...p, status, endedAt: today, runs: [...p.runs, { startedAt: p.startedAt, endedAt: today, status, daysDone, ...skipsOf(p) }] }
+}
+
+/** A run's skips, carried into its record so they stay on the calendar. */
+const skipsOf = (p: SeriesProgress) => (p.skippedDays && Object.keys(p.skippedDays).length ? { skippedDays: { ...p.skippedDays } } : {})
+
+/**
+ * Every day skipped across your series, current and earlier runs, with the date
+ * it was skipped: for My Practice's calendar.
+ */
+export function allSkips(defs: SeriesDef[], progress: Record<string, SeriesProgress>): { date: string; def: SeriesDef; day: number }[] {
+  const out: { date: string; def: SeriesDef; day: number }[] = []
+  for (const def of defs) {
+    const p = progress[def.id]
+    if (!p) continue
+    const seen = new Set<string>()
+    const add = (rec?: Record<string, string>) => {
+      for (const [day, date] of Object.entries(rec ?? {})) {
+        const key = `${day}@${date}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        out.push({ date, def, day: Number(day) })
+      }
+    }
+    for (const r of p.runs) add(r.skippedDays)
+    if (p.status !== 'idle') add(p.skippedDays)
+  }
+  return out
 }
 
 export function toggleDay(p: SeriesProgress, day: number, date: string, done: boolean): SeriesProgress {

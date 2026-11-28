@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, SkipForward } from 'lucide-react'
 import { Button, Field, Modal } from '../../ds'
 import { hrefOf } from '../app/router'
 import { useMatDays } from '../app/state'
 import { CompleteSheet } from '../components/Sheets'
 import { WeekRing } from '../components/WeekRing'
 import { Empty, SectionHead, Thumb } from '../components/ui'
-import type { PracticeEntry, Session } from '../domain/types'
+import type { PracticeEntry, SeriesDef, Session } from '../domain/types'
+import { allSkips, dayTheme, linkedSessions } from '../lib/series'
 import { fold } from '../lib/filter'
 import { FEELS, shortTitle } from '../lib/today'
 import { cx } from '../../ds/lib/cx'
@@ -17,7 +18,9 @@ import s from './screens.module.css'
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 /** A month of practice days, shaded by minutes. Weeks start on Monday. */
-function PracticeCalendar({ history, today, onPick }: { history: PracticeEntry[]; today: string; onPick: (date: string) => void }) {
+type Skip = { date: string; def: SeriesDef; day: number }
+
+function PracticeCalendar({ history, skips, today, onPick }: { history: PracticeEntry[]; skips: Skip[]; today: string; onPick: (date: string) => void }) {
   const [offset, setOffset] = useState(0)
   const first = new Date(`${today.slice(0, 7)}-01T12:00:00`)
   first.setMonth(first.getMonth() + offset)
@@ -26,6 +29,7 @@ function PracticeCalendar({ history, today, onPick }: { history: PracticeEntry[]
     for (const h of history) m.set(h.date, (m.get(h.date) ?? 0) + h.minutes)
     return m
   }, [history])
+  const skipDates = useMemo(() => new Set(skips.map((x) => x.date)), [skips])
   const lead = (first.getDay() + 6) % 7
   const days = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()
   const cells: (string | null)[] = [...Array(lead).fill(null), ...Array.from({ length: days }, (_, i) => iso(new Date(first.getFullYear(), first.getMonth(), i + 1, 12)))]
@@ -50,11 +54,13 @@ function PracticeCalendar({ history, today, onPick }: { history: PracticeEntry[]
           if (!d) return <span key={`x${i}`} />
           const m = minutes.get(d) ?? 0
           const level = m === 0 ? 0 : m < 20 ? 1 : m < 40 ? 2 : 3
-          const cls = cx(s.calendarDay, s[`lvl${level}`], d === today && s.calendarToday)
-          // A practice day opens what was practised; an empty day stays a plain number.
-          return m ? (
+          const skippedHere = skipDates.has(d)
+          const cls = cx(s.calendarDay, s[`lvl${level}`], d === today && s.calendarToday, skippedHere && (m ? s.calendarAlsoSkip : s.calendarSkip))
+          // A practice day, or a day you chose to skip a series day, opens what happened; an empty day stays a plain number.
+          return m || skippedHere ? (
             <button key={d} type="button" role="gridcell" className={cls} onClick={() => onPick(d)}
-              title={`${m} min`} aria-label={`${Number(d.slice(8))}, ${m} minutes: show what you practised`}>
+              title={m ? `${m} min${skippedHere ? ' · a series day skipped' : ''}` : 'A series day skipped'}
+              aria-label={`${Number(d.slice(8))}, ${m ? `${m} minutes` : 'no practice'}${skippedHere ? ', a series day skipped' : ''}: show the day`}>
               {Number(d.slice(8))}
             </button>
           ) : (
@@ -75,13 +81,14 @@ const entryMeta = (e: PracticeEntry, videoMinutes?: number) =>
  * One calendar day: what was practised, in the same sheet as a series day (the
  * thumbnail with the length on it, where it comes from, how it went, the note).
  */
-function PracticeDaySheet({ date, entries, onEdit, onClose }: {
+function PracticeDaySheet({ date, entries, skips, onEdit, onClose }: {
   date: string
   entries: PracticeEntry[]
+  skips: Skip[]
   onEdit: (e: PracticeEntry) => void
   onClose: () => void
 }) {
-  const { byId, seriesDefs } = useMatDays()
+  const { byId, seriesDefs, sessions, seriesProgress } = useMatDays()
   const title = new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
   const minutes = entries.reduce((t, e) => t + e.minutes, 0)
   return (
@@ -107,6 +114,20 @@ function PracticeDaySheet({ date, entries, onEdit, onClose }: {
               {e.note && <p className={s.dayNote}>“{e.note}”</p>}
               {session && <button type="button" className={s.textLink} onClick={() => onEdit(e)}>Edit</button>}
             </div>
+          )
+        })}
+        {/* Days skipped on purpose: recorded as a choice, so the day reads as decided, not missed. */}
+        {skips.map((x) => {
+          const session = linkedSessions(x.def, sessions, seriesProgress[x.def.id]).get(x.day)
+          const theme = session ? dayTheme(session.title, x.def) : ''
+          return (
+            <a key={`${x.def.id}-${x.day}`} className={s.skipRow} href={hrefOf({ name: 'seriesDetail', id: x.def.id })} onClick={onClose}>
+              <SkipForward size={16} strokeWidth={2.2} aria-hidden="true" />
+              <span>
+                <span className={s.entrySource}>Skipped · {x.def.name} · {x.def.unit} {x.day}</span>
+                {theme && <span className={s.skipTheme}>{theme}</span>}
+              </span>
+            </a>
           )
         })}
       </div>
@@ -137,7 +158,8 @@ function LogPractice({ open, onClose, onPick }: { open: boolean; onClose: () => 
 }
 
 export function Practice() {
-  const { history, byId, deletePractice, preferences, seriesDefs } = useMatDays()
+  const { history, byId, deletePractice, preferences, seriesDefs, seriesProgress } = useMatDays()
+  const skips = useMemo(() => allSkips(seriesDefs, seriesProgress), [seriesDefs, seriesProgress])
   const target = preferences.weeklyTargetMinutes
   const [logging, setLogging] = useState(false)
   const [completing, setCompleting] = useState<Session | null>(null)
@@ -191,7 +213,7 @@ export function Practice() {
             <div className={s.stat}><strong>{total.days}</strong><span>Practice days</span></div>
           </div>
 
-          <PracticeCalendar history={history} today={today} onPick={setDay} />
+          <PracticeCalendar history={history} skips={skips} today={today} onPick={setDay} />
 
           <SectionHead title="History" />
           {months.map((m) => (
@@ -220,7 +242,7 @@ export function Practice() {
         </>
       )}
 
-      {day && <PracticeDaySheet date={day} entries={history.filter((h) => h.date === day)}
+      {day && <PracticeDaySheet date={day} entries={history.filter((h) => h.date === day)} skips={skips.filter((x) => x.date === day)}
         onEdit={(e) => { setDay(null); setEditing(e) }} onClose={() => setDay(null)} />}
       {logging && <LogPractice open onClose={() => setLogging(false)} onPick={(x) => { setLogging(false); setCompleting(x) }} />}
       {completing && <CompleteSheet open session={completing} onClose={() => setCompleting(null)} />}
